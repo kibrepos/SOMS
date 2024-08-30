@@ -1,10 +1,10 @@
 SOMS PROJECT NAMEN ITO IPPRIVATE KO ITO IN THE FUTURE NADITO API KEY NG DATABASE NATEN EH
 
 HOW TO INSTALL:
-TYPE NIYO TO SA TERMINAL:
-> cd (gusto niyong directory)
-> git clone https://github.com/kibrepos/SOMS.git
-> npm install
+TYPE NIYO TO SA TERMINAL/CMD PROMPT:
+cd (gusto niyong directory)
+git clone https://github.com/kibrepos/SOMS.git
+npm install
 
 PANO IRUN:
 npm run dev lang po!!!!
