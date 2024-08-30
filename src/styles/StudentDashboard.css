@@ -1,0 +1,27 @@
+.student-dashboard {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  
+  .student-dashboard h1 {
+    font-size: 2em;
+    margin-bottom: 10px;
+  }
+  
+  .student-info {
+    margin-top: 20px;
+  }
+  
+  .student-info p {
+    margin: 5px 0;
+  }
+  
+  .actions {
+    margin-top: 20px;
+  }
+  
+  .actions button {
+    margin-right: 10px;
+  }
+  

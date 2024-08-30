@@ -1,0 +1,26 @@
+/* index.css */
+
+/* Reset some default styles */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* Prevent scrolling */
+}
+
+/* Ensure the root element takes full height */
+#root {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Global styles for a consistent look */
+body {
+  font-family: 'Open Sans', sans-serif;
+  background-color: #f4f4f4; /* Optional: light gray background */
+}
+
+/* Add any other global styles or reset styles here */
