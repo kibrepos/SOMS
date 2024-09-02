@@ -10,50 +10,37 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
+  const [error, setError] = useState(""); // State for error message
   const navigate = useNavigate();
   const auth = getAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(""); // Clear previous error message
     try {
-      // Attempt to sign in
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      console.log("User signed in:", user);
-
-      // Check if the email is verified
       if (!user.emailVerified) {
-        alert("Please verify your email before logging in.");
+        setError("Please verify your email before logging in.");
         return;
       }
 
-      // Check the user role
       const adminDoc = await getDoc(doc(firestore, "admin", user.uid));
       const facultyDoc = await getDoc(doc(firestore, "faculty", user.uid));
       const studentDoc = await getDoc(doc(firestore, "students", user.uid));
 
-      console.log("Admin Doc exists:", adminDoc.exists());
-      console.log("Faculty Doc exists:", facultyDoc.exists());
-      console.log("Student Doc exists:", studentDoc.exists());
-
-      // Redirect based on user role
       if (adminDoc.exists()) {
-        console.log("Redirecting to admin dashboard");
         navigate("/admin-dashboard");
       } else if (facultyDoc.exists()) {
-        console.log("Redirecting to faculty dashboard");
         navigate("/Faculty/dashboard");
       } else if (studentDoc.exists()) {
-        console.log("Redirecting to student dashboard");
         navigate("/Student/dashboard");
       } else {
-        console.error("User role not found");
-        alert("Your role could not be determined. Please contact support.");
+        setError("Your role could not be determined. Please contact support.");
       }
     } catch (error) {
-      console.error("Error logging in:", error);
-      alert("Failed to log in. Please check your credentials and try again.");
+      setError("Failed to log in. Please check your credentials and try again.");
     }
   };
 
@@ -79,7 +66,7 @@ const Login: React.FC = () => {
 
   const handleForgotPassword = async () => {
     if (!email) {
-      alert("Please enter your email address.");
+      setError("Please enter your email address.");
       return;
     }
 
@@ -87,8 +74,7 @@ const Login: React.FC = () => {
       await sendPasswordResetEmail(auth, email);
       alert("Password reset email sent! Please check your inbox.");
     } catch (error) {
-      console.error("Error sending password reset email:", error);
-      alert("Failed to send password reset email. Please try again.");
+      setError("Failed to send password reset email. Please try again.");
     }
   };
 
@@ -137,6 +123,7 @@ const Login: React.FC = () => {
               />
               <label htmlFor="stay-logged-in">Stay logged in</label>
             </div>
+            {error && <div className="errors">{error}</div>} {/* Error message display */}
             <button type="submit" className="login-btn">LOGIN</button>
             <div className="extra-links">
               <a href="#" onClick={() => openPopup("create-account-popup")}>Create Account</a>

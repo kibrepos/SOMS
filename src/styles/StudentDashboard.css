@@ -23,5 +23,21 @@
   
   .actions button {
     margin-right: 10px;
+  }  .error {
+    color: #ff0004; /* Red color for errors */
+    background-color: #fff1f0; /* Light red background */
+    border: 1px solid #ffa39e; /* Border to make it stand out */
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 4px;
+    font-size: 14px;
   }
-  
+  .success {
+    color: #13ef08; /* Red color for errors */
+    background-color: #fff1f0; /* Light red background */
+    border: 1px solid #7ef796; /* Border to make it stand out */
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 4px;
+    font-size: 14px;
+  }
