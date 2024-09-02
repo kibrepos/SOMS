@@ -1,6 +1,6 @@
 // src/components/PublicRoute.tsx
 import React, { useEffect, useState, ReactNode } from 'react';
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import { authStateListener } from '../services/auth';
 
 interface PublicRouteProps {
@@ -10,7 +10,6 @@ interface PublicRouteProps {
 const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const location = useLocation(); // To get the current path
 
   useEffect(() => {
     const unsubscribe = authStateListener((currentUser) => {

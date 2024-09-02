@@ -1,0 +1,91 @@
+/* Header container */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: #2e8b57; /* Green Pulse theme color */
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 999;
+  }
+  
+  /* Logo styling */
+  .header-left .logo {
+    font-size: 1.5em;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  
+  /* Right section of the header containing icons and profile */
+  .header-right {
+    display: flex;
+    align-items: center;
+  }
+  
+  /* Icons (Notifications, Messages) */
+  .icon {
+    margin-right: 20px;
+    position: relative;
+    cursor: pointer;
+  }
+  
+  .icon i {
+    font-size: 1.0em;
+  }
+  
+  /* Profile section */
+  .profile {
+    position: relative;
+    cursor: pointer;
+  }
+  
+  .profile-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid white;
+  }
+  
+  /* Dropdown menu styling */
+  .dropdown {
+    position: absolute;
+    right: 0;
+    top: 50px;
+    background-color: white;
+    color: #333;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    width: 150px;
+    display: block; /* Ensure it's always block when shown */
+  }
+  
+  .dropdown ul {
+    list-style-type: none;
+    padding: 10px;
+    margin: 0;
+  }
+  
+  .dropdown ul li {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    cursor: pointer;
+  }
+  
+  .dropdown ul li:last-child {
+    border-bottom: none;
+  }
+  
+  .dropdown ul li:hover {
+    background-color: #f0f0f0;
+  }
+  
+  /* Ensure the dropdown stays open when hovered */
+  .profile:hover .dropdown,
+  .dropdown:hover {
+    display: block;
+  }
+  
