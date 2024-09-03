@@ -1,100 +1,127 @@
-.asd
+/* Container for the entire page */
 .page-container {
-  padding: 2px;
-  max-width: 1500px;
-  margin: 0 auto;
   display: flex;
-  align-items: flex-start;
-  gap: 40px;
-  background-color: #ff0000;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  background-color: #f4f4f4;
+  min-height: 90vh;
 }
 
+/* Wrapper for the content */
+.content-wrapper {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  max-width: 1200px;
+  width: 100%;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-top: 0px;
+}
+
+/* Profile content section */
 .profile-content {
   display: flex;
   width: 100%;
 }
 
+/* Left side with profile info */
 .profile-left {
-  width: 50%;
-  text-align: center;
-  background-color: white;
-  padding: 30px;
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.profile-pic {
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px solid #2e8b57;
-  margin-bottom: 15px;
-}
-
-.profile-left h2 {
-  font-size: 1.5em;
-  margin-bottom: 5px;
-}
-
-.profile-left p {
-  font-size: 1em;
-  color: #2e8b57;
-  margin-bottom: 15px;
-}
-
-.profile-left .email {
-  font-size: 1em;
-  color: #333;
-  margin-bottom: 30px;
-}
-
-.profile-left button {
-  width: 60%;
-  padding: 10px 20px;
-  background-color: #2e8b57; /* Green color */
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  margin-bottom: 15px;
-  font-size: 1em;
-  transition: background-color 0.3s, box-shadow 0.3s;
-}
-
-.profile-left button:hover {
-  background-color: #256a46; /* Darker green on hover */
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow on hover */
-}
-
-.profile-left button:active {
-  background-color: #1e6d3c; /* Even darker green when pressed */
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2); /* Pressed effect */
-}
-
-.locker {
-  width: 60%;
-  background-color: white;
-  padding: 30px;
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.locker h2 {
-  font-size: 1.5em;
-  margin-bottom: 20px;
-}
-
-.file-input {
-  margin-bottom: 15px;
-}
-.content-wrapper {
-  width: 100%;
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 20px; /* Adjust padding to create space under the header */
+  padding: 20px;
+  border-right: 2px solid #e0e0e0;
 }
+
+/* Profile picture container */
+.profile-pic-container {
+  width: 150px;
+  height: 150px;
+  margin-bottom: 20px;
+  position: relative;
+  cursor: pointer;
+}
+
+.profile-pic-container::after {
+  content: "View";
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  padding: 5px 10px;
+  border-radius: 0 0 10px 0;
+  font-size: 12px;
+  display: none;
+}
+
+.profile-pic-container:hover::after {
+  display: block;
+}
+
+/* Profile picture styling */
+.profile-pic {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #2e8b57; /* Green Pulse theme color */
+}
+
+/* Profile name styling */
+.profile-left h2 {
+  margin: 10px 0;
+  font-size: 24px;
+  color: #333333;
+}
+
+/* Horizontal line under the name */
+.profile-left hr {
+  width: 50%;
+  border: none;
+  border-top: 2px solid #2e8b57;
+  margin-bottom: 15px;
+}
+
+/* Profile info styling */
+.profile-left p {
+  margin: 5px 0;
+  font-size: 16px;
+  color: #555555;
+}
+
+/* Buttons in profile section */
+.profile-left button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  font-size: 16px;
+  color: #ffffff;
+  background-color: #2e8b57;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.profile-left button:hover {
+  background-color: #246b45;
+}
+
+/* Right side locker section */
+.locker {
+  flex: 1;
+  padding: 20px;
+  overflow: visible; 
+}
+
+
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -155,10 +182,24 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  background-color: #2e8b57;
+  background-color: #05573c;
   color: white;
   font-size: 16px;
   transition: background-color 0.3s;
+}
+.modal-content .cancelB {
+  margin-top: 10px;
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #dd0000;
+  color: white;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+.modal-content .cancelB:hover {
+  background-color: #8a0505;
 }
 
 .modal-content button:hover {
@@ -231,14 +272,7 @@
   border: 1px solid #ccc;
   margin-top: 4px;
 }
-.modal-content button.cancel-btn {
-  background-color: #ff4d4d; /* Red color */
-  color: #fff;
-}
 
-.modal-content button.cancel-btn:hover {
-  background-color: #e60000; /* Darker red on hover */
-}
 .modal-content button {
   padding: 10px 15px;
   border: none;
@@ -284,4 +318,12 @@
   margin-top: 10px;
   border-radius: 4px;
   font-size: 14px;
+}
+hr {
+  border: none;
+  height: 4px; /* Adjust height for thickness */
+  background-color: #2e8b57; /* Green Pulse */
+  border-radius: 5px; /* Half of the height to make it an oval */
+  width: 70%; /* Adjust width as needed */
+  margin: 0 auto; /* Center the HR */
 }

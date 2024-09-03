@@ -6,6 +6,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, firestore, storage } from '../../services/firebaseConfig';
 import '../../styles/StudentProfile.css';
 import Header from '../../components/Header';
+import Locker from '../../components/Locker';
 
 const StudentProfile: React.FC = () => {
   const [studentData, setStudentData] = useState<any>(null);
@@ -184,6 +185,7 @@ const StudentProfile: React.FC = () => {
 
   return (
     <>
+    
       <div className='asd'>
         <Header />
       </div>
@@ -195,6 +197,7 @@ const StudentProfile: React.FC = () => {
                 <img src={profilePicUrl || '/default-profile.png'} alt="Profile" className="profile-pic" />
               </div>
               <h2>{studentData?.firstname} {studentData?.lastname}</h2>
+              <hr></hr>
               <p>{studentData?.department}</p>
               <p>{studentData?.year} - {studentData?.studentNumber}</p>
               <p>{studentData?.email}</p>
@@ -203,8 +206,7 @@ const StudentProfile: React.FC = () => {
               <button>Send Feedback</button>
             </div>
             <div className="locker">
-              <h2>My Locker</h2>
-              {/* Locker content goes here */}
+              <Locker />
             </div>
           </div>
         </div>
@@ -287,7 +289,7 @@ const StudentProfile: React.FC = () => {
               />
             </label>
             <button onClick={handleSaveChanges}>Save</button>
-            <button className="cancel" onClick={() => setIsModalOpen(false)}>Cancel</button>
+            <button className="cancelB" onClick={() => setIsModalOpen(false)}>Cancel</button>
           </div>
         </div>
       )}
@@ -337,7 +339,7 @@ const StudentProfile: React.FC = () => {
             {passwordError && <p className="error">{passwordError}</p>}
             {passwordSuccess && <p className="success">{passwordSuccess}</p>}
             <button onClick={handlePasswordChange}>Change Password</button>
-            <button className="cancel" onClick={() => setIsPasswordModalOpen(false)}>Cancel</button>
+            <button className="cancelB" onClick={() => setIsPasswordModalOpen(false)}>Cancel</button>
           </div>
         </div>
       )}

@@ -71,7 +71,7 @@ const Header: React.FC = () => {
             className="profile-icon"
           />
           {showDropdown && (
-            <div className="dropdown" onMouseLeave={() => setShowDropdown(false)}>
+            <div className="header-dropdown" onMouseLeave={() => setShowDropdown(false)}>
               <ul>
                 <li onClick={handleProfileVisit}>Visit Profile</li>
                 <li onClick={handleLogout}>Logout</li>
