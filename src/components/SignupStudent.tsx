@@ -8,7 +8,17 @@ import '../styles/Signupstudent.css';
 
 Modal.setAppElement('#root'); // Set the app element for accessibility
 
-const departments = ['CEAT']; // Example departments
+//DEPARTMENT OPTIONS DITO
+const departments = [
+  'CEAT',
+  'CBAA',
+  'CLAC',
+  'COSC',
+  'CICS',
+  'CTHM',
+  'CCJE',
+  'COE',
+];
 
 const SignupStudent: React.FC = () => {
   const navigate = useNavigate();
