@@ -222,12 +222,12 @@
  
 }
 
-.pic-modal-content {
+div.pic-modal-content {
   position: relative;
   background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+  padding: 5px;
+  box-shadow: 0 4px 8px rgba(255, 0, 0, 0.2); /* Red shadow */
   max-width: 90%;
   max-height: 90%;
   display: flex;
@@ -241,12 +241,12 @@
   object-fit: contain;
 }
 
-.pic-modal-close {
+button.pic-modal-close {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: #000;
-  color: #fff;
+  background: #ff0000;
+  color: #ffffff;
   border: none;
   border-radius: 50%;
   width: 30px;
