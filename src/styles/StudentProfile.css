@@ -6,6 +6,7 @@
   padding: 20px;
   background-color: #f4f4f4;
   min-height: 90vh;
+  animation: fadeIn 1s ease-in-out;
 }
 
 /* Wrapper for the content */
