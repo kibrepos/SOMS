@@ -4,7 +4,7 @@ import { storage } from '../services/firebaseConfig';
 import '../styles/Locker.css';
 import { authStateListener } from '../services/auth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faFolder, faFile, faSearch, faEllipsisV, faArrowLeft, faPlus, faPaperclip, faImage, faVideo, faFileAlt, faFilePdf, faFileWord, faFilePowerpoint, faFileExcel } from '@fortawesome/free-solid-svg-icons';
+import { faFolder, faFolderPlus, faSearch, faEllipsisV, faArrowLeft, faPaperclip, faImage, faVideo, faFileAlt, faFilePdf, faFileWord, faFilePowerpoint, faFileExcel } from '@fortawesome/free-solid-svg-icons';
 
 const Locker = () => {
   const [files, setFiles] = useState<StorageReference[]>([]);
@@ -102,6 +102,11 @@ const getFileIconClass = (fileName: string) => {
               removeDropLines();
           }
       });
+      const toggleDropdown = (type: string, index: number) => {
+        const newIndex = `${type}-${index}`;
+        setDropdownIndex((prev) => (prev === newIndex ? null : newIndex));
+    };
+    
 
       return () => {
           document.removeEventListener('dragenter', handleDragEnter);
@@ -152,64 +157,75 @@ const getFileIconClass = (fileName: string) => {
     };
 
     const handleFileUpload = async (files: FileList) => {
-      setLoading(true);
-  
-      const fileArray = Array.from(files); // Convert FileList to Array
-  
-      const filesToUpload = [];
-      const fileNames = new Set<string>();
-      const overwrittenFiles = new Set<string>(); // Track files that were overwritten
-  
-      // Collect files that need to be uploaded and their names
-      for (const file of fileArray) {
-          const fileName = file.name;
-          const fileRef = ref(storage, `user_files/${user.uid}${currentPath ? `/${currentPath}` : ''}/${fileName}`);
-  
-          // Check if file already exists
-          try {
-              await getDownloadURL(fileRef); // This will succeed if the file exists
-              if (!fileNames.has(fileName)) {
-                  const overwrite = window.confirm(`File "${fileName}" already exists. Do you want to overwrite it?`);
-  
-                  if (overwrite) {
-                      filesToUpload.push({ fileRef, file });
-                      fileNames.add(fileName);
-                      overwrittenFiles.add(fileName);
-                  }
-              }
-          } catch (error) {
-              // If getDownloadURL fails, the file does not exist
-              filesToUpload.push({ fileRef, file });
-              fileNames.add(fileName);
-          }
-      }
-  
-      // Upload files
-      await Promise.all(filesToUpload.map(({ fileRef, file }) => {
-          return new Promise<void>((resolve, reject) => {
-              const uploadTask = uploadBytesResumable(fileRef, file);
-  
-              uploadTask.on('state_changed',
-                  (snapshot) => {
-                      const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                      setUploadProgress(progress);
-                  },
-                  (error) => {
-                      console.error("Error uploading file:", error);
-                      reject(error);
-                  },
-                  async () => {
-                      await fetchFiles();
-                      resolve();
-                  }
-              );
-          });
-      }));
-  
-      setLoading(false);
-      setUploadProgress(null);
-      alert(`Files uploaded successfully. ${overwrittenFiles.size} file(s) were overwritten.`);
-  };
+        setLoading(true);
+    
+        const fileArray = Array.from(files); // Convert FileList to Array
+    
+        const filesToUpload = [];
+        const fileNames = new Set<string>();
+        const overwrittenFiles = new Set<string>(); // Track files that were overwritten
+        let filesSuccessfullyUploaded = 0; // Counter for successfully uploaded files
+    
+        // Collect files that need to be uploaded and their names
+        for (const file of fileArray) {
+            const fileName = file.name;
+            const fileRef = ref(storage, `user_files/${user.uid}${currentPath ? `/${currentPath}` : ''}/${fileName}`);
+    
+            // Check if file already exists
+            try {
+                await getDownloadURL(fileRef); // This will succeed if the file exists
+                if (!fileNames.has(fileName)) {
+                    const overwrite = window.confirm(`File "${fileName}" already exists. Do you want to overwrite it?`);
+    
+                    if (overwrite) {
+                        filesToUpload.push({ fileRef, file });
+                        fileNames.add(fileName);
+                        overwrittenFiles.add(fileName);
+                    }
+                }
+            } catch (error) {
+                // If getDownloadURL fails, the file does not exist
+                filesToUpload.push({ fileRef, file });
+                fileNames.add(fileName);
+            }
+        }
+    
+        // Upload files
+        await Promise.all(filesToUpload.map(({ fileRef, file }) => {
+            return new Promise<void>((resolve, reject) => {
+                const uploadTask = uploadBytesResumable(fileRef, file);
+    
+                uploadTask.on('state_changed',
+                    (snapshot) => {
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        setUploadProgress(progress);
+                    },
+                    (error) => {
+                        console.error("Error uploading file:", error);
+                        reject(error);
+                    },
+                    async () => {
+                        await fetchFiles();
+                        filesSuccessfullyUploaded++; // Increment count of successfully uploaded files
+                        resolve();
+                    }
+                );
+            });
+        }));
+    
+        setLoading(false);
+        setUploadProgress(null);
+    
+        // Determine the success message
+        if (filesSuccessfullyUploaded === 0) {
+            alert('No files were uploaded.');
+        } else if (overwrittenFiles.size > 0) {
+            alert(`Files uploaded successfully. ${overwrittenFiles.size} file(s) were overwritten.`);
+        } else {
+            alert('Files uploaded successfully.');
+        }
+    };
+    
   
 
     const handleCreateFolder = async () => {
@@ -342,21 +358,7 @@ const getFileIconClass = (fileName: string) => {
 
             <div className="head">
                 <h2>{currentPath ? currentPath : 'Main'}</h2>
-                <div className="controls">
-                    <button className="go-back-button" onClick={handleGoBack}>
-                        <FontAwesomeIcon icon={faArrowLeft} />
-                        Go Back
-                    </button>
-                    <button className="create-folder-button" onClick={() => setShowCreateFolderModal(true)}>
-                        <FontAwesomeIcon icon={faPlus} />
-                        New Folder
-                    </button>
-                    <label className="attach-file-button">
-                        <FontAwesomeIcon icon={faPaperclip} />
-                        Attach File
-                        <input type="file" onChange={handleUpload} style={{ display: 'none' }} />
-                    </label>
-                </div>
+                
             </div>
 
             <div className="search-container">
@@ -368,24 +370,47 @@ const getFileIconClass = (fileName: string) => {
                 />
                 <FontAwesomeIcon icon={faSearch} />
             </div>
-
+            <div className="controls">
+            <FontAwesomeIcon
+                icon={faArrowLeft}
+                className="icon go-back-icon"
+                onClick={handleGoBack}
+            />
+            <div className="icon-group">
+                <FontAwesomeIcon
+                     icon={faFolderPlus}
+                    className="icon create-folder-icon"
+                    onClick={() => setShowCreateFolderModal(true)}
+                />
+                <label className="attach-file-button">
+                    <FontAwesomeIcon
+                        icon={faPaperclip}
+                        className="icon attach-file-icon"
+                    />
+                    <input type="file" onChange={handleUpload} style={{ display: 'none' }} />
+                </label>
+            </div>
+        </div>
+            <br></br>
             <div className="file-list">
                 {folders.filter(folder => folder.name.toLowerCase().includes(searchQuery)).length === 0 &&
                  files.filter(file => file.name.toLowerCase() !== 'dummy.txt' && file.name.toLowerCase().includes(searchQuery)).length === 0 ? (
                     <p className="no-files-message">There are no files or folders here.</p>
+
                 ) : (
                     <>
                         {folders.filter(folder => folder.name.toLowerCase().includes(searchQuery)).map((folder, index) => (
                             <div key={index} className="folder-item" onClick={() => handleFolderClick(folder)}>
                                 <FontAwesomeIcon icon={faFolder} className="icon folder-icon" />
-                                <span>{folder.name}</span>
+                                <span className="folder-name">{folder.name}</span>
                                 <FontAwesomeIcon
                                     icon={faEllipsisV}
                                     className="ellipsis"
                                     onClick={(e) => handleDropdownClick(e, index, 'folder')}
                                 />
                                 {dropdownIndex === `folder-${index}` && (
-                                    <div className="dropdown">
+                                     <div className={`dropdown ${dropdownIndex === `folder-${index}` ? 'show' : ''}`}>
+                                  
                                         <ul>
                                             <li onClick={() => handleDeleteFolder(folder)}>Delete Folder</li>
                                         </ul>
@@ -394,16 +419,21 @@ const getFileIconClass = (fileName: string) => {
                             </div>
                         ))}
                         {files.filter(file => file.name.toLowerCase() !== 'dummy.txt' && file.name.toLowerCase().includes(searchQuery)).map((file, index) => (
-                            <div key={index} className="file-item" onClick={() => handleFileClick(file)}>
+                            <div key={index} className="file-item" onClick={() => handleFileClick(file)}
+                         
+                            onMouseLeave={() => setDropdownIndex(null)}>
+
+                                
                                 <FontAwesomeIcon icon={getFileIcon(file.name)} className={`icon ${getFileIconClass(file.name)}`} />
-                                <span>{file.name}</span>
+                                <span className="file-name">{file.name}</span>
                                 <FontAwesomeIcon
                                     icon={faEllipsisV}
                                     className="ellipsis"
                                     onClick={(e) => handleDropdownClick(e, index, 'file')}
                                 />
                                 {dropdownIndex === `file-${index}` && (
-                                    <div className="dropdown">
+                                    <div className={`dropdown ${dropdownIndex === `file-${index}` ? 'show' : ''}`}
+                                    onMouseLeave={() => setDropdownIndex(null)}>
                                         <ul>
                                             <li onClick={() => handleViewDetails(file)}>View Details</li>
                                             <li onClick={() => handleDelete(file)}>Delete</li>

@@ -4,58 +4,158 @@
 .locker-container {
     font-family: Arial, sans-serif;
     padding: 20px;
-    background-color: #f4f4f4;
-    height: 100%;
+    background-color: #f8f8f8;
+    height: 75vh; /* Full viewport height */
+    overflow-y: auto; /* Enable vertical scrolling */
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column; /* Ensures that the contents stack properly */
 }
 
 .head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #000000;
+    padding: 20px; /* Increased padding for better spacing */
+ 
+    background-color: #ffffff; /* White background for the header */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for elevation effect */
+}
+
+/* Styles for h2 elements inside locker-container */
+.locker-container h2 {
+    font-size: 1.5rem; /* Adjust the font size */
+    color: #000000; /* Green color matching the theme */
+    font-weight: bold; /* Ensure the title stands out */
+    margin: 0; /* Remove default margin */
+    padding: 10px 0; /* Add some padding for spacing */
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2); 
+    text-align: center;
 }
 
 .head h2 {
-    margin: 0;
+    font-size: 1.2rem; /* Slightly smaller font size */
+    color: #388E3C; /* Darker green for contrast */
+    font-weight: normal; /* Make it not bold */
+    margin: 0; /* Remove default margin */
+    padding: 5px 0; /* Add some padding for spacing */
+  
+    letter-spacing: 1px; /* Add spacing between letters */
+   
 }
+/* Center the message and style it */
+.no-files-message {
+    text-align: center; /* Center text horizontally */
+    color: #bebebe; /* Gray color for the text */
+    font-size: 15px; /* Adjust font size as needed */
+    
+    margin: 80px 130px; /* Add vertical margin */
+    padding: 10px; /* Add padding around the text */
+    
+    
+}
+
 
 .controls {
     display: flex;
     align-items: center;
 }
 
-.go-back-button,
-.create-folder-button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
+
+
+/* Dropdown menu styling */
+.dropdown {
+    position: absolute;
+    right: 0;
+    top: 45px;
+    background-color: white;
+    color: #333;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    width: 150px;
+    display: block; /* Ensure it's always block when shown */
+  }
+  
+  .dropdown ul {
+    list-style-type: none;
     padding: 10px;
-    margin-right: 10px;
+    margin: 0;
+  }
+  
+  .dropdown ul li {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    cursor: pointer;
+  }
+  
+  .dropdown ul li:last-child {
+    border-bottom: none;
+  }
+  
+  .dropdown ul li:hover {
+    background-color: #f0f0f0;
+  }
+
+
+
+
+.controls {
+    display: flex;
+    align-items: center;
+}
+
+.controls .icon-group {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+}
+
+.controls .icon {
+    font-size: 24px;
+    margin-left: 15px;
     cursor: pointer;
 }
+
+.controls .go-back-icon {
+    color: red;
+}
+
 
 .attach-file-button {
     display: flex;
     align-items: center;
-    background-color: #28a745;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 10px;
     cursor: pointer;
-    position: relative;
 }
 
-.attach-file-button input {
-    position: absolute;
-    opacity: 0;
-    width: 100%;
-    height: 100%;
-    cursor: pointer;
+.attach-file-button .icon {
+    margin-right: 40px;
 }
+.controls .create-folder-icon {
+    color: #4A4A2A; /* Green color for the create folder icon */
+}
+
+.controls .attach-file-icon {
+    color: #4682B4; /* Blue color for the attach file icon */
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 .search-container {
     margin: 20px 0;
@@ -80,26 +180,40 @@
     flex-wrap: wrap;
     max-height: 400px; /* Set a fixed height */
     overflow-y: auto; 
+    
 }
 
-.folder-item, .file-item {
+.file-item, .folder-item {
     background-color: white;
     border: 1px solid #ddd;
     border-radius: 4px;
     margin: 10px;
     padding: 10px;
-    width: calc(52% - 40px);
+    width: calc(52% - 40px); /* Adjusted width to ensure correct ellipsis */
     box-sizing: border-box;
     cursor: pointer;
     position: relative;
-    overflow: hidden; /* Hide overflowing text */
-    text-overflow: ellipsis; /* Add ellipsis to indicate overflow */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    overflow: visible; /* Changed from hidden to visible */
+    
 }
 
 .folder-item:hover, .file-item:hover {
     transform: scale(1.05);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    
 }
+.file-name,.folder-name {
+    flex: 1; /* Allow file name to grow and fill space */
+    white-space: nowrap; /* Prevent text from wrapping */
+    overflow: hidden; /* Hide overflow text */
+    text-overflow: ellipsis; /* Add ellipsis for overflow text */
+    margin-right: 10px; /* Adjust margin to make space for vertical ellipsis */
+}
+
 
 .icon {
     margin-right: 10px;
@@ -123,17 +237,9 @@
 .powerpoint-icon { color: #d84315; } /* Deep Orange */
 .other-icon { color: #9e9e9e; } /* Grey */
 
-.create-folder-button, .go-back-button, .attach-file-button {
-    transition: background-color 0.3s;
-}
 
-.create-folder-button:hover, .go-back-button:hover, .attach-file-button:hover {
-    background-color: #0056b3;
-}
 
-.create-folder-button:focus, .go-back-button:focus, .attach-file-button:focus {
-    outline: none;
-}
+
 
 /* Modal Styles */
 .video-modal-overlay {
@@ -240,7 +346,7 @@
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.6); /* Semi-transparent background */
-    z-index: 1000; /* High z-index to ensure it's on top of other elements */
+    z-index: 1000; 
     color: white;
     font-size: 24px;
     font-weight: bold;
@@ -268,7 +374,7 @@
     font-size: 24px;
     font-weight: bold;
     text-align: center;
-    z-index: 1000; /* Ensure it overlays all other content */
+
     pointer-events: none; /* Prevent interaction with the overlay */
 }
 
@@ -283,7 +389,7 @@
     height: 100%;
     border: 2px dashed rgba(255, 255, 255, 0.7); /* Dashed lines */
     pointer-events: none; /* Ensure it does not capture any mouse events */
-    z-index: 999; /* Just below the drop area */
+
 }
 
 /* Create lines across the viewport */
@@ -296,3 +402,7 @@
     border-left: 2px dashed rgba(255, 255, 255, 0.7);
     border-right: 2px dashed rgba(255, 255, 255, 0.7);
 }
+
+
+
+
