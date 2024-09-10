@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import SignupStudent from './components/SignupStudent';
 import SignupFaculty from './components/SignupFaculty';
 import StudentProfile from './pages/Students/StudentProfile';
+import Messenger from './components/Messenger';
 
 const App: React.FC = () => {
   return (
@@ -29,6 +30,7 @@ const App: React.FC = () => {
           <Route path="/Student/dashboard" element={<StudentDashboard />} />
           <Route path="/Faculty/dashboard" element={<FacultyDashboard />} />
           <Route path="/Student/myprofile" element={<StudentProfile />} />
+          <Route path="/Student/messages" element={<Messenger />} />
         </Route>
       </Routes>
     </Router>

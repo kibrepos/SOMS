@@ -15,20 +15,16 @@ const Header: React.FC = () => {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
+        const profilePicRef = ref(storage, `profilePics/${user.uid}/profile-picture.jpg`);
         try {
-          const profilePicRef = ref(storage, `profilePics/${user.uid}/profile-picture.jpg`); // Adjust if necessary
-          try {
-            const url = await getDownloadURL(profilePicRef);
-            setProfilePicUrl(url);
-          } catch (err) {
-            console.error('Error fetching profile picture URL:', err);
-            setProfilePicUrl('/default-profile.png'); // Default placeholder image
-          }
+          const url = await getDownloadURL(profilePicRef);
+          setProfilePicUrl(url);
         } catch (err) {
-          console.error('Error fetching profile picture:', err);
+          console.error('Error fetching profile picture URL:', err);
+          setProfilePicUrl('/default-profile.png');
         }
       } else {
-        setProfilePicUrl('/default-profile.png'); // Default placeholder image
+        setProfilePicUrl('/default-profile.png');
       }
     });
 
@@ -51,7 +47,11 @@ const Header: React.FC = () => {
   const handleProfileVisit = () => {
     navigate('/Student/myprofile');
   };
-
+  const handleNavigateToMessages = () => {
+    console.log('Navigating to messages...');
+    navigate('/Student/messages');
+  };
+  
   return (
     <div className="header">
       <div className="header-left">
@@ -61,7 +61,7 @@ const Header: React.FC = () => {
         <div className="icon" onClick={() => alert('No new notifications')}>
           <FontAwesomeIcon icon={faBell} />
         </div>
-        <div className="icon" onClick={() => alert('No new messages')}>
+        <div className="icon" onClick={handleNavigateToMessages}>
           <FontAwesomeIcon icon={faEnvelope} />
         </div>
         <div className="profile" onClick={toggleDropdown}>

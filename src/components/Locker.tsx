@@ -493,7 +493,7 @@ const getFileIconClass = (fileName: string) => {
                         <p><strong>Name:</strong> {detailsModal.name}</p>
                         <p><strong>Size:</strong> {detailsModal.size}</p>
                         <p><strong>Path:</strong> {detailsModal.path}</p>
-                        <p><strong>Date:</strong> {detailsModal.date}</p>
+                        <p><strong>Date Created:</strong> {detailsModal.date}</p>
                         <button onClick={handleCloseModal}>Close</button>
                     </div>
                 </div>
