@@ -2,6 +2,7 @@ import React, { useState, useEffect,KeyboardEvent  } from 'react';
 import { firestore, auth } from '../services/firebaseConfig';
 import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, getDocs, where } from 'firebase/firestore';
 import '../styles/Messenger.css'; // Import CSS file
+import Header from '../components/Header';
 
 interface Message {
   id: string;
@@ -117,7 +118,7 @@ const Messaging = () => {
   
   return (
     <div className="messaging-container">
-      {/* Search Bar */}
+        <Header />
       <div className="search-bar">
         <input
           type="text"
