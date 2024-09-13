@@ -1,9 +1,10 @@
-import React, { useState, useEffect,KeyboardEvent  } from 'react';
+import React, { useState, useEffect, KeyboardEvent } from 'react';
 import { firestore, auth } from '../services/firebaseConfig';
-import { Firestore, collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, getDocs } from 'firebase/firestore';
 import '../styles/Messenger.css'; // Import CSS file
-import Header from '../components/Header';
-
+import Header from '../components/Header'; // Import Header component
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTrashAlt } from '@fortawesome/free-solid-svg-icons'; // Import trash icon
 
 interface User {
   userId: string;
@@ -20,8 +21,12 @@ interface Message {
   read: boolean; // Added read status
 }
 
+interface Contact extends User {
+  lastMessage: Message | null; // Added lastMessage
+}
+
 const Messaging: React.FC = () => {
-  const [contacts, setContacts] = useState<User[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -37,18 +42,21 @@ const Messaging: React.FC = () => {
     });
 
     const fetchContacts = async () => {
-      const allContacts: User[] = [];
+      const allContacts: Contact[] = [];
       const collections = ['students', 'faculty', 'admin'];
       for (const col of collections) {
         const snapshot = await getDocs(collection(firestore, col));
         snapshot.forEach((doc) => {
           const data = doc.data();
-          allContacts.push({
-            userId: doc.id,
-            firstname: data.firstname ?? '',
-            lastname: data.lastname ?? '',
-            profilePicUrl: data.profilePicUrl ?? '' // Fetch profilePicUrl
-          });
+          if (doc.id !== currentUserId) { // Exclude current user from contacts
+            allContacts.push({
+              userId: doc.id,
+              firstname: data.firstname ?? '',
+              lastname: data.lastname ?? '',
+              profilePicUrl: data.profilePicUrl ?? '', // Fetch profilePicUrl
+              lastMessage: null, // Initialize lastMessage
+            });
+          }
         });
       }
       setContacts(allContacts);
@@ -56,6 +64,39 @@ const Messaging: React.FC = () => {
 
     fetchContacts();
 
+    if (currentUserId) {
+      const chatQuery = query(collection(firestore, 'chats'), orderBy('lastMessage.createdAt', 'desc'));
+
+      const unsubscribeChats = onSnapshot(chatQuery, (snapshot) => {
+        const updatedContacts = contacts.map(contact => {
+          const chatDoc = snapshot.docs.find(doc => doc.id.includes(contact.userId));
+          if (chatDoc) {
+            return {
+              ...contact,
+              lastMessage: chatDoc.data().lastMessage || null,
+            };
+          }
+          return contact;
+        }).sort((a, b) => {
+          const lastMessageA = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
+          const lastMessageB = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
+          return lastMessageB - lastMessageA;
+        });
+
+        setContacts(updatedContacts);
+      });
+
+      return () => {
+        unsubscribeChats();
+      };
+    }
+
+    return () => {
+      unsubscribeAuth();
+    };
+  }, [currentUserId]);
+
+  useEffect(() => {
     if (selectedUser) {
       const chatID = [currentUserId, selectedUser.userId].sort().join('_');
       const messagesCollection = collection(firestore, 'chats', chatID, 'messages');
@@ -73,10 +114,6 @@ const Messaging: React.FC = () => {
         unsubscribeMessages();
       };
     }
-
-    return () => {
-      unsubscribeAuth();
-    };
   }, [selectedUser, currentUserId]);
 
   const handleUserClick = (user: User) => {
@@ -95,6 +132,16 @@ const Messaging: React.FC = () => {
       createdAt: new Date().toISOString(),
       senderId: currentUserId,
       read: false, // Set new messages as unread
+    });
+
+    // Update the last message in the chat document
+    const chatDoc = doc(firestore, 'chats', chatID);
+    await updateDoc(chatDoc, {
+      lastMessage: {
+        text: newMessage,
+        createdAt: new Date().toISOString(),
+        senderId: currentUserId,
+      },
     });
 
     setNewMessage('');
@@ -125,62 +172,77 @@ const Messaging: React.FC = () => {
   });
 
   return (
-    <div className="messaging">
-      <div className="contacts">
-        <input
-          type="text"
-          placeholder="Search contacts"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <h2>Contacts</h2>
-        <ul>
-          {filteredContacts.map((user) => (
-            <li key={user.userId} onClick={() => handleUserClick(user)}>
-              <img src={user.profilePicUrl} alt={`${user.firstname} ${user.lastname}`} className="profile-pic" />
-              <div className="contact-info">
-                {user.firstname} {user.lastname}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="chat">
-        {selectedUser ? (
-          <>
-            <h2>Chat with {selectedUser.firstname} {selectedUser.lastname}</h2>
-            <div className="messages">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`message ${message.senderId === currentUserId ? 'sent' : 'received'} ${!message.read && message.senderId !== currentUserId ? 'unread' : ''}`}
-                >
-                  <p>{message.text}</p>
-                  <span>{new Date(message.createdAt).toLocaleTimeString()}</span>
-                  {message.senderId === currentUserId && (
-                    <button onClick={() => handleMessageDelete(message.id)}>Delete</button>
-                  )}
+    <div className="messaging-container">
+      <Header /> {/* Ensure Header is correctly placed */}
+      <div className="messaging">
+        <div className="contacts">
+          <input
+            type="text"
+            placeholder="Search contacts"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <h2>Contacts</h2>
+          <ul>
+            {filteredContacts.map((user) => (
+              <li key={user.userId} onClick={() => handleUserClick(user)}>
+                <img src={user.profilePicUrl} alt={`${user.firstname} ${user.lastname}`} className="profile-pic" />
+                <div className="contact-info">
+                  {user.firstname} {user.lastname}
                 </div>
-              ))}
-              {typing && <div className="typing-indicator">Typing...</div>}
-            </div>
-            <div className="message-input">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => {
-                  setNewMessage(e.target.value);
-                  handleTyping();
-                }}
-                placeholder="Type a message"
-                onKeyDown={handleKeyDown} // Add keydown handler here
-              />
-              <button onClick={handleSendMessage}>Send</button>
-            </div>
-          </>
-        ) : (
-          <p>Select a user to start a chat</p>
-        )}
+                {user.lastMessage && (
+                  <div className="last-message">
+                    <span className="message-text">
+                      {user.lastMessage.senderId === currentUserId ? `You: ${user.lastMessage.text}` : `${user.lastMessage.text}`}
+                    </span>
+                    <span className="message-time">{new Date(user.lastMessage.createdAt).toLocaleTimeString()}</span>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="chat">
+          {selectedUser ? (
+            <>
+              <h2>{selectedUser.firstname} {selectedUser.lastname}</h2>
+              <div className="messages">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`message ${message.senderId === currentUserId ? 'sent' : 'received'} ${!message.read && message.senderId !== currentUserId ? 'unread' : ''}`}
+                  >
+                    <div className="message-content">
+                      <p>{message.text}</p>
+                      {message.senderId === currentUserId && (
+                        <button onClick={() => handleMessageDelete(message.id)} className="delete-button">
+                          <FontAwesomeIcon icon={faTrashAlt} />
+                        </button>
+                      )}
+                    </div>
+                    <span className="message-time">{new Date(message.createdAt).toLocaleTimeString()}</span>
+                  </div>
+                ))}
+                {typing && <div className="typing-indicator">Typing...</div>}
+              </div>
+              <div className="message-input">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => {
+                    setNewMessage(e.target.value);
+                    handleTyping();
+                  }}
+                  placeholder="Type a message"
+                  onKeyDown={handleKeyDown} // Add keydown handler here
+                />
+                <button onClick={handleSendMessage}>Send</button>
+              </div>
+            </>
+          ) : (
+            <p>Select a user to start a chat</p>
+          )}
+        </div>
       </div>
     </div>
   );
