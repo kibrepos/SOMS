@@ -227,7 +227,7 @@ html,body {
     top: 10%; /* Position it below the last form element */
     left: 0;
     width: 30%; /* Ensure it spans the width of the form */
-    margin-top: 10px; /* Space above the error message */
+    margin-top: 60px; /* Space above the error message */
     box-sizing: border-box; /* Include padding and border in the element's total width and height */
-    margin-left: 790px;
+    margin-left: 993px;
   }

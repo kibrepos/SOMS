@@ -19,11 +19,11 @@ const App: React.FC = () => {
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         {/* Public Routes */}
-     
+        <Route element={<PublicRoute />}>
           <Route path="/login" element={<Login />} />
           <Route path="/Createaccount/student" element={<SignupStudent />} />
           <Route path="/Createaccount/faculty" element={<SignupFaculty />} />
-      
+          </Route>
 
         {/* Private Routes */}
         <Route element={<PrivateRoute />}>
