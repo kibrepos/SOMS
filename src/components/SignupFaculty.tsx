@@ -109,7 +109,7 @@ const SignupFaculty: React.FC = () => {
               />
             </div>
             <div className="input-group">
-              <label htmlFor="faculty-number">Faculty Number</label>
+              <label htmlFor="faculty-number">Employee Number</label>
               <input
                 type="number"
                 id="faculty-number"

@@ -1,10 +1,8 @@
-import React, { useState, useEffect, KeyboardEvent } from 'react';
+import React, { useState, useEffect, KeyboardEvent, useRef } from 'react';
 import { firestore, auth } from '../services/firebaseConfig';
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, getDocs } from 'firebase/firestore';
 import '../styles/Messenger.css'; // Import CSS file
 import Header from '../components/Header'; // Import Header component
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrashAlt } from '@fortawesome/free-solid-svg-icons'; // Import trash icon
 
 interface User {
   userId: string;
@@ -32,7 +30,9 @@ const Messaging: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState<string>('');
   const [currentUserId, setCurrentUserId] = useState<string>('');
-  const [typing, setTyping] = useState<boolean>(false); // Added typing status
+
+  // Reference for auto-scrolling
+  const endOfMessagesRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged((user) => {
@@ -116,47 +116,56 @@ const Messaging: React.FC = () => {
     }
   }, [selectedUser, currentUserId]);
 
+  useEffect(() => {
+    // Scroll to bottom whenever messages change
+    if (endOfMessagesRef.current) {
+      endOfMessagesRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
   const handleUserClick = (user: User) => {
     setSelectedUser(user);
-    setTyping(false); // Reset typing status when selecting a user
   };
 
   const handleSendMessage = async () => {
-    if (newMessage.trim() === '') return;
+    if (newMessage.trim() === '') return; // Ignore if the message is empty
 
-    const chatID = [currentUserId, selectedUser?.userId].sort().join('_');
-    const messagesCollection = collection(firestore, 'chats', chatID, 'messages');
+    // Store the current message to avoid issues with rapid sending
+    const messageToSend = newMessage.trim();
+    
+    // Clear the input field before sending the message
+    setNewMessage('');
 
-    await addDoc(messagesCollection, {
-      text: newMessage,
-      createdAt: new Date().toISOString(),
-      senderId: currentUserId,
-      read: false, // Set new messages as unread
-    });
+    try {
+      const chatID = [currentUserId, selectedUser?.userId].sort().join('_');
+      const messagesCollection = collection(firestore, 'chats', chatID, 'messages');
 
-    // Update the last message in the chat document
-    const chatDoc = doc(firestore, 'chats', chatID);
-    await updateDoc(chatDoc, {
-      lastMessage: {
-        text: newMessage,
+      // Add the message to Firestore
+      await addDoc(messagesCollection, {
+        text: messageToSend,
         createdAt: new Date().toISOString(),
         senderId: currentUserId,
-      },
-    });
+        read: false,
+      });
 
-    setNewMessage('');
-    setTyping(false); // Reset typing status
+      // Update the last message in the chat document
+      const chatDoc = doc(firestore, 'chats', chatID);
+      await updateDoc(chatDoc, {
+        lastMessage: {
+          text: messageToSend,
+          createdAt: new Date().toISOString(),
+          senderId: currentUserId,
+        },
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
   };
 
   const handleMessageDelete = async (messageId: string) => {
     const chatID = [currentUserId, selectedUser?.userId].sort().join('_');
     const messageDoc = doc(firestore, 'chats', chatID, 'messages', messageId);
     await deleteDoc(messageDoc);
-  };
-
-  const handleTyping = () => {
-    setTyping(true);
-    setTimeout(() => setTyping(false), 3000); // Reset typing status after 3 seconds
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -214,25 +223,17 @@ const Messaging: React.FC = () => {
                   >
                     <div className="message-content">
                       <p>{message.text}</p>
-                      {message.senderId === currentUserId && (
-                        <button onClick={() => handleMessageDelete(message.id)} className="delete-button">
-                          <FontAwesomeIcon icon={faTrashAlt} />
-                        </button>
-                      )}
                     </div>
                     <span className="message-time">{new Date(message.createdAt).toLocaleTimeString()}</span>
                   </div>
                 ))}
-                {typing && <div className="typing-indicator">Typing...</div>}
+                <div ref={endOfMessagesRef} /> {/* Reference for scrolling */}
               </div>
               <div className="message-input">
                 <input
                   type="text"
                   value={newMessage}
-                  onChange={(e) => {
-                    setNewMessage(e.target.value);
-                    handleTyping();
-                  }}
+                  onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message"
                   onKeyDown={handleKeyDown} // Add keydown handler here
                 />
