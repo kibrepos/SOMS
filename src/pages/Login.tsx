@@ -20,16 +20,19 @@ const Login: React.FC = () => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
+  
+      // Refresh user data to check email verification status
+      await user.reload(); // Fetch the latest user data
+  
       if (!user.emailVerified) {
         setError("Please verify your email before logging in.");
         return;
       }
-
+  
       const adminDoc = await getDoc(doc(firestore, "admin", user.uid));
       const facultyDoc = await getDoc(doc(firestore, "faculty", user.uid));
       const studentDoc = await getDoc(doc(firestore, "students", user.uid));
-
+  
       if (adminDoc.exists()) {
         navigate("/admin-dashboard");
       } else if (facultyDoc.exists()) {
@@ -43,6 +46,7 @@ const Login: React.FC = () => {
       setError("Failed to log in. Please check your credentials and try again.");
     }
   };
+  
 
   const togglePasswordVisibility = () => {
     setPasswordVisible(!passwordVisible);

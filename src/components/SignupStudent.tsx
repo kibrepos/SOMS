@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Modal from 'react-modal'; // Import react-modal
-import { auth, firestore } from '../services/firebaseConfig';
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import Modal from 'react-modal';
+import { auth } from '../services/firebaseConfig';
+import { createUserWithEmailAndPassword, sendEmailVerification, signOut } from 'firebase/auth';
 import '../styles/Signupstudent.css';
 
-Modal.setAppElement('#root'); // Set the app element for accessibility
+Modal.setAppElement('#root');
 
-//DEPARTMENT OPTIONS DITO
 const departments = [
   'CEAT',
   'CBAA',
@@ -30,19 +28,24 @@ const SignupStudent: React.FC = () => {
   const [year, setYear] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(""); 
   const [modalIsOpen, setModalIsOpen] = useState(false);
 
   const handleRegister = async (event: React.FormEvent) => {
     event.preventDefault();
 
     if (!email.endsWith('@dlsud.edu.ph')) {
-      alert("Please use your school email.");
+      setError("Please use your school email");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError('Passwords do not match');
       return;
     }
 
@@ -51,24 +54,16 @@ const SignupStudent: React.FC = () => {
       const user = userCredential.user;
 
       await sendEmailVerification(user);
-
-      // Use the user's UID as the document ID
-      const studentDocRef = doc(firestore, 'students', user.uid);
-      await setDoc(studentDocRef, {
-        firstname,
-        lastname,
-        email,
-        studentNumber,
-        department,
-        year,
-        userId: user.uid,  // Store the user's UID
-      });
-
+      await signOut(auth);
       setModalIsOpen(true); // Open the modal on success
     } catch (error) {
       console.error('Error registering:', error);
       if (error instanceof Error) {
-        setError(`Error registering: ${error.message}`);
+        if (error.message.includes('email-already-in-use')) {
+          setError("This email is already associated with an account.");
+        } else {
+          setError(`Error registering: ${error.message}`);
+        }
       } else {
         setError('An unknown error occurred.');
       }
@@ -173,10 +168,6 @@ const SignupStudent: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
-              <i
-                className="fas fa-eye-slash password-toggle"
-                onClick={() => togglePasswordVisibility('password')}
-              ></i>
             </div>
             <div className="input-group">
               <label htmlFor="confirm-password">Confirm Password</label>
@@ -188,10 +179,6 @@ const SignupStudent: React.FC = () => {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
               />
-              <i
-                className="fas fa-eye-slash password-toggle"
-                onClick={() => togglePasswordVisibility('confirm-password')}
-              ></i>
             </div>
           </div>
           <button type="submit" className="signup-btn">SIGN UP</button>
@@ -199,7 +186,7 @@ const SignupStudent: React.FC = () => {
             <a href="/login">Already have an account? Log in</a>
           </div>
         </form>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
+        {error && <div className="errorsz">{error}</div>} {/* Error message display */}
       </div>
       <div className="logo-section">
         <h1>
@@ -207,7 +194,6 @@ const SignupStudent: React.FC = () => {
         </h1>
       </div>
 
-      {/* Modal for registration success */}
       <Modal
         isOpen={modalIsOpen}
         onRequestClose={handleCloseModal}
@@ -223,16 +209,6 @@ const SignupStudent: React.FC = () => {
       </Modal>
     </div>
   );
-};
-
-// Toggle password visibility
-const togglePasswordVisibility = (id: string) => {
-  const input = document.getElementById(id) as HTMLInputElement;
-  const isPasswordVisible = input.type === 'text';
-  input.type = isPasswordVisible ? 'password' : 'text';
-  const icon = document.querySelector(`#${id} + .password-toggle`) as HTMLElement;
-  icon.classList.toggle('fa-eye-slash', !isPasswordVisible);
-  icon.classList.toggle('fa-eye', isPasswordVisible);
 };
 
 export default SignupStudent;

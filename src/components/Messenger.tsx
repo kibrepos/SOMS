@@ -1,14 +1,14 @@
 import React, { useState, useEffect, KeyboardEvent, useRef } from 'react';
 import { firestore, auth } from '../services/firebaseConfig';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, getDocs } from 'firebase/firestore';
-import '../styles/Messenger.css'; // Import CSS file
-import Header from '../components/Header'; // Import Header component
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, getDocs, getDoc } from 'firebase/firestore';
+import '../styles/Messenger.css'; 
+import Header from '../components/Header'; 
 
 interface User {
   userId: string;
   firstname: string;
   lastname: string;
-  profilePicUrl: string; // Added profilePicUrl
+  profilePicUrl: string;
 }
 
 interface Message {
@@ -16,11 +16,11 @@ interface Message {
   text: string;
   createdAt: string;
   senderId: string;
-  read: boolean; // Added read status
+  read: boolean;
 }
 
 interface Contact extends User {
-  lastMessage: Message | null; // Added lastMessage
+  lastMessage: Message | null;
 }
 
 const Messaging: React.FC = () => {
@@ -31,7 +31,6 @@ const Messaging: React.FC = () => {
   const [newMessage, setNewMessage] = useState<string>('');
   const [currentUserId, setCurrentUserId] = useState<string>('');
 
-  // Reference for auto-scrolling
   const endOfMessagesRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -44,52 +43,47 @@ const Messaging: React.FC = () => {
     const fetchContacts = async () => {
       const allContacts: Contact[] = [];
       const collections = ['students', 'faculty', 'admin'];
+      
       for (const col of collections) {
         const snapshot = await getDocs(collection(firestore, col));
         snapshot.forEach((doc) => {
           const data = doc.data();
-          if (doc.id !== currentUserId) { // Exclude current user from contacts
+          if (doc.id !== currentUserId) {
             allContacts.push({
               userId: doc.id,
               firstname: data.firstname ?? '',
               lastname: data.lastname ?? '',
-              profilePicUrl: data.profilePicUrl ?? '', // Fetch profilePicUrl
-              lastMessage: null, // Initialize lastMessage
+              profilePicUrl: data.profilePicUrl ?? '',
+              lastMessage: null, // Will fetch from chats later
             });
           }
         });
       }
-      setContacts(allContacts);
+
+      // Now fetch the lastMessage for each contact from the 'chats' collection
+      const chatQuery = query(collection(firestore, 'chats'), orderBy('lastMessage.createdAt', 'desc'));
+      const chatSnapshot = await getDocs(chatQuery);
+
+      const contactsWithLastMessage = allContacts.map((contact) => {
+        const chatDoc = chatSnapshot.docs.find((doc) => doc.id.includes(contact.userId));
+        if (chatDoc) {
+          const chatData = chatDoc.data();
+          contact.lastMessage = chatData.lastMessage || null;
+        }
+        return contact;
+      });
+
+      // Sort contacts by the most recent message
+      contactsWithLastMessage.sort((a, b) => {
+        const timeA = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
+        const timeB = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
+        return timeB - timeA;
+      });
+
+      setContacts(contactsWithLastMessage);
     };
 
     fetchContacts();
-
-    if (currentUserId) {
-      const chatQuery = query(collection(firestore, 'chats'), orderBy('lastMessage.createdAt', 'desc'));
-
-      const unsubscribeChats = onSnapshot(chatQuery, (snapshot) => {
-        const updatedContacts = contacts.map(contact => {
-          const chatDoc = snapshot.docs.find(doc => doc.id.includes(contact.userId));
-          if (chatDoc) {
-            return {
-              ...contact,
-              lastMessage: chatDoc.data().lastMessage || null,
-            };
-          }
-          return contact;
-        }).sort((a, b) => {
-          const lastMessageA = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
-          const lastMessageB = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
-          return lastMessageB - lastMessageA;
-        });
-
-        setContacts(updatedContacts);
-      });
-
-      return () => {
-        unsubscribeChats();
-      };
-    }
 
     return () => {
       unsubscribeAuth();
@@ -117,7 +111,6 @@ const Messaging: React.FC = () => {
   }, [selectedUser, currentUserId]);
 
   useEffect(() => {
-    // Scroll to bottom whenever messages change
     if (endOfMessagesRef.current) {
       endOfMessagesRef.current.scrollIntoView({ behavior: 'smooth' });
     }
@@ -128,19 +121,15 @@ const Messaging: React.FC = () => {
   };
 
   const handleSendMessage = async () => {
-    if (newMessage.trim() === '') return; // Ignore if the message is empty
+    if (newMessage.trim() === '') return;
 
-    // Store the current message to avoid issues with rapid sending
     const messageToSend = newMessage.trim();
-    
-    // Clear the input field before sending the message
     setNewMessage('');
 
     try {
       const chatID = [currentUserId, selectedUser?.userId].sort().join('_');
       const messagesCollection = collection(firestore, 'chats', chatID, 'messages');
 
-      // Add the message to Firestore
       await addDoc(messagesCollection, {
         text: messageToSend,
         createdAt: new Date().toISOString(),
@@ -148,7 +137,6 @@ const Messaging: React.FC = () => {
         read: false,
       });
 
-      // Update the last message in the chat document
       const chatDoc = doc(firestore, 'chats', chatID);
       await updateDoc(chatDoc, {
         lastMessage: {
@@ -162,15 +150,9 @@ const Messaging: React.FC = () => {
     }
   };
 
-  const handleMessageDelete = async (messageId: string) => {
-    const chatID = [currentUserId, selectedUser?.userId].sort().join('_');
-    const messageDoc = doc(firestore, 'chats', chatID, 'messages', messageId);
-    await deleteDoc(messageDoc);
-  };
-
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
-      event.preventDefault(); // Prevents the default action of form submission if the input is in a form
+      event.preventDefault();
       handleSendMessage();
     }
   };
@@ -182,16 +164,16 @@ const Messaging: React.FC = () => {
 
   return (
     <div className="messaging-container">
-      <Header /> {/* Ensure Header is correctly placed */}
+      <Header /> 
       <div className="messaging">
         <div className="contacts">
           <input
             type="text"
-            placeholder="Search contacts"
+            placeholder="Search a Lasallian"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <h2>Contacts</h2>
+          <h2>Inbox</h2>
           <ul>
             {filteredContacts.map((user) => (
               <li key={user.userId} onClick={() => handleUserClick(user)}>
@@ -227,7 +209,7 @@ const Messaging: React.FC = () => {
                     <span className="message-time">{new Date(message.createdAt).toLocaleTimeString()}</span>
                   </div>
                 ))}
-                <div ref={endOfMessagesRef} /> {/* Reference for scrolling */}
+                <div ref={endOfMessagesRef} />
               </div>
               <div className="message-input">
                 <input
@@ -235,7 +217,7 @@ const Messaging: React.FC = () => {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message"
-                  onKeyDown={handleKeyDown} // Add keydown handler here
+                  onKeyDown={handleKeyDown}
                 />
                 <button onClick={handleSendMessage}>Send</button>
               </div>
