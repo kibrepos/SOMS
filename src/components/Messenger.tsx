@@ -195,7 +195,7 @@ const Messaging: React.FC = () => {
           <ul>
             {filteredContacts.map((user) => (
               <li key={user.userId} onClick={() => handleUserClick(user)}>
-                <img src={user.profilePicUrl} alt={`${user.firstname} ${user.lastname}`} className="profile-pic" />
+                <img src={user.profilePicUrl} alt={`${user.firstname} ${user.lastname}`} className="profile-pica" />
                 <div className="contact-info">
                   {user.firstname} {user.lastname}
                 </div>

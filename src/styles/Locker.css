@@ -6,11 +6,11 @@
     padding: 20px;
     background-color: #f8f8f8;
     height: 75vh; /* Full viewport height */
-   
     box-sizing: border-box;
     display: flex;
     flex-direction: column; /* Ensures that the contents stack properly */
     position: relative; /* Establish a positioning context */
+    
 }
 
 .head {
@@ -187,7 +187,7 @@
     flex-wrap: wrap;
     max-height: 800px; /* Set a fixed height for the container */
     overflow-y: auto; /* Enable vertical scrolling if content exceeds max height */
-   
+   padding-bottom: 9rem;
     box-sizing: border-box; /* Ensure padding and border are included in the container's total width and height */
     position: relative; /* Ensure child elements are positioned relative to this container */
  
