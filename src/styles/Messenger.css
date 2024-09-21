@@ -214,3 +214,55 @@
 .delete-button:hover {
   color: #cc0000;
 }
+/* Modal Container */
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  width: 400px;
+}
+
+.modal h2 {
+  margin: 0 0 10px 0;
+}
+
+.modal input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+.modal button {
+  padding: 8px 12px;
+  margin-right: 5px;
+  border: none;
+  background-color: #28a745;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.modal button:hover {
+  background-color: #218838;
+}
+
+.modal h3 {
+  margin: 10px 0 5px 0;
+}
+
+.modal ul {
+  list-style: none;
+  padding: 0;
+}
+
+.modal li {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+}
