@@ -182,7 +182,7 @@ const Messaging: React.FC = () => {
 
   return (
     <div className="messaging-container">
-      <Header /> 
+      <Header /> {/* Ensure Header is correctly placed */}
       <div className="messaging">
         <div className="contacts">
           <input

@@ -1,7 +1,7 @@
 // src/components/PublicRoute.tsx
 import React, { useEffect, useState, ReactNode } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
-import { useAuth  } from '../services/auth';
+import { useAuth  } from '../services/useAuth';
 
 
 const PublicRoute: React.FC = () => {

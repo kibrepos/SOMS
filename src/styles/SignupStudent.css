@@ -210,22 +210,6 @@ body {
   .modal button:focus {
     outline: none;
   }
-  .errorsz {
-    color: #ff0004; /* Red color for errors */
-    background-color: #fff1f0; /* Light red background */
-    border: 1px solid #ffa39e; /* Border to make it stand out */
-    padding: 10px;
-    border-radius: 4px;
-    font-size: 14px;
-    position: absolute; /* Position the error message absolutely */
-    top: 6%; /* Position it below the last form element */
-    left: 0;
-    width: 30%; /* Ensure it spans the width of the form */
-    box-sizing: border-box; /* Include padding and border in the element's total width and height */
-    margin-left: 42px;
-    margin-top: 20px;
-  }
-
   
   /* Animation */
   @keyframes fadeIn {

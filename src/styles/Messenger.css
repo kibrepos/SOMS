@@ -32,7 +32,7 @@
 }
 
 /* Search Input */
-.contacts input {
+.contacts input[type="search"] {
   border: none;
   padding: 10px;
   font-size: 16px;
