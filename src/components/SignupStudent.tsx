@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Modal from 'react-modal';
-import { auth } from '../services/firebaseConfig';
+import { auth, firestore } from '../services/firebaseConfig';
 import { createUserWithEmailAndPassword, sendEmailVerification, signOut } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import '../styles/Signupstudent.css';
 
 Modal.setAppElement('#root');
@@ -48,12 +49,23 @@ const SignupStudent: React.FC = () => {
       setError('Passwords do not match');
       return;
     }
-
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
       await sendEmailVerification(user);
+
+      const studentDocRef = doc(firestore, 'students', user.uid);
+      await setDoc(studentDocRef, {
+        firstname,
+        lastname,
+        email,
+        studentNumber,
+        department,
+        year,
+        userId: user.uid,  
+      });
+
       await signOut(auth);
       setModalIsOpen(true); // Open the modal on success
     } catch (error) {
