@@ -49,7 +49,7 @@ const Header: React.FC = () => {
   };
   const handleNavigateToMessages = () => {
     console.log('Navigating to messages...');
-    navigate('/Student/messages');
+    navigate('/messages');
   };
   
   return (

@@ -5,6 +5,7 @@ import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import StudentDashboard from './pages/Students/StudentDashboard';
 import FacultyDashboard from './pages/Faculty/FacultyDashboard';
+import AdminDashboard from './pages/Admins/AdminDashboard';
 import Login from './pages/Login';
 import SignupStudent from './components/SignupStudent';
 import SignupFaculty from './components/SignupFaculty';
@@ -28,9 +29,12 @@ const App: React.FC = () => {
         {/* Private Routes */}
         <Route element={<PrivateRoute />}>
           <Route path="/Student/dashboard" element={<StudentDashboard />} />
-          <Route path="/Faculty/dashboard" element={<FacultyDashboard />} />
           <Route path="/Student/myprofile" element={<StudentProfile />} />
-          <Route path="/Student/messages" element={<Messenger />} />
+          <Route path="/messages" element={<Messenger />} />
+
+          <Route path="/Faculty/dashboard" element={<FacultyDashboard />} />
+
+          <Route path="/Admin/dashboard" element={<AdminDashboard />} />
         </Route>
       </Routes>
     </Router>
