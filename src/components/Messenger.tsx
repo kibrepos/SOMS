@@ -180,6 +180,39 @@ const Messaging: React.FC = () => {
     return fullName.includes(searchTerm.toLowerCase());
   });
 
+  const getFormattedTime = (createdAt: string) => {
+    const messageDate = new Date(createdAt);
+    const now = new Date();
+  
+    const isToday = now.toDateString() === messageDate.toDateString();
+    
+    const yesterday = new Date();
+    yesterday.setDate(now.getDate() - 1);
+    const isYesterday = yesterday.toDateString() === messageDate.toDateString();
+  
+    const timeString = messageDate.toLocaleString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  
+    if (isToday) {
+      return `Today, ${timeString}`;
+    } else if (isYesterday) {
+      return `Yesterday, ${timeString}`;
+    } else {
+      return messageDate.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    }
+  };
+  
+  
   return (
     <div className="messaging-container">
       <Header /> 
@@ -204,7 +237,7 @@ const Messaging: React.FC = () => {
                     <span className="message-text">
                       {user.lastMessage.senderId === currentUserId ? `You: ${user.lastMessage.text}` : `${user.lastMessage.text}`}
                     </span>
-                    <span className="message-time">{new Date(user.lastMessage.createdAt).toLocaleTimeString()}</span>
+                    <span className="message-time">{getFormattedTime(user.lastMessage.createdAt)}</span>
                   </div>
                 )}
               </li>
@@ -224,7 +257,7 @@ const Messaging: React.FC = () => {
                     <div className="message-content">
                       <p>{message.text}</p>
                     </div>
-                    <span className="message-time">{new Date(message.createdAt).toLocaleTimeString()}</span>
+                    <span className="message-time">{getFormattedTime(message.createdAt)}</span>
                   </div>
                 ))}
                 <div ref={endOfMessagesRef} /> {/* Reference for scrolling */}
