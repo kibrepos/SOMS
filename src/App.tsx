@@ -27,15 +27,23 @@ const App: React.FC = () => {
           </Route>
 
         {/* Private Routes */}
-        <Route element={<PrivateRoute />}>
+        <Route element={<PrivateRoute requiredRole="student" />}>
           <Route path="/Student/dashboard" element={<StudentDashboard />} />
           <Route path="/Student/myprofile" element={<StudentProfile />} />
           <Route path="/messages" element={<Messenger />} />
+          </Route>
 
+
+
+
+          <Route element={<PrivateRoute requiredRole="faculty" />}>
           <Route path="/Faculty/dashboard" element={<FacultyDashboard />} />
+          </Route>
 
+
+          <Route element={<PrivateRoute requiredRole="admin" />}>
           <Route path="/Admin/dashboard" element={<AdminDashboard />} />
-        </Route>
+          </Route>
       </Routes>
     </Router>
   );
