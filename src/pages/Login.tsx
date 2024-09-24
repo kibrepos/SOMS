@@ -132,26 +132,11 @@ const Login: React.FC = () => {
             <div className="extra-links">
               <a href="#" onClick={() => openPopup("create-account-popup")}>Create Account</a>
               <a href="#" onClick={handleForgotPassword}>Forgot Password?</a>
-              <a href="#" className="admin-login" onClick={() => openPopup("popup-overlay")}>Admin Log in</a>
             </div>
           </form>
         </div>
       </div>
 
-      {/* Admin Login Popup */}
-      <div id="popup-overlay" className="popup-overlay">
-        <div className="popup">
-          <button className="close-btn" onClick={() => closePopup("popup-overlay")}>×</button>
-          <h3>Admin Log in</h3>
-          <div className="input-group">
-            <input type="text" placeholder="User ID" />
-          </div>
-          <div className="input-group">
-            <input type="password" placeholder="Password" />
-          </div>
-          <button className="login-btn">Log in</button>
-        </div>
-      </div>
 
       {/* Create Account Popup */}
       <div id="create-account-popup" className="popup-overlay">
