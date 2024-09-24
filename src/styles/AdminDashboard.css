@@ -1,0 +1,29 @@
+/* Main dashboard container */
+.admin-dashboard {
+    display: flex;
+    height: 100vh; /* Full viewport height */
+  }
+  
+  /* Wrapper for sidebar and content */
+  .admin-dashboard-main {
+    display: flex;
+    width: 100%; /* Ensure full width */
+  }
+  /* Dashboard content */
+  .admin-dashboard-content {
+    flex-grow: 1; /* Ensure the content takes the remaining space */
+    margin-left: 300px; /* Same as the expanded sidebar width */
+    padding: 20px;
+    transition: margin-left 0.3s ease; /* Smooth transition when the sidebar collapses */
+  }
+  
+  /* When sidebar is collapsed */
+  .sidebar.collapsed + .admin-dashboard-content {
+    margin-left: 60px; /* Adjust content position when the sidebar is collapsed */
+  }
+  
+  /* Other styles (optional) */
+  h2 {
+    color: #ff05c0;
+  }
+  

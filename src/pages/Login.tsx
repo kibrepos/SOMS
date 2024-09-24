@@ -34,7 +34,7 @@ const Login: React.FC = () => {
       const studentDoc = await getDoc(doc(firestore, "students", user.uid));
   
       if (adminDoc.exists()) {
-        navigate("/admin-dashboard");
+        navigate("/Admin/dashboard");
       } else if (facultyDoc.exists()) {
         navigate("/Faculty/dashboard");
       } else if (studentDoc.exists()) {
