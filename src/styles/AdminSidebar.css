@@ -2,7 +2,7 @@
 .sidebar {
     width: 250px;
     transition: width 0.3s ease; 
-    background-color: #2e7d32; 
+    background-color: #0B6B57; 
     height: 100vh;
     padding: 20px;
     display: flex;
@@ -85,7 +85,7 @@ ul li a {
 }
 
 ul li a:hover {
-    background-color: #a5d6a7; /* Lighter green when hovering */
+    background-color: #0ea87a; /* Lighter green when hovering */
 }
 
 ul li a .svg-inline--fa {
@@ -108,7 +108,7 @@ ul li a .svg-inline--fa {
 
 
 .sidebar ul li a.active {
-    background-color: #d3f9d8; /* Change background color for active link */
+    background-color: #ffffff; /* Change background color for active link */
     color: #000000; /* Change text color for active link */
     font-weight: bold; /* Make text bold */
 }
@@ -118,7 +118,7 @@ ul li a .svg-inline--fa {
 .user-profile {
     display: flex;
     align-items: center;
-    background-color: #1b5e20; /* Dark green for user profile */
+    background-color: #0b977b; /* Dark green for user profile */
     box-shadow: 0 -2px 10px rgba(255, 255, 255, 0.1); /* Soft shadow */
     position: absolute; /* Keep as absolute */
     bottom: 10px; /* Move it up from the bottom (adjust this value as needed) */
