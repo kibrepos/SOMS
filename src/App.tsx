@@ -6,6 +6,7 @@ import PublicRoute from './components/PublicRoute';
 import StudentDashboard from './pages/Students/StudentDashboard';
 import FacultyDashboard from './pages/Faculty/FacultyDashboard';
 import AdminDashboard from './pages/Admins/AdminDashboard';
+import ActivityLogs from './pages/Admins/AdminActivityLogs';
 import Login from './pages/Login';
 import SignupStudent from './components/SignupStudent';
 import SignupFaculty from './components/SignupFaculty';
@@ -43,6 +44,7 @@ const App: React.FC = () => {
 
           <Route element={<PrivateRoute requiredRole="admin" />}>
           <Route path="/Admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/Admin/Activity-Logs" element={<ActivityLogs />} />
           </Route>
       </Routes>
     </Router>

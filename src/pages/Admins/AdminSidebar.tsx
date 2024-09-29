@@ -113,7 +113,7 @@ const AdminSidebar: React.FC = () => {
         </li>
         <li>
           <NavLink 
-            to="/activity-logs" 
+            to="/Admin/Activity-Logs" 
             className={({ isActive }) => (isActive ? 'active' : '')}
           >
             <FontAwesomeIcon icon={faClipboardList} />
