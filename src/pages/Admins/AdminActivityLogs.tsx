@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from "react";
-import {collection,getDocs,query,orderBy,limit,startAfter,where,QueryDocumentSnapshot,DocumentData,Timestamp,} from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+  startAfter,
+  where,
+  QueryDocumentSnapshot,
+  DocumentData,
+  Timestamp,
+  onSnapshot,
+} from "firebase/firestore";
 import { firestore } from "../../services/firebaseConfig";
 import "../../styles/AdminActivityLogs.css";
 import AdminSidebar from "./AdminSidebar";
@@ -9,50 +21,43 @@ type LogEntry = {
   id: string;
   activity: string;
   userName: string;
+  role: string; // Add role
   timestamp: string;
 };
 
 const ActivityLogs: React.FC = () => {
-  const [logs, setLogs] = useState<LogEntry[]>([]); // Typed as an array of LogEntry
-  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null); // Typing fix
-  const [searchTerm, setSearchTerm] = useState(""); // Search by activity description
-  const [searchName, setSearchName] = useState(""); // Search by user name
-  const [searchDate, setSearchDate] = useState(""); // Search by date (formatted as YYYY-MM-DD)
-  const [loading, setLoading] = useState(false); // Loading state
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchName, setSearchName] = useState("");
+  const [searchDate, setSearchDate] = useState("");
+  const [loading, setLoading] = useState(false);
 
   // Initial fetch of logs
   useEffect(() => {
-    const fetchLogs = async () => {
-      setLoading(true);
-      try {
-        const logsCollection = collection(firestore, "logs");
-        const logsQuery = query(logsCollection, orderBy("timestamp", "desc"), limit(10)); // Fetch first 10 logs
-        const logsSnapshot = await getDocs(logsQuery);
-
-        const lastVisibleDoc = logsSnapshot.docs[logsSnapshot.docs.length - 1]; // Track the last document for pagination
-        setLastVisible(lastVisibleDoc);
-
-        const logsData: LogEntry[] = logsSnapshot.docs.map((doc) => ({
+    const unsubscribe = onSnapshot(
+      query(collection(firestore, "logs"), orderBy("timestamp", "desc"), limit(10)),
+      (snapshot) => {
+        const logsData = snapshot.docs.map((doc) => ({
           id: doc.id,
           activity: doc.data().activity,
           userName: doc.data().userName,
+          role: doc.data().role, // Extract the role from Firestore
           timestamp: doc.data().timestamp.toDate().toLocaleString(),
         }));
 
+        const lastDoc = snapshot.docs[snapshot.docs.length - 1];
         setLogs(logsData);
-      } catch (error) {
-        console.error("Error fetching logs: ", error);
+        setLastVisible(lastDoc);
       }
-      setLoading(false);
-    };
+    );
 
-    fetchLogs();
+    return () => unsubscribe(); // Cleanup on unmount
   }, []);
 
   // Fetch more logs for pagination
   const fetchMoreLogs = async () => {
     if (!lastVisible) return;
-
     try {
       setLoading(true);
       const logsCollection = collection(firestore, "logs");
@@ -71,13 +76,14 @@ const ActivityLogs: React.FC = () => {
         id: doc.id,
         activity: doc.data().activity,
         userName: doc.data().userName,
+        role: doc.data().role, // Extract the role from Firestore
         timestamp: doc.data().timestamp.toDate().toLocaleString(),
       }));
 
       setLogs((prevLogs) => [...prevLogs, ...newLogs]);
-      setLoading(false);
     } catch (error) {
       console.error("Error fetching more logs: ", error);
+    } finally {
       setLoading(false);
     }
   };
@@ -90,7 +96,7 @@ const ActivityLogs: React.FC = () => {
       const logsCollection = collection(firestore, "logs");
       let logsQuery = query(logsCollection, orderBy("timestamp", "desc"));
 
-      // If searching by activity description
+      // Filter by activity description
       if (searchTerm) {
         logsQuery = query(
           logsCollection,
@@ -100,7 +106,7 @@ const ActivityLogs: React.FC = () => {
         );
       }
 
-      // If filtering by user name
+      // Filter by user name
       if (searchName) {
         logsQuery = query(
           logsCollection,
@@ -110,11 +116,15 @@ const ActivityLogs: React.FC = () => {
         );
       }
 
-      // If filtering by date
+      // Filter by date
       if (searchDate) {
         const startDate = Timestamp.fromDate(new Date(searchDate));
-        const endDate = Timestamp.fromDate(new Date(searchDate + "T23:59:59")); // End of the selected day
-        logsQuery = query(logsCollection, where("timestamp", ">=", startDate), where("timestamp", "<=", endDate));
+        const endDate = Timestamp.fromDate(new Date(searchDate + "T23:59:59"));
+        logsQuery = query(
+          logsCollection,
+          where("timestamp", ">=", startDate),
+          where("timestamp", "<=", endDate)
+        );
       }
 
       const logsSnapshot = await getDocs(logsQuery);
@@ -122,14 +132,16 @@ const ActivityLogs: React.FC = () => {
         id: doc.id,
         activity: doc.data().activity,
         userName: doc.data().userName,
+        role: doc.data().role, // Extract the role from Firestore
         timestamp: doc.data().timestamp.toDate().toLocaleString(),
       }));
 
       setLogs(logsData);
     } catch (error) {
       console.error("Error searching logs: ", error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -165,7 +177,9 @@ const ActivityLogs: React.FC = () => {
           {logs.length > 0 ? (
             logs.map((log, index) => (
               <div key={index} className="log-item">
-                <p className="log-user-name">{log.userName}</p>
+                <p className="log-user-name">
+                  {log.userName} ({log.role}) {/* Display user role here */}
+                </p>
                 <p>
                   {log.activity}
                   <span className="log-timestamp">{log.timestamp}</span>

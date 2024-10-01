@@ -88,10 +88,24 @@ const AdminDashboard: React.FC = () => {
   };
 
   const fetchRegisteredUsers = async () => {
-    const usersCollection = collection(firestore, "users");
-    const userSnapshot = await getDocs(usersCollection);
-    setRegisteredUsers(userSnapshot.size);
+    try {
+      
+      const studentsCollection = collection(firestore, "students");
+      const facultyCollection = collection(firestore, "faculty");
+  
+     
+      const studentsSnapshot = await getDocs(studentsCollection);
+      const facultySnapshot = await getDocs(facultyCollection);
+  
+  
+      const totalRegisteredUsers = studentsSnapshot.size + facultySnapshot.size;
+      
+      setRegisteredUsers(totalRegisteredUsers);
+    } catch (error) {
+      console.error("Error fetching registered users:", error);
+    }
   };
+  
 
   const fetchRecentActivities = async () => {
     const logsCollection = collection(firestore, "logs");
@@ -156,25 +170,29 @@ const AdminDashboard: React.FC = () => {
 
           {/* Scrollable Recent Activities (this will scroll) */}
           <div className="recent-activities">
-            <ul className="activity-timeline">
-              {recentActivities.length > 0 ? (
-                recentActivities.map((activity, index) => (
-                  <li key={index} className="activity-item">
-                    <span className="activity-timestamp">{activity.timestamp}</span>
-                    <div className="activity-details">
-                     <div className="activity-user-name-role">
-                     <p className="activity-user-name">{activity.userName}</p>
-                       <p className="activity-user-role">{activity.role}</p>
-                        </div>
-                      <p className="activity-description">{activity.activity}</p>
-                      </div>
-                  </li>
-                ))
-              ) : (
-                <p>No activities for today.</p>
-              )}
-            </ul>
-          </div>
+  <ul className="activity-timeline">
+    {recentActivities.length > 0 ? (
+      recentActivities
+        .slice()
+        .reverse() // Reversing the array to display the newest activities at the top
+        .map((activity, index) => (
+          <li key={index} className="activity-item">
+            <span className="activity-timestamp">{activity.timestamp}</span>
+            <div className="activity-details">
+              <div className="activity-user-name-role">
+                <p className="activity-user-name">{activity.userName}</p>
+                <p className="activity-user-role">{activity.role}</p>
+              </div>
+              <p className="activity-description">{activity.activity}</p>
+            </div>
+          </li>
+        ))
+    ) : (
+      <p>No activities for today.</p>
+    )}
+  </ul>
+</div>
+
         </div>
       </div>
     </div>
