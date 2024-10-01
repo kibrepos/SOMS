@@ -13,6 +13,13 @@ const AdminSidebar: React.FC = () => {
   const [collapsed, setCollapsed] = useState<boolean>(false); // State for collapse
 
   useEffect(() => {
+    // Check if sidebar state is stored in localStorage
+    const savedState = localStorage.getItem('sidebar-collapsed');
+    if (savedState) {
+      setCollapsed(JSON.parse(savedState)); // Restore the collapsed state
+    }
+
+    // Fetch admin data
     const fetchAdminData = async () => {
       const adminDoc = await getDoc(doc(firestore, 'admin', auth.currentUser?.uid || ''));
       if (adminDoc.exists()) {
@@ -37,7 +44,9 @@ const AdminSidebar: React.FC = () => {
   };
 
   const toggleCollapse = () => {
-    setCollapsed(!collapsed); // Toggle sidebar collapse
+    const newState = !collapsed;
+    setCollapsed(newState); // Toggle sidebar collapse
+    localStorage.setItem('sidebar-collapsed', JSON.stringify(newState)); // Save state to localStorage
   };
 
   return (

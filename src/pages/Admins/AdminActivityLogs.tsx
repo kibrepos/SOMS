@@ -32,59 +32,61 @@ const ActivityLogs: React.FC = () => {
   const [searchName, setSearchName] = useState("");
   const [searchDate, setSearchDate] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false); // Separate loading state for "Load More"
 
-  // Initial fetch of logs
+  // Initial fetch of logs (limit to 10)
   useEffect(() => {
-    const unsubscribe = onSnapshot(
-      query(collection(firestore, "logs"), orderBy("timestamp", "desc"), limit(10)),
-      (snapshot) => {
-        const logsData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          activity: doc.data().activity,
-          userName: doc.data().userName,
-          role: doc.data().role, // Extract the role from Firestore
-          timestamp: doc.data().timestamp.toDate().toLocaleString(),
-        }));
+    const fetchInitialLogs = async () => {
+      setLoading(true);
+      const logsQuery = query(collection(firestore, "logs"), orderBy("timestamp", "desc"), limit(10));
+      const snapshot = await getDocs(logsQuery);
+      
+      const logsData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        activity: doc.data().activity,
+        userName: doc.data().userName,
+        role: doc.data().role || "student", // Handle missing role
+        timestamp: doc.data().timestamp.toDate().toLocaleString(),
+      }));
 
-        const lastDoc = snapshot.docs[snapshot.docs.length - 1];
-        setLogs(logsData);
-        setLastVisible(lastDoc);
-      }
-    );
+      const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+      setLogs(logsData);
+      setLastVisible(lastDoc);
+      setLoading(false);
+    };
 
-    return () => unsubscribe(); // Cleanup on unmount
+    fetchInitialLogs();
   }, []);
 
-  // Fetch more logs for pagination
+  // Fetch more logs for pagination (loads another 10)
   const fetchMoreLogs = async () => {
-    if (!lastVisible) return;
+    if (!lastVisible || loadingMore) return;
+
     try {
-      setLoading(true);
-      const logsCollection = collection(firestore, "logs");
+      setLoadingMore(true);
       const logsQuery = query(
-        logsCollection,
+        collection(firestore, "logs"),
         orderBy("timestamp", "desc"),
         startAfter(lastVisible),
         limit(10)
       );
-
       const logsSnapshot = await getDocs(logsQuery);
-      const lastVisibleDoc = logsSnapshot.docs[logsSnapshot.docs.length - 1];
-      setLastVisible(lastVisibleDoc);
 
-      const newLogs: LogEntry[] = logsSnapshot.docs.map((doc) => ({
+      const newLogs = logsSnapshot.docs.map((doc) => ({
         id: doc.id,
         activity: doc.data().activity,
         userName: doc.data().userName,
-        role: doc.data().role, // Extract the role from Firestore
+        role: doc.data().role || "student", // Handle missing role
         timestamp: doc.data().timestamp.toDate().toLocaleString(),
       }));
 
+      const lastDoc = logsSnapshot.docs[logsSnapshot.docs.length - 1];
       setLogs((prevLogs) => [...prevLogs, ...newLogs]);
+      setLastVisible(lastDoc);
     } catch (error) {
       console.error("Error fetching more logs: ", error);
     } finally {
-      setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -132,7 +134,7 @@ const ActivityLogs: React.FC = () => {
         id: doc.id,
         activity: doc.data().activity,
         userName: doc.data().userName,
-        role: doc.data().role, // Extract the role from Firestore
+        role: doc.data().role || "student", // Extract role or set default
         timestamp: doc.data().timestamp.toDate().toLocaleString(),
       }));
 
@@ -173,12 +175,13 @@ const ActivityLogs: React.FC = () => {
           <button type="submit">Search</button>
         </form>
 
+      
         <div className="logs-list">
           {logs.length > 0 ? (
             logs.map((log, index) => (
               <div key={index} className="log-item">
                 <p className="log-user-name">
-                  {log.userName} ({log.role}) {/* Display user role here */}
+                  {log.userName} ({log.role}) 
                 </p>
                 <p>
                   {log.activity}
@@ -191,10 +194,10 @@ const ActivityLogs: React.FC = () => {
           )}
         </div>
 
-        {/* Load More Logs */}
+       
         {lastVisible && (
-          <button onClick={fetchMoreLogs} disabled={loading}>
-            {loading ? "Loading..." : "Load More Logs"}
+          <button onClick={fetchMoreLogs} disabled={loadingMore}>
+            {loadingMore ? "Loading..." : "Load More Logs"}
           </button>
         )}
       </div>
