@@ -51,6 +51,11 @@ const Header: React.FC = () => {
     console.log('Navigating to messages...');
     navigate('/messages');
   };
+
+  const handleVisitChatApp = () => {
+    console.log('Navigating to ChatApp...');
+    navigate('/ChatApp');
+  };
   
   return (
     <div className="header">
@@ -63,6 +68,9 @@ const Header: React.FC = () => {
         </div>
         <div className="icon" onClick={handleNavigateToMessages}>
           <FontAwesomeIcon icon={faEnvelope} />
+        </div>
+        <div className="icon" onClick={handleVisitChatApp}>
+          CHATAPP
         </div>
         <div className="profile" onClick={toggleDropdown}>
           <img
