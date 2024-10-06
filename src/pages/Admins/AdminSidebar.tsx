@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faThLarge, faUser, faBuilding, faCalendar, faUsers, faComments, faChartPie, faClipboardList, faStar, faBars, faSignOutAlt, faCog } from '@fortawesome/free-solid-svg-icons';
 import { signOut } from 'firebase/auth';
-import { auth, firestore } from '../../services/firebaseConfig';
+import { auth, firestore, storage } from '../../services/firebaseConfig'; // Import storage for profile picture
 import { doc, getDoc } from 'firebase/firestore';
-import { NavLink } from 'react-router-dom'; // Import NavLink for active class support
+import { getDownloadURL, ref } from 'firebase/storage'; // Import getDownloadURL for profile pic
+import { NavLink } from 'react-router-dom';
 import '../../styles/AdminSidebar.css';
 
 const AdminSidebar: React.FC = () => {
   const [adminName, setAdminName] = useState<string>(''); 
   const [adminEmail, setAdminEmail] = useState<string>(''); 
-  const [collapsed, setCollapsed] = useState<boolean>(false); // State for collapse
+  const [profilePicUrl, setProfilePicUrl] = useState<string>('https://via.placeholder.com/150'); // Default profile picture
+  const [collapsed, setCollapsed] = useState<boolean>(false); 
 
   useEffect(() => {
     // Check if sidebar state is stored in localStorage
@@ -26,6 +28,20 @@ const AdminSidebar: React.FC = () => {
         const data = adminDoc.data();
         setAdminName(data.firstname + ' ' + data.lastname);
         setAdminEmail(data.email);
+
+        // Fetch profile picture if available
+        if (data.profilePicture) {
+          setProfilePicUrl(data.profilePicture);
+        } else {
+          // If profile picture is not found, fetch it from storage
+          const profilePicRef = ref(storage, `profilePics/${auth.currentUser?.uid}/profile-picture.jpg`);
+          try {
+            const url = await getDownloadURL(profilePicRef);
+            setProfilePicUrl(url);
+          } catch (error) {
+            console.error("Error fetching profile picture: ", error);
+          }
+        }
       } else {
         console.log('No such document!');
       }
@@ -45,8 +61,8 @@ const AdminSidebar: React.FC = () => {
 
   const toggleCollapse = () => {
     const newState = !collapsed;
-    setCollapsed(newState); // Toggle sidebar collapse
-    localStorage.setItem('sidebar-collapsed', JSON.stringify(newState)); // Save state to localStorage
+    setCollapsed(newState); 
+    localStorage.setItem('sidebar-collapsed', JSON.stringify(newState)); 
   };
 
   return (
@@ -140,7 +156,7 @@ const AdminSidebar: React.FC = () => {
         </li>
         <li>
           <NavLink 
-            to="/settings" 
+            to="/Admin/Account-settings" 
             className={({ isActive }) => (isActive ? 'active' : '')}
           >
             <FontAwesomeIcon icon={faCog} />
@@ -150,7 +166,7 @@ const AdminSidebar: React.FC = () => {
       </ul>
 
       <div className="user-profile">
-        <img src="https://via.placeholder.com/40" alt="User profile" />
+        <img src={profilePicUrl} alt="User profile" />
         <div className="user-info">
           <h4>{adminName}</h4>
           <p>{adminEmail}</p>

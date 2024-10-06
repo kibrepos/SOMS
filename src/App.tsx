@@ -6,6 +6,7 @@ import PublicRoute from './components/PublicRoute';
 import StudentDashboard from './pages/Students/StudentDashboard';
 import FacultyDashboard from './pages/Faculty/FacultyDashboard';
 import AdminDashboard from './pages/Admins/AdminDashboard';
+import AdminSettings from './pages/Admins/AdminSettings';
 import ActivityLogs from './pages/Admins/AdminActivityLogs';
 import AdminManageStudent from './pages/Admins/AdminManageStudent';
 import Login from './pages/Login';
@@ -13,7 +14,7 @@ import SignupStudent from './components/SignupStudent';
 import SignupFaculty from './components/SignupFaculty';
 import StudentProfile from './pages/Students/StudentProfile';
 import Messenger from './components/Messenger';
-import ChatApp from './components/Chatapp';
+import ChatApp from './components/ChatApp';
 
 const App: React.FC = () => {
   return (
@@ -49,6 +50,7 @@ const App: React.FC = () => {
           <Route path="/Admin/dashboard" element={<AdminDashboard />} />
           <Route path="/Admin/Activity-Logs" element={<ActivityLogs />} />
           <Route path="/Admin/Manage-Students" element={<AdminManageStudent />} />
+          <Route path="/Admin/Account-settings" element={<AdminSettings />} />
           </Route>
       </Routes>
     </Router>
