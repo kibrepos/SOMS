@@ -1,43 +1,131 @@
-.student-dashboard {
-    padding: 20px;
-    max-width: 800px;
-    margin: 0 auto;
+
+
+.dashboard-container {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  margin-top: 1 px; /* Add margin to separate it from the header */
+}
+
+
+.organizations-section h3 {
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+}
+
+.organization-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.organization-card {
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s ease;
+  width: 300px;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.organization-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.organization-card-image {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  background-color: #f0f0f0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.organization-cover-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.organization-placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.organization-placeholder-icon {
+  font-size: 40px;
+  color: #bbb;
+}
+
+/* Profile Picture Settings */
+.organization-profile-pic {
+  position: absolute;
+  bottom: -15px;
+  left: 15px;
+  width: 50px;
+  height: 50px;
+  border: 3px solid white;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.organization-profile-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.organization-placeholder-icon {
+  font-size: 50px; /* Adjust font-size to fit the circle */
+  color: #999;
+}
+
+
+
+
+
+.organization-card-details {
+  padding: 15px;
+  margin-top: 30px; /* Space for profile image */
+  text-align: left;
+}
+
+.organization-card h4 {
+  font-size: 1.3rem;
+  margin: 10px 0;
+  color: #333;
+}
+
+.organization-card p {
+  margin: 5px 0;
+  color: #777;
+}
+
+.org-department {
+  color: #d32f2f;
+  font-weight: bold;
+  margin-top: 10px;
+  text-transform: uppercase;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .organization-list {
+    flex-direction: column;
+    align-items: center;
   }
-  
-  .student-dashboard h1 {
-    font-size: 2em;
-    margin-bottom: 10px;
+
+  .organization-card {
+    width: 90%;
   }
-  
-  .student-info {
-    margin-top: 20px;
-  }
-  
-  .student-info p {
-    margin: 5px 0;
-  }
-  
-  .actions {
-    margin-top: 20px;
-  }
-  
-  .actions button {
-    margin-right: 10px;
-  }  .error {
-    color: #ff0004; /* Red color for errors */
-    background-color: #fff1f0; /* Light red background */
-    border: 1px solid #ffa39e; /* Border to make it stand out */
-    padding: 10px;
-    margin-top: 10px;
-    border-radius: 4px;
-    font-size: 14px;
-  }
-  .success {
-    color: #13ef08; /* Red color for errors */
-    background-color: #fff1f0; /* Light red background */
-    border: 1px solid #7ef796; /* Border to make it stand out */
-    padding: 10px;
-    margin-top: 10px;
-    border-radius: 4px;
-    font-size: 14px;
-  }
+}

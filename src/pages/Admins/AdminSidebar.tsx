@@ -93,7 +93,7 @@ const AdminSidebar: React.FC = () => {
         </li>
         <li>
           <NavLink 
-            to="/manage-organizations" 
+            to="/Admin/ManageOrganizations" 
             className={({ isActive }) => (isActive ? 'active' : '')}
           >
             <FontAwesomeIcon icon={faBuilding} />

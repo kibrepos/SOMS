@@ -1,0 +1,222 @@
+/* AdminCreateOrganization.css */
+
+.CNO-admin-dashboard {
+    display: flex;
+    height: 100vh;
+}
+  
+.CNO-admin-dashboard-main {
+    display: flex;
+    width: 100%;
+}
+  
+.CNO-admin-dashboard-content {
+    flex-grow: 1;
+    padding: 20px;
+    background-color: #f9f9f9;
+}
+  
+.CNO-org-form {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+  
+h2 {
+    margin-bottom: 20px;
+}
+  
+.CNO-form-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 15px;
+}
+  
+.CNO-form-column {
+    flex: 1;
+}
+  
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+    color: #333;
+}
+  
+input[type="text"], 
+.CNO-input-box {
+    width: 90%;
+    padding: 10px; /* Match the padding between input and input-box */
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 0.95rem;
+    box-sizing: border-box; /* Ensures padding is included in the width */
+}
+
+.CNO-input-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    background-color: #f7f7f7;
+}
+
+  
+.CNO-input-box:hover {
+    background-color: #f0f0f0;
+}
+  
+.CNO-head-member-container {
+    display: flex;
+    align-items: center;
+}
+  
+.CNO-p-pictures {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 10px;
+}
+  
+.CNO-default-icon {
+    font-size: 40px;
+    color: #999;
+    margin-right: 10px;
+}
+  
+.CNO-selected-members {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+  
+.CNO-member-card {
+    display: flex;
+    align-items: center;
+    background-color: #f1f1f1;
+    padding: 8px 12px;
+    border-radius: 8px;
+    position: relative;
+}
+  
+.CNO-member-card span {
+    margin-left: 10px;
+    white-space: nowrap; /* Prevents text from wrapping */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+  
+.CNO-submit-btn {
+    background-color: #28a745;
+    color: #fff;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+  
+.CNO-submit-btn:hover {
+    background-color: #218838;
+}
+  
+.CNO-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+  
+.CNO-modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90%;
+}
+  
+.CNO-modal-content h3 {
+    margin-bottom: 20px;
+    text-align: center;
+}
+  
+.CNO-modal-content input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+  
+.CNO-modal-content ul {
+    list-style: none;
+    padding: 0;
+}
+  
+.CNO-modal-content ul li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+  
+.CNO-modal-content ul li img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+  
+.CNO-modal-content ul li button {
+    padding: 5px 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+  
+.CNO-modal-content ul li button.selected-btn {
+    background-color: #ffc107;
+}
+  
+.CNO-modal-content button {
+    margin-top: 15px;
+    padding: 10px;
+    width: 100%;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+  
+.CNO-modal-content button:hover {
+    opacity: 0.9;
+}
+  
+.CNO-member-card .CNO-removebtn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: transparent; /* No background */
+    color: red;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+}
+  
+.CNO-member-card .CNO-removebtn:hover {
+    color: darkred; /* Darken the red when hovered */
+}
