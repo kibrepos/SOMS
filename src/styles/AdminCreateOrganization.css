@@ -1,222 +1,283 @@
-/* AdminCreateOrganization.css */
 
-.CNO-admin-dashboard {
-    display: flex;
-    height: 100vh;
-}
   
-.CNO-admin-dashboard-main {
-    display: flex;
-    width: 100%;
-}
-  
-.CNO-admin-dashboard-content {
-    flex-grow: 1;
-    padding: 20px;
-    background-color: #f9f9f9;
-}
-  
-.CNO-org-form {
+  .CNO-org-form {
     background-color: #fff;
     padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-  
-h2 {
-    margin-bottom: 20px;
-}
-  
-.CNO-form-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 20px;
-    margin-bottom: 15px;
-}
-  
-.CNO-form-column {
-    flex: 1;
-}
-  
-label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 8px;
-    font-size: 0.95rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     color: #333;
-}
+  }
   
-input[type="text"], 
-.CNO-input-box {
-    width: 90%;
-    padding: 10px; /* Match the padding between input and input-box */
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 0.95rem;
-    box-sizing: border-box; /* Ensures padding is included in the width */
-}
-
-.CNO-input-box {
+  .CNO-form-row {
     display: flex;
-    align-items: center;
     justify-content: space-between;
+    margin-bottom: 15px;
+  }
+  
+  .CNO-form-column {
+    width: 48%;
+  }
+  
+  label {
+    font-weight: bold;
+    margin-bottom: 10px;
+    display: block;
+  }
+  
+  input[type="text"], .CNO-input-box {
+    width: 90%;
+    padding: 12px;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    font-size: 1em;
+    background-color: #f9f9f9;
+    transition: border-color 0.3s ease, background-color 0.3s ease; /* Adjusted transition */
+}
+  
+  input[type="text"]:focus, .CNO-input-box:focus {
+    border-color: #007bff;
+    outline: none;
+  }
+  
+  .CNO-input-box {
     cursor: pointer;
-    background-color: #f7f7f7;
-}
-
-  
-.CNO-input-box:hover {
-    background-color: #f0f0f0;
-}
-  
-.CNO-head-member-container {
     display: flex;
     align-items: center;
-}
+    transition: background-color 0.3s ease;
+    padding: 12px;
+  }
   
-.CNO-p-pictures {
+  .CNO-input-box:hover {
+    background-color: #e6e6ff;
+  }
+  
+  .CNO-head-member-container {
+    display: flex;
+    align-items: center;
+  }
+  
+  .CNO-p-pictures {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    object-fit: cover;
-    margin-right: 10px;
-}
+    margin-right: 15px;
+    border: 2px solid #004612;
+  }
   
-.CNO-default-icon {
+  .CNO-default-icon {
     font-size: 40px;
-    color: #999;
-    margin-right: 10px;
-}
+    color: #044d43;
+    margin-right: 15px;
+  }
   
-.CNO-selected-members {
+  .CNO-selected-members, .CNO-selected-officers {
+    margin-top: 15px;
+    display: grid; /* Use grid layout */
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* Ensures a responsive grid with minimum card size */
+    gap: 10px; /* Spacing between member cards */
+}
+
+.CNO-member-info {
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 10px;
+    flex-direction: column; /* Stack name details vertically */
+    justify-content: center;
+    margin-left: 10px; /* Space between picture and name */
+    text-align: left; /* Ensures the text is aligned properly */
 }
-  
-.CNO-member-card {
+
+.CNO-member-card, .CNO-officer-card {
+    background: #868686;
+    color: #fff;
+    padding: 10px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
-    background-color: #f1f1f1;
-    padding: 8px 12px;
-    border-radius: 8px;
-    position: relative;
+    width: 100%; /* Ensure the card takes full width in grid cell */
+    max-width: 100%; /* Prevent overflow issues */
 }
-  
-.CNO-member-card span {
-    margin-left: 10px;
-    white-space: nowrap; /* Prevents text from wrapping */
-    overflow: hidden;
-    text-overflow: ellipsis;
+
+.CNO-removebtn {
+    background: #ff4757;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    font-size: 0.9em;
+    cursor: pointer;
+    margin-left: auto; /* Ensure remove button is at the end of the card */
 }
+
   
-.CNO-submit-btn {
+  .CNO-submit-btn {
+    display: block;
+    margin: 20px auto;
     background-color: #28a745;
     color: #fff;
-    padding: 12px 25px;
+    padding: 10px 25px;
     border: none;
     border-radius: 5px;
+    font-size: 1.1em;
+    font-weight: bold;
     cursor: pointer;
-    font-size: 1rem;
-}
+    transition: all 0.3s ease;
+  }
   
-.CNO-submit-btn:hover {
+  .CNO-submit-btn:hover {
     background-color: #218838;
-}
-  
-.CNO-modal-overlay {
+  }
+  .CNO-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5);
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 1000;
 }
-  
+
 .CNO-modal-content {
-    background-color: white;
-    padding: 20px;
-    border-radius: 8px;
-    width: 400px;
-    max-width: 90%;
+    position: relative; /* To position the close icon */
+    background: #fff;
+    padding: 25px;
+    border-radius: 10px;
+    width: 40%;
+    max-width: 600px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
-  
-.CNO-modal-content h3 {
+
+.CNO-close-icon {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #333;
+    font-size: 1.5em;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.CNO-close-icon:hover {
+    color: #ff4757; /* Change color when hovered */
+}
+
+.CNO-officer-selection {
+    position: relative;
     margin-bottom: 20px;
-    text-align: center;
 }
-  
-.CNO-modal-content input[type="text"] {
-    width: 100%;
+
+.CNO-search-input {
+    width: calc(100% - 20px);
     padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
+    border: 2px solid #ccc;
+    border-radius: 8px;
 }
-  
-.CNO-modal-content ul {
+
+.CNO-dropdown {
     list-style: none;
+    margin: 0;
     padding: 0;
+    position: absolute;
+    width: calc(100% - 20px);
+    background: #e9e8e8;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    max-height: 190px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: block; /* Dropdown will only be rendered if the search term is not empty */
+    transition: opacity 0.3s ease;
 }
-  
-.CNO-modal-content ul li {
+
+
+.CNO-dropdown li {
+    padding: 10px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-}
-  
-.CNO-modal-content ul li img {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-}
-  
-.CNO-modal-content ul li button {
-    padding: 5px 10px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 5px;
     cursor: pointer;
+    transition: background-color 0.3s ease;
 }
-  
-.CNO-modal-content ul li button.selected-btn {
-    background-color: #ffc107;
+
+.CNO-dropdown li:hover {
+    background-color: #f0f0f0;
 }
-  
-.CNO-modal-content button {
+
+  .CNO-officer-role-input {
     margin-top: 15px;
-    padding: 10px;
+  }
+  
+  .CNO-add-officer-btn {
+    background-color: #f9f9f9;
+    color: #333;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid #ccc;
+    transition: all 0.3s ease;
     width: 100%;
-    background-color: #dc3545;
-    color: white;
+    text-align: left;
+    display: flex;
+    align-items: center;
+  }
+  
+  .CNO-add-officer-btn:hover {
+    background-color: #e6e6ff;
+  }
+  
+  ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  li {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  
+  li button {
+    margin-left: auto;
+    padding: 8px 12px;
+    background-color: #007bff;
     border: none;
     border-radius: 5px;
+    font-weight: bold;
     cursor: pointer;
-}
+    color: #fff;
+  }
   
-.CNO-modal-content button:hover {
-    opacity: 0.9;
-}
+  li button:hover {
+    background-color: #0056b3;
+  }
   
-.CNO-member-card .CNO-removebtn {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    background-color: transparent; /* No background */
-    color: red;
-    border: none;
-    font-size: 16px;
+  .CNO-modal-content h3 {
+    margin-bottom: 20px;
+    color: #333;
+    text-align: center;
+    font-size: 1.8em;
+  }
+  
+  .CNO-officer-role-input label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 10px;
+  }
+  
+  .CNO-officer-role-input input {
+    width: calc(100% - 20px);
+    padding: 10px;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+  }
+  
+  .CNO-officer-role-input input:focus {
+    border-color: #007bff;
+  }
+  
+  button {
     cursor: pointer;
-}
-  
-.CNO-member-card .CNO-removebtn:hover {
-    color: darkred; /* Darken the red when hovered */
-}
+  }

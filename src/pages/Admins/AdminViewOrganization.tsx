@@ -5,31 +5,36 @@ import { useParams, useNavigate } from "react-router-dom";
 import AdminSidebar from './AdminSidebar';
 import '../../styles/AdminViewOrganization.css';
 
+interface Officer {
+  role: string;
+  student: string;
+}
+
 interface Organization {
   name: string;
   description: string;
   facultyAdviser: string;
   status: string;
   members: string[];
-  head: string;
+  officers: Officer[];
+  president: string;
 }
 
 const AdminViewOrganization: React.FC = () => {
-  const { organizationName } = useParams<{ organizationName: string }>(); // Ensure it's of type string
+  const { organizationName } = useParams<{ organizationName: string }>(); 
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   const fetchOrganization = async () => {
-    // Ensure organizationName exists
     if (!organizationName) {
       console.error("Organization name is undefined");
-      navigate("/Admin/ManageOrganizations"); // Redirect if organizationName is undefined
+      navigate("/Admin/ManageOrganizations");
       return;
     }
 
     setLoading(true);
-    const orgDoc = doc(firestore, "organizations", organizationName); // Use organizationName after the check
+    const orgDoc = doc(firestore, "organizations", organizationName);
     const orgSnapshot = await getDoc(orgDoc);
 
     if (orgSnapshot.exists()) {
@@ -38,6 +43,11 @@ const AdminViewOrganization: React.FC = () => {
       console.error("Organization does not exist");
     }
     setLoading(false);
+  };
+
+  // Navigate to the Edit Organization page
+  const handleEditOrganization = () => {
+    navigate(`/Admin/EditOrganization/${organizationName}`);
   };
 
   useEffect(() => {
@@ -56,15 +66,38 @@ const AdminViewOrganization: React.FC = () => {
               <h2>{organization?.name}</h2>
               <p>Description: {organization?.description}</p>
               <p>Status: {organization?.status}</p>
-              <p>Head: {organization?.head || "Not Assigned"}</p>
+              <p>President: {organization?.president || "Not Assigned"}</p>
               <p>Faculty Adviser: {organization?.facultyAdviser || "Not Assigned"}</p>
 
+
+              {/* Officers Section */}
+              <h3>Officers</h3>
+              {organization?.officers && organization.officers.length > 0 ? (
+                <ul>
+                  {organization.officers.map((officer, index) => (
+                    <li key={index}>
+                      {officer.student} - {officer.role}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No officers assigned.</p>
+              )}
+
+              
               <h3>Members</h3>
               <ul>
                 {organization?.members.map((member) => (
                   <li key={member}>{member}</li>
                 ))}
               </ul>
+
+              
+
+              {/* Edit Organization Button */}
+              <button onClick={handleEditOrganization} className="edit-button">
+                Edit Organization
+              </button>
             </>
           )}
         </div>

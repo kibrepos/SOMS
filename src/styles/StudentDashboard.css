@@ -90,6 +90,15 @@
   color: #999;
 }
 
+.organization-card-archived {
+  opacity: 0.6;
+  pointer-events: none; /* Disable click */
+}
+
+.organization-archived-message {
+  color: red;
+  font-weight: bold;
+}
 
 
 

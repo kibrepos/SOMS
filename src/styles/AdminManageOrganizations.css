@@ -1,0 +1,161 @@
+
+  .MO-organization-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  /* Tabs aligned to the left */
+  .MO-tabs {
+    display: flex;
+  }
+  
+  .MO-tab {
+    background-color: #e0e0e0;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    margin-right: 10px;
+  }
+  
+  .MO-tab.MO-active {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .MO-tab:hover {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  /* Create New Organization button aligned to the right */
+  .MO-create-btn {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  
+  .MO-create-btn:hover {
+    background-color: #0056b3;
+  }
+  
+  /* Organization Table */
+  .MO-organization-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+  }
+  
+  .MO-organization-table th,
+  .MO-organization-table td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .MO-organization-table th {
+   
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    text-align: left;
+  }
+  
+  .MO-organization-table tbody tr:hover {
+    background-color: #f1f1f1;
+  }
+  
+  .MO-view-btn,
+  .MO-archive-btn,
+  .MO-unarchive-btn,
+  .MO-delete-btn {
+    background-color: #1cad42;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-right: 5px;
+    font-size: 14px;
+  }
+  
+  .MO-view-btn:hover,
+  .MO-archive-btn:hover,
+  .MO-unarchive-btn:hover,
+  .MO-delete-btn:hover {
+    background-color: #0056b3;
+  }
+  
+  .MO-delete-btn {
+    background-color: #dc3545;
+  }
+  
+  .MO-delete-btn:hover {
+    background-color: #c82333;
+  }
+  
+  /* Modal Styles */
+  .MO-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .MO-modal {
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 400px;
+    max-width: 80%;
+    text-align: center;
+  }
+  
+  .MO-modal h3 {
+    font-size: 20px;
+    margin-bottom: 15px;
+  }
+  
+  .MO-modal p {
+    font-size: 16px;
+    margin-bottom: 20px;
+  }
+  
+  .MO-confirm-button {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-right: 10px;
+  }
+  
+  .MO-confirm-button:hover {
+    background-color: #0056b3;
+  }
+  
+  .MO-cancel-button {
+    background-color: #6c757d;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .MO-cancel-button:hover {
+    background-color: #5a6268;
+  }
+  

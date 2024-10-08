@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { firestore } from "../../services/firebaseConfig";
-import { collection, getDocs, updateDoc, doc } from "firebase/firestore";
+import { collection, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import '../../styles/AdminManageOrganizations.css';
 import AdminSidebar from './AdminSidebar';
@@ -10,6 +10,7 @@ interface Organization {
   name: string;
   description: string;
   facultyAdviser: string;
+  president: string;
   status: string; // 'active' or 'archived'
 }
 
@@ -19,6 +20,10 @@ const AdminManageOrganizations: React.FC = () => {
   const [archivedOrganizations, setArchivedOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('active'); // Toggle between 'active' and 'archived'
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [organizationToModify, setOrganizationToModify] = useState<Organization | null>(null);
+  const [actionType, setActionType] = useState<string>(''); // 'delete', 'archive', 'unarchive'
   const navigate = useNavigate();
 
   // Fetch organizations from Firestore
@@ -39,10 +44,48 @@ const AdminManageOrganizations: React.FC = () => {
   };
 
   // Archive an organization
-  const archiveOrganization = async (id: string) => {
-    const orgDoc = doc(firestore, "organizations", id);
+  const archiveOrganization = async () => {
+    if (!organizationToModify) return;
+    const orgDoc = doc(firestore, "organizations", organizationToModify.id);
     await updateDoc(orgDoc, { status: "archived" });
     fetchOrganizations(); // Refresh the list after archiving
+    closeModal(); // Close the modal after action
+  };
+
+  // Unarchive an organization
+  const unarchiveOrganization = async () => {
+    if (!organizationToModify) return;
+    const orgDoc = doc(firestore, "organizations", organizationToModify.id);
+    await updateDoc(orgDoc, { status: "active" });
+    fetchOrganizations(); // Refresh the list after unarchiving
+    closeModal(); // Close the modal after action
+  };
+
+  // Delete an organization
+  const deleteOrganization = async () => {
+    if (!organizationToModify) return;
+    try {
+      const orgDoc = doc(firestore, "organizations", organizationToModify.id);
+      await deleteDoc(orgDoc); // Delete organization document
+      fetchOrganizations(); // Refresh the list after deletion
+      closeModal(); // Close the modal after action
+    } catch (error) {
+      console.error("Error deleting organization:", error);
+    }
+  };
+
+  // Open modal and set the organization and action to be performed
+  const confirmAction = (organization: Organization, type: 'delete' | 'archive' | 'unarchive') => {
+    setOrganizationToModify(organization);
+    setActionType(type);
+    setShowConfirmModal(true);
+  };
+
+  // Close the modal
+  const closeModal = () => {
+    setShowConfirmModal(false);
+    setShowArchiveModal(false);
+    setOrganizationToModify(null);
   };
 
   // Navigate to view organization page
@@ -65,40 +108,40 @@ const AdminManageOrganizations: React.FC = () => {
         <AdminSidebar />
         <div className="admin-dashboard-content">
           <h2>Manage Organizations</h2>
-
-          <div className="organization-header">
+  
+          <div className="MO-organization-header">
             {/* Create New Organization Button */}
-            <button onClick={handleCreateOrganization} className="create-btn">Create New Organization</button>
-
+            <button onClick={handleCreateOrganization} className="MO-create-btn">Create New Organization</button>
+  
             {/* Tabs for Active and Archived Organizations */}
-            <div className="tabs">
+            <div className="MO-tabs">
               <button
-                className={activeTab === 'active' ? 'tab active' : 'tab'}
+                className={activeTab === 'active' ? 'MO-tab MO-active' : 'MO-tab'}
                 onClick={() => setActiveTab('active')}
               >
                 Active
               </button>
               <button
-                className={activeTab === 'archived' ? 'tab active' : 'tab'}
+                className={activeTab === 'archived' ? 'MO-tab MO-active' : 'MO-tab'}
                 onClick={() => setActiveTab('archived')}
               >
                 Archived
               </button>
             </div>
           </div>
-
+  
           {/* Active Organizations Table */}
           {loading ? (
             <p>Loading organizations...</p>
           ) : activeTab === 'active' ? (
             <>
-              <table className="organization-table">
+              <table className="MO-organization-table">
                 <thead>
                   <tr>
                     <th>Name</th>
                     <th>Description</th>
                     <th>Faculty Adviser</th>
-                    <th>Status</th>
+                    <th>President</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -108,10 +151,10 @@ const AdminManageOrganizations: React.FC = () => {
                       <td>{org.name}</td>
                       <td>{org.description}</td>
                       <td>{org.facultyAdviser ? org.facultyAdviser : "Not Assigned"}</td>
-                      <td>{org.status}</td>
+                      <td>{org.president ? org.president : "Not Assigned"}</td>
                       <td>
-                        <button onClick={() => handleViewOrganization(org.name)} className="view-btn">View</button>
-                        <button onClick={() => archiveOrganization(org.id)} className="archive-btn">Archive</button>
+                        <button onClick={() => handleViewOrganization(org.name)} className="MO-view-btn">View</button>
+                        <button onClick={() => confirmAction(org, 'archive')} className="MO-archive-btn">Archive</button>
                       </td>
                     </tr>
                   ))}
@@ -121,13 +164,13 @@ const AdminManageOrganizations: React.FC = () => {
           ) : (
             // Archived Organizations Table
             <>
-              <table className="organization-table">
+              <table className="MO-organization-table">
                 <thead>
                   <tr>
                     <th>Name</th>
                     <th>Description</th>
                     <th>Faculty Adviser</th>
-                    <th>Status</th>
+                    <th>President</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -137,10 +180,11 @@ const AdminManageOrganizations: React.FC = () => {
                       <td>{org.name}</td>
                       <td>{org.description}</td>
                       <td>{org.facultyAdviser ? org.facultyAdviser : "Not Assigned"}</td>
-                      <td>{org.status}</td>
+                      <td>{org.president ? org.president : "Not Assigned"}</td>
                       <td>
-                        <button onClick={() => handleViewOrganization(org.name)} className="view-btn">View</button>
-                        <button onClick={() => archiveOrganization(org.id)} className="delete-btn">Delete</button>
+                        <button onClick={() => handleViewOrganization(org.name)} className="MO-view-btn">View</button>
+                        <button onClick={() => confirmAction(org, 'unarchive')} className="MO-unarchive-btn">Unarchive</button>
+                        <button onClick={() => confirmAction(org, 'delete')} className="MO-delete-btn">Delete</button>
                       </td>
                     </tr>
                   ))}
@@ -148,10 +192,36 @@ const AdminManageOrganizations: React.FC = () => {
               </table>
             </>
           )}
+  
+          {/* Confirmation Modal */}
+          {showConfirmModal && (
+            <div className="MO-modal-overlay">
+              <div className="MO-modal">
+                <h3>Are you sure you want to {actionType === 'delete' ? 'delete' : actionType === 'archive' ? 'archive' : 'unarchive'} this organization?</h3>
+                <p>This action cannot be undone.</p>
+                <button
+                  onClick={
+                    actionType === 'delete'
+                      ? deleteOrganization
+                      : actionType === 'archive'
+                      ? archiveOrganization
+                      : unarchiveOrganization
+                  }
+                  className="MO-confirm-button"
+                >
+                  Yes, {actionType === 'delete' ? 'Delete' : actionType === 'archive' ? 'Archive' : 'Unarchive'}
+                </button>
+                <button onClick={closeModal} className="MO-cancel-button">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
+  
 };
 
 export default AdminManageOrganizations;

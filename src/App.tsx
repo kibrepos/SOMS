@@ -12,6 +12,7 @@ import AdminManageStudent from './pages/Admins/AdminManageStudent';
 import ManageOrganizations from './pages/Admins/AdminManageOrganzations';
 import AdminCreateOrganization from './pages/Admins/AdminCreateOrganization';
 import AdminViewOrganization from './pages/Admins/AdminViewOrganization';
+import AdminEditOrganization from './pages/Admins/AdminEditOrganization';
 import Login from './pages/Login';
 import SignupStudent from './components/SignupStudent';
 import SignupFaculty from './components/SignupFaculty';
@@ -57,6 +58,7 @@ const App: React.FC = () => {
           <Route path="/Admin/ManageOrganizations" element={<ManageOrganizations />} />
           <Route path="/Admin/CreateOrganization" element={<AdminCreateOrganization />} />
           <Route path="/Admin/Organizations/:organizationName" element={<AdminViewOrganization />} /> 
+          <Route path="/Admin/EditOrganization/:organizationName" element={<AdminEditOrganization />} />
           </Route>
       </Routes>
     </Router>

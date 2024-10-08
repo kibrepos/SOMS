@@ -6,14 +6,17 @@ import { auth, firestore } from '../../services/firebaseConfig';
 import '../../styles/StudentDashboard.css';
 import Header from '../../components/Header';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUserCircle,faBuilding  } from '@fortawesome/free-solid-svg-icons';
+import { faUserCircle, faBuilding } from '@fortawesome/free-solid-svg-icons';
 
 interface Organization {
   name: string;
   description: string;
   head: string;
   members: string[];
+  officers: { role: string; student: string }[]; // Correct officers structure
+  president: string;
   department: string;
+  status: string; // 'active' or 'archived'
   imageUrl?: string;
   profileImageUrl?: string;
 }
@@ -36,29 +39,69 @@ const StudentDashboard: React.FC = () => {
             const student = studentDoc.data();
             setStudentData(student);
 
-            // Fetch organizations where the student is a member or the head
+            const studentFullName = `${student.firstname} ${student.lastname}`;
+
+            // Query for organizations where the student is a member or president
             const organizationsRef = collection(firestore, 'organizations');
-            const orgQuery = query(
+
+            const memberQuery = query(
               organizationsRef,
-              where('members', 'array-contains', `${student.firstname} ${student.lastname}`)
+              where('members', 'array-contains', studentFullName)
             );
 
-            const orgSnapshot = await getDocs(orgQuery);
+            const presidentQuery = query(
+              organizationsRef,
+              where('president', '==', studentFullName)
+            );
+
+            // Execute both queries
+            const [memberSnapshot, presidentSnapshot] = await Promise.all([
+              getDocs(memberQuery),
+              getDocs(presidentQuery)
+            ]);
+
             const orgList: Organization[] = [];
 
-            orgSnapshot.forEach((doc) => {
+            // Add organizations where the student is a member
+            memberSnapshot.forEach((doc) => {
               const orgData = doc.data() as Organization;
-
-              // Check if student is the organization head or a member
-              if (
-                orgData.head === `${student.firstname} ${student.lastname}` ||
-                orgData.members.includes(`${student.firstname} ${student.lastname}`)
-              ) {
+              if (!orgList.some((org) => org.name === orgData.name)) {
                 orgList.push(orgData);
               }
             });
 
-            setOrganizations(orgList);
+            // Add organizations where the student is a president
+            presidentSnapshot.forEach((doc) => {
+              const orgData = doc.data() as Organization;
+              if (!orgList.some((org) => org.name === orgData.name)) {
+                orgList.push(orgData);
+              }
+            });
+
+            // Now, manually check if the student is an officer in any organizations
+            const organizationsDocs = await getDocs(collection(firestore, 'organizations'));
+
+            organizationsDocs.forEach((orgDoc) => {
+              const orgData = orgDoc.data() as Organization;
+
+              // Check if the student is an officer
+              const isOfficer = orgData.officers?.some(
+                (officer) => officer.student === studentFullName
+              );
+
+              if (isOfficer && !orgList.some((org) => org.name === orgData.name)) {
+                orgList.push(orgData);
+              }
+            });
+
+            // Sort organizations: active first, then archived
+            const sortedOrganizations = orgList.sort((a, b) => {
+              if (a.status === 'archived' && b.status !== 'archived') return 1;
+              if (a.status !== 'archived' && b.status === 'archived') return -1;
+              return 0;
+            });
+
+            setOrganizations(sortedOrganizations);
           } else {
             setError('No student data found.');
           }
@@ -76,8 +119,13 @@ const StudentDashboard: React.FC = () => {
     return () => unsubscribe();
   }, [navigate]);
 
-  const handleOrganizationClick = (organizationName: string) => {
-    navigate(`/Organization/${organizationName}`);
+  const handleOrganizationClick = (organization: Organization) => {
+    if (organization.status === 'archived') {
+      // Prevent access to archived organizations
+      alert('This organization is not available as it has been archived.');
+    } else {
+      navigate(`/Organization/${organization.name}`);
+    }
   };
 
   if (loading) {
@@ -90,49 +138,56 @@ const StudentDashboard: React.FC = () => {
 
   return (
     <div className="dashboard-wrapper">
-  <Header />
+      <Header />
 
-  <div className="dashboard-container">
-      <div className="organizations-section">
-        <h3>Organizations</h3>
-        {organizations.length > 0 ? (
-          <div className="organization-list">
-            {organizations.map((org) => (
-              <div
-                key={org.name}
-                className="organization-card"
-                onClick={() => handleOrganizationClick(org.name)}
-              >
-                <div className="organization-card-image">
-                  {org.imageUrl ? (
-                    <img src={org.imageUrl} alt={org.name} className="organization-cover-image" />
-                  ) : (
-                    <div className="organization-placeholder">
-                      <FontAwesomeIcon icon={faBuilding} className="organization-placeholder-icon" />
-                    </div>
-                  )}
-                  
-                  {/* Profile Picture Circle */}
-                  <div className="organization-profile-pic">
-                    {org.profileImageUrl ? (
-                      <img src={org.profileImageUrl} alt="Profile" className="organization-profile-image" />
+      <div className="dashboard-container">
+        <div className="organizations-section">
+          <h3>Organizations</h3>
+          {organizations.length > 0 ? (
+            <div className="organization-list">
+              {organizations.map((org) => (
+                <div
+                  key={org.name}
+                  className={`organization-card ${org.status === 'archived' ? 'organization-card-archived' : ''}`}
+                  onClick={() => handleOrganizationClick(org)}
+                >
+                  <div className="organization-card-image">
+                    {org.imageUrl ? (
+                      <img src={org.imageUrl} alt={org.name} className="organization-cover-image" />
                     ) : (
-                      <FontAwesomeIcon icon={faUserCircle} className="organization-placeholder-icon" />
+                      <div className="organization-placeholder">
+                        <FontAwesomeIcon icon={faBuilding} className="organization-placeholder-icon" />
+                      </div>
+                    )}
+
+                    {/* Profile Picture Circle */}
+                    <div className="organization-profile-pic">
+                      {org.profileImageUrl ? (
+                        <img src={org.profileImageUrl} alt="Profile" className="organization-profile-image" />
+                      ) : (
+                        <FontAwesomeIcon icon={faUserCircle} className="organization-placeholder-icon" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="organization-card-details">
+                    <h4>{org.name}</h4>
+                    {org.status === 'archived' ? (
+                      <p className="organization-archived-message">This organization is no longer available.</p>
+                    ) : (
+                      <>
+                        <p>{org.description}</p>
+                        <p className="org-department">{org.department}</p>
+                      </>
                     )}
                   </div>
                 </div>
-                <div className="organization-card-details">
-                  <h4>{org.name}</h4>
-                  <p>{org.description}</p>
-                  <p className="org-department">{org.department}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p>You are not a member or head of any organizations.</p>
-        )}
-      </div>   </div>
+              ))}
+            </div>
+          ) : (
+            <p>You are not a member, officer, or head of any organizations.</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
