@@ -1,0 +1,8 @@
+/* Detail column */
+.detail {
+    flex: 1; /* Takes up 1 part of the container */
+    background-color: #3e475b;
+    padding: 20px;
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+}

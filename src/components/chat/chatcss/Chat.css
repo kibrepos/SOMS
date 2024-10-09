@@ -1,0 +1,4 @@
+/* Chat column */
+.Chat {
+    flex: 2; /* Takes up 2 parts of the container */
+}

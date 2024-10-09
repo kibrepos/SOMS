@@ -18,7 +18,7 @@ import SignupStudent from './components/SignupStudent';
 import SignupFaculty from './components/SignupFaculty';
 import StudentProfile from './pages/Students/StudentProfile';
 import Messenger from './components/Messenger';
-import ChatApp from './components/ChatApp';
+import ChatApp from './components/chat/ChatApp';
 
 const App: React.FC = () => {
   return (
