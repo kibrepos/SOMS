@@ -1,7 +1,7 @@
 import "./chatcss/ChatApp.css"
 import Chat from './Chat';
 import List from './List';
-import Detail from "./detail";
+import Detail from "./Detail";
 import Header from "../Header";
 
 

@@ -1,4 +1,8 @@
 /* Chat column */
 .Chat {
     flex: 2; /* Takes up 2 parts of the container */
+    border-left: 1px solid #dddddd35;
+    border-right: 1px solid #dddddd35;
+
+
 }
