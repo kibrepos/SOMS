@@ -124,7 +124,7 @@ const StudentDashboard: React.FC = () => {
       // Prevent access to archived organizations
       alert('This organization is not available as it has been archived.');
     } else {
-      navigate(`/Organization/${organization.name}`);
+      navigate(`/Organization/${organization.name}/dashboard`);
     }
   };
 

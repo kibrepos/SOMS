@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import StudentDashboard from './pages/Students/StudentDashboard';
+import OrganizationDashboard from './pages/Students/OrganizationDashboard';
 import FacultyDashboard from './pages/Faculty/FacultyDashboard';
 import AdminDashboard from './pages/Admins/AdminDashboard';
 import AdminSettings from './pages/Admins/AdminSettings';
@@ -40,6 +41,7 @@ const App: React.FC = () => {
           <Route path="/Student/myprofile" element={<StudentProfile />} />
           <Route path="/messages" element={<Messenger />} />
           <Route path="/ChatApp" element={<ChatApp />} />
+          <Route path="/Organization/:organizationName/dashboard" element={<OrganizationDashboard />} />
           </Route>
 
 
