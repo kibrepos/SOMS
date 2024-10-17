@@ -5,6 +5,8 @@ import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import StudentDashboard from './pages/Students/StudentDashboard';
 import OrganizationDashboard from './pages/Students/OrganizationDashboard';
+import OrganizationSettings from './pages/Students/OrganizationSettings';
+import StudentProfile from './pages/Students/StudentProfile';
 import FacultyDashboard from './pages/Faculty/FacultyDashboard';
 import AdminDashboard from './pages/Admins/AdminDashboard';
 import AdminSettings from './pages/Admins/AdminSettings';
@@ -17,7 +19,6 @@ import AdminEditOrganization from './pages/Admins/AdminEditOrganization';
 import Login from './pages/Login';
 import SignupStudent from './components/SignupStudent';
 import SignupFaculty from './components/SignupFaculty';
-import StudentProfile from './pages/Students/StudentProfile';
 import Messenger from './components/Messenger';
 import ChatApp from './components/chat/ChatApp';
 
@@ -42,6 +43,8 @@ const App: React.FC = () => {
           <Route path="/messages" element={<Messenger />} />
           <Route path="/ChatApp" element={<ChatApp />} />
           <Route path="/Organization/:organizationName/dashboard" element={<OrganizationDashboard />} />
+          <Route path="/Organization/:organizationName/settings" element={<OrganizationSettings />} />
+         
           </Route>
 
 

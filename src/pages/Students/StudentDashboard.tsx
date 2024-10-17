@@ -13,12 +13,12 @@ interface Organization {
   description: string;
   head: string;
   members: string[];
-  officers: { role: string; student: string }[]; // Correct officers structure
+  officers: { role: string; student: string }[];
   president: string;
   department: string;
-  status: string; // 'active' or 'archived'
-  imageUrl?: string;
-  profileImageUrl?: string;
+  status: string;
+  coverImagePath?: string;
+  profileImagePath?: string;
 }
 
 const StudentDashboard: React.FC = () => {
@@ -41,7 +41,6 @@ const StudentDashboard: React.FC = () => {
 
             const studentFullName = `${student.firstname} ${student.lastname}`;
 
-            // Query for organizations where the student is a member or president
             const organizationsRef = collection(firestore, 'organizations');
 
             const memberQuery = query(
@@ -54,15 +53,13 @@ const StudentDashboard: React.FC = () => {
               where('president', '==', studentFullName)
             );
 
-            // Execute both queries
             const [memberSnapshot, presidentSnapshot] = await Promise.all([
               getDocs(memberQuery),
-              getDocs(presidentQuery)
+              getDocs(presidentQuery),
             ]);
 
             const orgList: Organization[] = [];
 
-            // Add organizations where the student is a member
             memberSnapshot.forEach((doc) => {
               const orgData = doc.data() as Organization;
               if (!orgList.some((org) => org.name === orgData.name)) {
@@ -70,7 +67,6 @@ const StudentDashboard: React.FC = () => {
               }
             });
 
-            // Add organizations where the student is a president
             presidentSnapshot.forEach((doc) => {
               const orgData = doc.data() as Organization;
               if (!orgList.some((org) => org.name === orgData.name)) {
@@ -78,13 +74,11 @@ const StudentDashboard: React.FC = () => {
               }
             });
 
-            // Now, manually check if the student is an officer in any organizations
             const organizationsDocs = await getDocs(collection(firestore, 'organizations'));
 
             organizationsDocs.forEach((orgDoc) => {
               const orgData = orgDoc.data() as Organization;
 
-              // Check if the student is an officer
               const isOfficer = orgData.officers?.some(
                 (officer) => officer.student === studentFullName
               );
@@ -94,7 +88,6 @@ const StudentDashboard: React.FC = () => {
               }
             });
 
-            // Sort organizations: active first, then archived
             const sortedOrganizations = orgList.sort((a, b) => {
               if (a.status === 'archived' && b.status !== 'archived') return 1;
               if (a.status !== 'archived' && b.status === 'archived') return -1;
@@ -112,7 +105,7 @@ const StudentDashboard: React.FC = () => {
           setLoading(false);
         }
       } else {
-        navigate('/login'); // Redirect to login if no user is authenticated
+        navigate('/login');
       }
     });
 
@@ -121,7 +114,6 @@ const StudentDashboard: React.FC = () => {
 
   const handleOrganizationClick = (organization: Organization) => {
     if (organization.status === 'archived') {
-      // Prevent access to archived organizations
       alert('This organization is not available as it has been archived.');
     } else {
       navigate(`/Organization/${organization.name}/dashboard`);
@@ -148,31 +140,45 @@ const StudentDashboard: React.FC = () => {
               {organizations.map((org) => (
                 <div
                   key={org.name}
-                  className={`organization-card ${org.status === 'archived' ? 'organization-card-archived' : ''}`}
+                  className={`organization-card ${
+                    org.status === 'archived' ? 'organization-card-archived' : ''
+                  }`}
                   onClick={() => handleOrganizationClick(org)}
                 >
                   <div className="organization-card-image">
-                    {org.imageUrl ? (
-                      <img src={org.imageUrl} alt={org.name} className="organization-cover-image" />
+                    {/* Cover Photo */}
+                    {org.coverImagePath ? (
+                      <img
+                        src={org.coverImagePath}
+                        alt={`${org.name} Cover`}
+                        className="organization-cover-image"
+                      />
                     ) : (
                       <div className="organization-placeholder">
                         <FontAwesomeIcon icon={faBuilding} className="organization-placeholder-icon" />
                       </div>
                     )}
 
-                    {/* Profile Picture Circle */}
+                    {/* Profile Picture */}
                     <div className="organization-profile-pic">
-                      {org.profileImageUrl ? (
-                        <img src={org.profileImageUrl} alt="Profile" className="organization-profile-image" />
+                      {org.profileImagePath ? (
+                        <img
+                          src={org.profileImagePath}
+                          alt={`${org.name} Profile`}
+                          className="organization-profile-image"
+                        />
                       ) : (
                         <FontAwesomeIcon icon={faUserCircle} className="organization-placeholder-icon" />
                       )}
                     </div>
                   </div>
+
                   <div className="organization-card-details">
                     <h4>{org.name}</h4>
                     {org.status === 'archived' ? (
-                      <p className="organization-archived-message">This organization is no longer available.</p>
+                      <p className="organization-archived-message">
+                        This organization is no longer available.
+                      </p>
                     ) : (
                       <>
                         <p>{org.description}</p>

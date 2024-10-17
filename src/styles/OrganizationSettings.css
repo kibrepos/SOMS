@@ -1,0 +1,50 @@
+/* Wrapper for the entire settings page */
+.ORGSorganization-settings-wrapper {
+    display: flex;
+    height: 100vh;
+    background-color: #f8f9fa; /* Light background for content area */
+}
+
+/* Settings container */
+.ORGSsettings-container {
+    display: flex;
+    width: 100%;
+    margin-left: 250px; /* Align with the sidebar */
+    padding: 40px; /* Add padding for content */
+}
+
+/* Content area for settings */
+.ORGSsettings-content {
+    width: 100%;
+    max-width: 800px;
+    margin: auto; /* Center the content horizontally */
+    background-color: white;
+    padding: 50px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Soft shadow */
+}
+
+/* Form group styling */
+.ORGSform-group {
+    margin-bottom: 20px;
+}
+
+.ORGSform-group label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.ORGSform-group input[type="text"],
+.ORGSform-group textarea,
+.ORGSform-group input[type="file"] {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    background-color: #fff;
+}
+
+

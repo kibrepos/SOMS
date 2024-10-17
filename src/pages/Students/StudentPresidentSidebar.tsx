@@ -70,7 +70,7 @@ const StudentPresidentSidebar: React.FC = () => {
         <NavLink to={`/Organization/${organizationName}/dashboard`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
           <FontAwesomeIcon icon={faChartLine} /> Dashboard Overview
         </NavLink>
-        <NavLink to={`/president/manage-members/${organizationName}`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
+        <NavLink to={`/Organization/${organizationName}/manage-members`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
           <FontAwesomeIcon icon={faUsers} /> Manage Members
         </NavLink>
         <NavLink to={`/president/task-management/${organizationName}`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
@@ -91,7 +91,7 @@ const StudentPresidentSidebar: React.FC = () => {
         <NavLink to={`/president/resources/${organizationName}`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
           <FontAwesomeIcon icon={faFolderOpen} /> Resources
         </NavLink>
-        <NavLink to={`/president/settings/${organizationName}`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
+        <NavLink to={`/Organization/${organizationName}/settings`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
           <FontAwesomeIcon icon={faCog} /> Settings
         </NavLink>
         

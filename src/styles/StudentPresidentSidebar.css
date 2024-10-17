@@ -1,7 +1,7 @@
 /* Main sidebar container */
 .student-sidebar {
     width: 250px;
-    background-color: #2c3e50; /* Darker blue/gray background */
+    background-color: #ffffff ; /* Darker blue/gray background */
     color: white;
     height: 100vh;
     padding: 0;
@@ -11,7 +11,7 @@
     display: flex;
     flex-direction: column;
     align-items: center; 
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+    box-shadow: 5px 0 5px rgba(0, 0, 0, 0.1); /* Subtle shadow */
 }
 
 /* Cover Image */
@@ -49,11 +49,23 @@
 /* Organization name styling */
 .student-sidebar-organization-name {
     text-align: center;
-    font-size: 18px;
-    margin: 50px 0 20px 0;
-    color: #ecf0f1; /* Lighter font color */
+    font-size: 21px;
+    margin: 50px 0 10px; /* Adjusted margin for spacing */
+    color: #000000; /* Black text */
+    position: relative;
+    padding-bottom: 5px; /* Space for underline */
 }
 
+.student-sidebar-organization-name::after {
+    content: "";
+    display: block;
+    width: 90%; /* Underline width */
+    height: 1px;
+    background-color: #bdbdbd; /* Teal underline */
+    margin: 0 auto; /* Center the underline */
+    margin-top: 5px;
+    border-radius: 50px;
+}
 /* Navigation links */
 .student-sidebar-nav {
     width: 100%;
@@ -61,7 +73,7 @@
 
 .student-sidebar-navlink {
     text-decoration: none;
-    color: #ecf0f1; /* Light color for inactive links */
+    color: #000000; /* Light color for inactive links */
     font-size: 16px;
     padding: 10px 20px;
     width: 78%;
@@ -73,7 +85,7 @@
 }
 
 .student-sidebar-navlink:hover {
-    background-color: #316451; 
+    background-color: #009688 ; 
     color: #ffffff; /* White text on hover */
 }
 
@@ -84,8 +96,8 @@
 
 /* Active link */
 .student-active-link {
-    background-color: #316451; /* Light violet background for active link */
-    color: #00ff80;
+    background-color: #009688 ; /* Light violet background for active link */
+    color: #ffffff;
     font-weight: bold;
     position: relative;
 }
@@ -93,11 +105,11 @@
 .student-active-link::before {
     content: "";
     position: absolute;
-    right: -15px; /* Adjust position to add the violet bar at the edge */
+    right: -15px; 
     top: 0;
     height: 100%;
     width: 6px;
-    background-color: #00ff80; /* Violet color for the side bar */
+    background-color: #009688 ; 
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
 }
