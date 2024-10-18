@@ -64,7 +64,7 @@ const StudentPresidentSidebar: React.FC = () => {
         </div>
       </div>
 
-      <h2 className="student-sidebar-organization-name">{organizationData?.name || 'Untitled Organization'}</h2>
+      <h2 className="student-sidebar-organization-name">{organizationData?.name}</h2>
 
       <div className="student-sidebar-nav">
         <NavLink to={`/Organization/${organizationName}/dashboard`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>

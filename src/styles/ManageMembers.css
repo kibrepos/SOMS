@@ -1,0 +1,27 @@
+.manage-members-wrapper {
+    padding: 20px;
+  }
+  
+  .sidebar-section {
+    width: 250px;
+    float: left; /* Align sidebar to the left */
+  }
+  
+  .main-content {
+    margin-left: 270px; /* Space for sidebar */
+    padding: 20px;
+  }
+  
+  h2, h3 {
+    margin-top: 20px;
+  }
+  
+  ul {
+    list-style-type: none; /* Remove bullet points */
+    padding-left: 0;
+  }
+  
+  li {
+    padding: 5px 0;
+  }
+  

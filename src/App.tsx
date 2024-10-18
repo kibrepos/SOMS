@@ -1,4 +1,3 @@
-// src/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
@@ -6,6 +5,7 @@ import PublicRoute from './components/PublicRoute';
 import StudentDashboard from './pages/Students/StudentDashboard';
 import OrganizationDashboard from './pages/Students/OrganizationDashboard';
 import OrganizationSettings from './pages/Students/OrganizationSettings';
+import ManageMembers from './pages/Students/ManageMembers';
 import StudentProfile from './pages/Students/StudentProfile';
 import FacultyDashboard from './pages/Faculty/FacultyDashboard';
 import AdminDashboard from './pages/Admins/AdminDashboard';
@@ -44,6 +44,7 @@ const App: React.FC = () => {
           <Route path="/ChatApp" element={<ChatApp />} />
           <Route path="/Organization/:organizationName/dashboard" element={<OrganizationDashboard />} />
           <Route path="/Organization/:organizationName/settings" element={<OrganizationSettings />} />
+          <Route path="/Organization/:organizationName/manage-members" element={<ManageMembers />} />
          
           </Route>
 
