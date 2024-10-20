@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { auth, firestore } from '../../services/firebaseConfig'; // Firebase authentication and Firestore
+import { auth, firestore } from '../../services/firebaseConfig'; 
 import { doc, getDoc } from 'firebase/firestore';
-import Header from '../../components/Header'; // Assuming you have a Header component
-import StudentPresidentSidebar from './StudentPresidentSidebar'; // Import the President Sidebar
-import StudentOfficerSidebar from './StudentOfficerSidebar'; // Import the Officer Sidebar
-import StudentMemberSidebar from './StudentMemberSidebar'; // Import the Member Sidebar
-import '../../styles/OrganizationDashboard.css'; // Import your CSS
+import Header from '../../components/Header';
+import StudentPresidentSidebar from './StudentPresidentSidebar'; 
+import StudentOfficerSidebar from './StudentOfficerSidebar'; 
+import StudentMemberSidebar from './StudentMemberSidebar'; 
+import '../../styles/OrganizationDashboard.css'; 
 
 const OrganizationDashboard: React.FC = () => {
   const { organizationName } = useParams<{ organizationName: string }>(); // Get organization name from URL
@@ -21,13 +21,12 @@ const OrganizationDashboard: React.FC = () => {
         const user = auth.currentUser;
 
         if (user) {
-          // Fetch the user's data (firstname and lastname) from Firestore
-          const userDocRef = doc(firestore, 'students', user.uid); // Assuming you're using a 'students' collection
+        
+          const userDocRef = doc(firestore, 'students', user.uid); 
           const userDoc = await getDoc(userDocRef);
 
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            const userFullName = `${userData.firstname} ${userData.lastname}`; // Get the user's full name
 
             // Get the organization data
             const orgDocRef = doc(firestore, 'organizations', organizationName || '');
@@ -38,11 +37,11 @@ const OrganizationDashboard: React.FC = () => {
               setOrganizationData(orgData);
 
               // Determine the user's role in the organization
-              if (orgData.president === userFullName) {
+              if (orgData.president?.id === user.uid) {
                 setUserRole('president');
-              } else if (orgData.officers?.some((officer: any) => officer.student === userFullName)) {
+              } else if (orgData.officers?.some((officer: any) => officer.id === user.uid)) {
                 setUserRole('officer');
-              } else if (orgData.members?.includes(userFullName)) {
+              } else if (orgData.members?.some((member: any) => member.id === user.uid)) {
                 setUserRole('member');
               } else {
                 setUserRole(null); // User is not part of the organization

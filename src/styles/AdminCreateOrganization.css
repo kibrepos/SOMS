@@ -281,3 +281,44 @@
   button {
     cursor: pointer;
   }
+  /* Officer Role Dropdown Container */
+.CNO-officer-role-input {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+.CNO-officer-role-input label {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+/* Dropdown Select */
+.CNO-officer-role-input select {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 1rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.3s ease-in-out;
+}
+
+/* Dropdown Hover & Focus */
+.CNO-officer-role-input select:hover,
+.CNO-officer-role-input select:focus {
+  border-color: #007bff;
+}
+
+/* Option Styling */
+.CNO-officer-role-input select option {
+  padding: 10px;
+  background-color: white;
+  cursor: pointer;
+}
+
+/* Disabled Option Styling */
+.CNO-officer-role-input select option:disabled {
+  color: #999;
+  background-color: #f0f0f0;
+}

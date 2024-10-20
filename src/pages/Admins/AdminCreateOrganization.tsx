@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { firestore } from "../../services/firebaseConfig";
-import { doc, setDoc, collection, getDocs } from "firebase/firestore";
+import { doc, setDoc, collection, getDocs,Timestamp,addDoc,getDoc  } from "firebase/firestore";
 import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "react-router-dom";
 import AdminSidebar from './AdminSidebar';
 import '../../styles/AdminCreateOrganization.css';
+import { auth } from "../../services/firebaseConfig";
 
 interface Student {
   id: string;
@@ -41,8 +42,36 @@ const AdminCreateOrganization: React.FC = () => {
   const [selectedStudentForOfficer, setSelectedStudentForOfficer] = useState<Student | null>(null);
   const [officerRole, setOfficerRole] = useState("");
   const navigate = useNavigate();
-
-  // Fetch students and faculty from Firestore
+  const officerRoles = [
+    "Vice President",
+    "Secretary",
+    "Treasurer",
+    "Auditor",
+    "Public Relations Officer",
+    "Sergeant-at-Arms",
+  ];
+  
+  const logActivity = async (activity: string) => {
+    const admin = auth.currentUser;
+    if (!admin) return;
+  
+    try {
+      const adminDoc = await getDoc(doc(firestore, "admin", admin.uid));
+      if (adminDoc.exists()) {
+        const data = adminDoc.data();
+        const adminName = `${data.firstname} ${data.lastname}`;
+  
+        await addDoc(collection(firestore, "logs"), {
+          activity,
+          userName: adminName,
+          timestamp: Timestamp.now(),
+          role: data.role || "admin",
+        });
+      }
+    } catch (error) {
+      console.error("Error logging activity:", error);
+    }
+  };
   const fetchData = async () => {
     try {
       const studentCollection = await getDocs(collection(firestore, "students"));
@@ -74,30 +103,45 @@ const AdminCreateOrganization: React.FC = () => {
 
   const createOrganization = async (e: React.FormEvent) => {
     e.preventDefault();
-
+  
     if (!name || !description || !facultyAdviser || !president || selectedMembers.length === 0) {
       alert("All fields are required.");
       return;
     }
-
+  
     try {
       await setDoc(doc(firestore, "organizations", name), {
         name,
         description,
-        facultyAdviser: facultyAdviser.firstname + " " + facultyAdviser.lastname,
-        president: president.firstname + " " + president.lastname,
-        members: selectedMembers.map(member => member.firstname + " " + member.lastname),
+        facultyAdviser: {
+          id: facultyAdviser.id,
+          name: `${facultyAdviser.firstname} ${facultyAdviser.lastname}`,
+        },
+        president: {
+          id: president.id,
+          name: `${president.firstname} ${president.lastname}`,
+        },
+        members: selectedMembers.map(member => ({
+          id: member.id,
+          name: `${member.firstname} ${member.lastname}`,
+        })),
         officers: officers.map(officer => ({
-          student: officer.student.firstname + " " + officer.student.lastname,
+          id: officer.student.id,
+          name: `${officer.student.firstname} ${officer.student.lastname}`,
           role: officer.role,
         })),
-        status: "active"
+        status: "active",
       });
+  
+      // Log the creation of the organization
+      await logActivity(`Created organization "${name}".`);
+  
       navigate("/Admin/ManageOrganizations");
     } catch (error) {
-      console.error("Error creating organization: ", error);
+      console.error("Error creating organization:", error);
     }
   };
+  
 
   // Toggle member selection and prevent the president or officers from being selected as a member
   const toggleMemberSelection = (member: Student) => {
@@ -402,30 +446,42 @@ const AdminCreateOrganization: React.FC = () => {
 
       {/* Role Input */}
       <div className="CNO-officer-role-input">
-        <label>Officer Role</label>
-        <input
-          type="text"
-          placeholder="Enter role"
-          value={officerRole}
-          onChange={(e) => setOfficerRole(e.target.value)}
-        />
-      </div>
+  <label>Officer Role</label>
+  <select
+    value={officerRole}
+    onChange={(e) => setOfficerRole(e.target.value)}
+    required
+  >
+    <option value="">Select a Role</option>
+    {officerRoles.map((role, index) => (
+      <option key={index} value={role}>
+        {role}
+      </option>
+    ))}
+  </select>
+</div>
 
       {/* Add Officer Button */}
       <button
-        className="CNO-submit-btn"
-        onClick={() => {
-          if (selectedStudentForOfficer && officerRole) {
-            setOfficers([...officers, { student: selectedStudentForOfficer, role: officerRole }]);
-            setSelectedStudentForOfficer(null);
-            setOfficerSearch(""); // Clear the search box after selection
-            setOfficerRole("");
-            setIsOfficersModalOpen(false);
-          }
-        }}
-      >
-        Add Officer
-      </button>
+  className="CNO-submit-btn"
+  onClick={() => {
+    if (selectedStudentForOfficer && officerRole) {
+      setOfficers([
+        ...officers,
+        {
+          student: selectedStudentForOfficer,
+          role: officerRole,
+        },
+      ]);
+      setSelectedStudentForOfficer(null);
+      setOfficerSearch(""); // Clear the search box after selection
+      setOfficerRole(""); // Reset the role selection
+      setIsOfficersModalOpen(false);
+    }
+  }}
+>
+  Add Officer
+</button>
     </div>
   </div>
 )}

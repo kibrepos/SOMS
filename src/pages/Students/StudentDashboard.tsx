@@ -13,7 +13,7 @@ interface Organization {
   description: string;
   head: string;
   members: string[];
-  officers: { role: string; student: string }[];
+  officers: { role: string; id:string }[];
   president: string;
   department: string;
   status: string;
@@ -39,18 +39,16 @@ const StudentDashboard: React.FC = () => {
             const student = studentDoc.data();
             setStudentData(student);
 
-            const studentFullName = `${student.firstname} ${student.lastname}`;
-
             const organizationsRef = collection(firestore, 'organizations');
 
             const memberQuery = query(
               organizationsRef,
-              where('members', 'array-contains', studentFullName)
+              where('members', 'array-contains', { id: user.uid })
             );
 
             const presidentQuery = query(
               organizationsRef,
-              where('president', '==', studentFullName)
+              where('president.id', '==', user.uid)
             );
 
             const [memberSnapshot, presidentSnapshot] = await Promise.all([
@@ -80,7 +78,7 @@ const StudentDashboard: React.FC = () => {
               const orgData = orgDoc.data() as Organization;
 
               const isOfficer = orgData.officers?.some(
-                (officer) => officer.student === studentFullName
+                (officer) => officer.id === user.uid
               );
 
               if (isOfficer && !orgList.some((org) => org.name === orgData.name)) {

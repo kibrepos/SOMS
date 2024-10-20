@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { auth } from "../../services/firebaseConfig"; 
 import { firestore } from "../../services/firebaseConfig";
-import { collection, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import { collection, getDocs, updateDoc, deleteDoc, doc,Timestamp,addDoc,getDoc  } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import '../../styles/AdminManageOrganizations.css';
 import AdminSidebar from './AdminSidebar';
@@ -9,10 +10,11 @@ interface Organization {
   id: string;
   name: string;
   description: string;
-  facultyAdviser: string;
-  president: string;
-  status: string; // 'active' or 'archived'
+  facultyAdviser: { id: string; name: string };
+  president: { id: string; name: string };
+  status: string; 
 }
+
 
 const AdminManageOrganizations: React.FC = () => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -26,28 +28,50 @@ const AdminManageOrganizations: React.FC = () => {
   const [actionType, setActionType] = useState<string>(''); // 'delete', 'archive', 'unarchive'
   const navigate = useNavigate();
 
-  // Fetch organizations from Firestore
+  const logActivity = async (activity: string) => {
+    const admin = auth.currentUser;
+    if (!admin) return;
+  
+    try {
+      const adminDoc = await getDoc(doc(firestore, "admin", admin.uid));
+      if (adminDoc.exists()) {
+        const data = adminDoc.data();
+        const adminName = `${data.firstname} ${data.lastname}`;
+  
+        await addDoc(collection(firestore, "logs"), {
+          activity,
+          userName: adminName,
+          timestamp: Timestamp.now(),
+          role: data.role || "admin",
+        });
+      }
+    } catch (error) {
+      console.error("Error logging activity:", error);
+    }
+  };
   const fetchOrganizations = async () => {
     setLoading(true);
     const orgCollection = collection(firestore, "organizations");
     const orgSnapshot = await getDocs(orgCollection);
-    const orgList = orgSnapshot.docs.map(doc => ({
+    const orgList = orgSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     })) as Organization[];
-
+  
     // Filter active and archived organizations
-    setActiveOrganizations(orgList.filter(org => org.status === 'active'));
-    setArchivedOrganizations(orgList.filter(org => org.status === 'archived'));
-
+    setActiveOrganizations(orgList.filter((org) => org.status === 'active'));
+    setArchivedOrganizations(orgList.filter((org) => org.status === 'archived'));
+  
     setLoading(false);
   };
+  
 
   // Archive an organization
   const archiveOrganization = async () => {
     if (!organizationToModify) return;
     const orgDoc = doc(firestore, "organizations", organizationToModify.id);
     await updateDoc(orgDoc, { status: "archived" });
+    await logActivity(`Archived organization "${organizationToModify.name}".`);
     fetchOrganizations(); // Refresh the list after archiving
     closeModal(); // Close the modal after action
   };
@@ -57,6 +81,7 @@ const AdminManageOrganizations: React.FC = () => {
     if (!organizationToModify) return;
     const orgDoc = doc(firestore, "organizations", organizationToModify.id);
     await updateDoc(orgDoc, { status: "active" });
+    await logActivity(`Unarchived organization "${organizationToModify.name}".`);
     fetchOrganizations(); // Refresh the list after unarchiving
     closeModal(); // Close the modal after action
   };
@@ -66,7 +91,8 @@ const AdminManageOrganizations: React.FC = () => {
     if (!organizationToModify) return;
     try {
       const orgDoc = doc(firestore, "organizations", organizationToModify.id);
-      await deleteDoc(orgDoc); // Delete organization document
+      await deleteDoc(orgDoc); 
+      await logActivity(`Deleted organization "${organizationToModify.name}".`);
       fetchOrganizations(); // Refresh the list after deletion
       closeModal(); // Close the modal after action
     } catch (error) {
@@ -146,19 +172,19 @@ const AdminManageOrganizations: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {activeOrganizations.map((org) => (
-                    <tr key={org.id}>
-                      <td>{org.name}</td>
-                      <td>{org.description}</td>
-                      <td>{org.facultyAdviser ? org.facultyAdviser : "Not Assigned"}</td>
-                      <td>{org.president ? org.president : "Not Assigned"}</td>
-                      <td>
-                        <button onClick={() => handleViewOrganization(org.name)} className="MO-view-btn">View</button>
-                        <button onClick={() => confirmAction(org, 'archive')} className="MO-archive-btn">Archive</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+                {activeOrganizations.map((org) => (
+    <tr key={org.id}>
+      <td>{org.name}</td>
+      <td>{org.description}</td>
+      <td>{org.facultyAdviser ? org.facultyAdviser.name : "Not Assigned"}</td>
+      <td>{org.president ? org.president.name : "Not Assigned"}</td>
+      <td>
+        <button onClick={() => handleViewOrganization(org.name)} className="MO-view-btn">View</button>
+        <button onClick={() => confirmAction(org, 'archive')} className="MO-archive-btn">Archive</button>
+      </td>
+    </tr>
+  ))}
+</tbody>
               </table>
             </>
           ) : (
@@ -175,20 +201,20 @@ const AdminManageOrganizations: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {archivedOrganizations.map((org) => (
-                    <tr key={org.id}>
-                      <td>{org.name}</td>
-                      <td>{org.description}</td>
-                      <td>{org.facultyAdviser ? org.facultyAdviser : "Not Assigned"}</td>
-                      <td>{org.president ? org.president : "Not Assigned"}</td>
-                      <td>
-                        <button onClick={() => handleViewOrganization(org.name)} className="MO-view-btn">View</button>
-                        <button onClick={() => confirmAction(org, 'unarchive')} className="MO-unarchive-btn">Unarchive</button>
-                        <button onClick={() => confirmAction(org, 'delete')} className="MO-delete-btn">Delete</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+  {archivedOrganizations.map((org) => (
+    <tr key={org.id}>
+      <td>{org.name}</td>
+      <td>{org.description}</td>
+      <td>{org.facultyAdviser ? org.facultyAdviser.name : "Not Assigned"}</td>
+      <td>{org.president ? org.president.name : "Not Assigned"}</td>
+      <td>
+        <button onClick={() => handleViewOrganization(org.name)} className="MO-view-btn">View</button>
+        <button onClick={() => confirmAction(org, 'unarchive')} className="MO-unarchive-btn">Unarchive</button>
+        <button onClick={() => confirmAction(org, 'delete')} className="MO-delete-btn">Delete</button>
+      </td>
+    </tr>
+  ))}
+</tbody>
               </table>
             </>
           )}

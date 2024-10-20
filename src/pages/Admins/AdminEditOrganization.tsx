@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { firestore } from "../../services/firebaseConfig";
-import { doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, deleteDoc, collection, getDocs,addDoc,Timestamp } from "firebase/firestore";
 import { useParams, useNavigate } from "react-router-dom";
 import AdminSidebar from './AdminSidebar';
 import '../../styles/AdminCreateOrganization.css';
 import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { auth } from "../../services/firebaseConfig"; 
+
 
 interface Officer {
-  student: string;
+  id: string;
+  name: string;
   role: string;
 }
+
 
 interface Student {
   id: string;
@@ -29,11 +33,12 @@ interface Faculty {
 interface Organization {
   name: string;
   description: string;
-  facultyAdviser: string;
-  members: string[];
-  president: string;
+  facultyAdviser: { id: string; name: string };
+  members: { id: string; name: string }[];
+  president: { id: string; name: string };
   officers: Officer[];
 }
+
 
 const AdminEditOrganization: React.FC = () => {
   const { organizationName } = useParams<{ organizationName: string }>();
@@ -52,7 +57,36 @@ const AdminEditOrganization: React.FC = () => {
   const [selectedStudentForOfficer, setSelectedStudentForOfficer] = useState<Student | null>(null);
   const [officerRole, setOfficerRole] = useState("");
   const navigate = useNavigate();
-
+  const officerRoles = [
+    "Vice President",
+    "Secretary",
+    "Treasurer",
+    "Auditor",
+    "Public Relations Officer",
+    "Sergeant-at-Arms",
+  ];
+  
+  const logActivity = async (activity: string) => {
+    const admin = auth.currentUser;
+    if (!admin) return;
+  
+    try {
+      const adminDoc = await getDoc(doc(firestore, "admin", admin.uid));
+      if (adminDoc.exists()) {
+        const data = adminDoc.data();
+        const adminName = `${data.firstname} ${data.lastname}`;
+  
+        await addDoc(collection(firestore, "logs"), {
+          activity,
+          userName: adminName,
+          timestamp: Timestamp.now(),
+          role: data.role || "admin",
+        });
+      }
+    } catch (error) {
+      console.error("Error logging activity:", error);
+    }
+  };
   const fetchOrganization = async () => {
     if (!organizationName) {
       console.error("Organization name is undefined");
@@ -119,11 +153,14 @@ const AdminEditOrganization: React.FC = () => {
   };
 
   const toggleMemberSelection = (member: Student) => {
-    if (member.id === editedOrganization?.president || editedOrganization?.officers.some(officer => officer.student === `${member.firstname} ${member.lastname}`)) return;
-    const updatedMembers = editedOrganization?.members.includes(`${member.firstname} ${member.lastname}`)
-      ? editedOrganization.members.filter(m => m !== `${member.firstname} ${member.lastname}`)
-      : [...(editedOrganization?.members || []), `${member.firstname} ${member.lastname}`];
+    const updatedMembers = editedOrganization?.members.some((m) => m.id === member.id)
+      ? editedOrganization.members.filter((m) => m.id !== member.id)
+      : [...(editedOrganization?.members || []), { id: member.id, name: `${member.firstname} ${member.lastname}` }];
+  
     setEditedOrganization({ ...editedOrganization!, members: updatedMembers });
+  
+    const action = updatedMembers.some((m) => m.id === member.id) ? "Added" : "Removed";
+    logActivity(`${action} member "${member.firstname} ${member.lastname}" in "${editedOrganization?.name}".`);
   };
 
   const removeOfficer = (index: number) => {
@@ -179,8 +216,8 @@ const AdminEditOrganization: React.FC = () => {
                       <div className="CNO-head-member-container">
                         {editedOrganization?.facultyAdviser && renderProfilePic()}
                         <span>
-                          {editedOrganization?.facultyAdviser || "Select Faculty Adviser"}
-                        </span>
+  {editedOrganization?.facultyAdviser?.name || "Select Faculty Adviser"}
+</span>
                       </div>
                     </div>
                   </div>
@@ -190,7 +227,7 @@ const AdminEditOrganization: React.FC = () => {
                       <div className="CNO-head-member-container">
                         {editedOrganization?.president && renderProfilePic()}
                         <span>
-                          {editedOrganization?.president || "Select President"}
+  {editedOrganization?.president?.name || "Select President"}
                         </span>
                       </div>
                     </div>
@@ -204,16 +241,22 @@ const AdminEditOrganization: React.FC = () => {
                   </div>
 
                   <div className="CNO-selected-members">
-                    {editedOrganization?.members.map((member, index) => (
-                      <div key={index} className="CNO-member-card">
-                        {renderProfilePic()}
-                        <div className="CNO-member-info">
-                          <span>{member}</span>
-                        </div>
-                        <button className="CNO-removebtn" onClick={() => toggleMemberSelection({ id: "", firstname: member.split(" ")[0], lastname: member.split(" ")[1] })}>×</button>
-                      </div>
-                    ))}
-                  </div>
+  {editedOrganization?.members.map((member, index) => (
+    <div key={index} className="CNO-member-card">
+      {renderProfilePic()}
+      <div className="CNO-member-info">
+        <span>{member.name}</span>
+      </div>
+      <button
+        className="CNO-removebtn"
+        onClick={() => toggleMemberSelection({ id: member.id, firstname: member.name.split(" ")[0], lastname: member.name.split(" ")[1] })}
+      >
+        ×
+      </button>
+    </div>
+  ))}
+</div>
+
                 </div>
 
                 <div className="CNO-form-row">
@@ -226,14 +269,15 @@ const AdminEditOrganization: React.FC = () => {
                     Add Officer
                   </button>
                   <div className="CNO-selected-officers">
-                    {editedOrganization?.officers.map((officer, index) => (
-                      <div key={index} className="CNO-officer-card">
-                        {renderProfilePic()}
-                        <span>{officer.student} - {officer.role}</span>
-                        <button className="CNO-removebtn" onClick={() => removeOfficer(index)}>×</button>
-                      </div>
-                    ))}
-                  </div>
+  {editedOrganization?.officers.map((officer, index) => (
+    <div key={index} className="CNO-officer-card">
+      {renderProfilePic()}
+      <span>{officer.name} - {officer.role}</span>
+      <button className="CNO-removebtn" onClick={() => removeOfficer(index)}>×</button>
+    </div>
+  ))}
+</div>
+
                 </div>
 
                 <button type="button" className="CNO-submit-btn" onClick={handleSaveChanges}>
@@ -254,17 +298,33 @@ const AdminEditOrganization: React.FC = () => {
                       onChange={(e) => setFacultySearch(e.target.value)}
                     />
                     <ul>
-                      {faculties.filter(faculty => (faculty.firstname + ' ' + faculty.lastname).toLowerCase().includes(facultySearch.toLowerCase())).map(faculty => (
-                        <li key={faculty.id} onClick={() => {
-                          setEditedOrganization({ ...editedOrganization!, facultyAdviser: `${faculty.firstname} ${faculty.lastname}` });
-                          setIsFacultyModalOpen(false);
-                        }}>
-                          {renderProfilePic(faculty.profilePicUrl)}
-                          {faculty.firstname} {faculty.lastname}
-                          <button>Select</button>
-                        </li>
-                      ))}
-                    </ul>
+  {faculties
+    .filter((faculty) =>
+      (faculty.firstname + ' ' + faculty.lastname)
+        .toLowerCase()
+        .includes(facultySearch.toLowerCase())
+    )
+    .map((faculty) => (
+      <li
+  key={faculty.id}
+  onClick={() => {
+    setEditedOrganization({
+      ...editedOrganization!,
+      facultyAdviser: { id: faculty.id, name: `${faculty.firstname} ${faculty.lastname}` },
+    });
+    logActivity(
+      `Assigned "${faculty.firstname} ${faculty.lastname}" as faculty adviser in "${editedOrganization?.name}".`
+    );
+    setIsFacultyModalOpen(false);
+  }}
+>
+  {renderProfilePic(faculty.profilePicUrl)}
+  {faculty.firstname} {faculty.lastname}
+  <button>Select</button>
+</li>
+    ))}
+</ul>
+
                   </div>
                 </div>
               )}
@@ -282,17 +342,40 @@ const AdminEditOrganization: React.FC = () => {
                       onChange={(e) => setPresidentSearch(e.target.value)}
                     />
                     <ul>
-                      {students.filter(student => (student.firstname + ' ' + student.lastname).toLowerCase().includes(presidentSearch.toLowerCase()) && !editedOrganization?.members.includes(`${student.firstname} ${student.lastname}`) && !editedOrganization?.officers.some(officer => officer.student === `${student.firstname} ${student.lastname}`)).map(student => (
-                        <li key={student.id} onClick={() => {
-                          setEditedOrganization({ ...editedOrganization!, president: `${student.firstname} ${student.lastname}` });
-                          setIsPresidentModalOpen(false);
-                        }}>
-                          {renderProfilePic(student.profilePicUrl)}
-                          {student.firstname} {student.lastname}
-                          <button>Select</button>
-                        </li>
-                      ))}
-                    </ul>
+  {students
+    .filter(
+      (student) =>
+        (student.firstname + ' ' + student.lastname)
+          .toLowerCase()
+          .includes(presidentSearch.toLowerCase()) &&
+        !editedOrganization?.members.some(
+          (member) => member.id === student.id
+        ) &&
+        !editedOrganization?.officers.some(
+          (officer) => officer.id === student.id
+        )
+    )
+    .map((student) => (
+      <li
+      key={student.id}
+      onClick={() => {
+        setEditedOrganization({
+          ...editedOrganization!,
+          president: { id: student.id, name: `${student.firstname} ${student.lastname}` },
+        });
+        logActivity(
+          `Set "${student.firstname} ${student.lastname}" as the president in "${editedOrganization?.name}".`
+        );
+        setIsPresidentModalOpen(false);
+      }}
+    >
+      {renderProfilePic(student.profilePicUrl)}
+      {student.firstname} {student.lastname}
+      <button>Select</button>
+    </li>
+    ))}
+</ul>
+
                   </div>
                 </div>
               )}
@@ -310,14 +393,30 @@ const AdminEditOrganization: React.FC = () => {
                       onChange={(e) => setMembersSearch(e.target.value)}
                     />
                     <ul>
-                      {students.filter(student => (student.firstname + ' ' + student.lastname).toLowerCase().includes(membersSearch.toLowerCase()) && student.id !== editedOrganization?.president && !editedOrganization?.officers.some(officer => officer.student === `${student.firstname} ${student.lastname}`)).map(student => (
-                        <li key={student.id} onClick={() => toggleMemberSelection(student)}>
-                          {renderProfilePic(student.profilePicUrl)}
-                          {student.firstname} {student.lastname}
-                          <button>{editedOrganization?.members.includes(`${student.firstname} ${student.lastname}`) ? "Unselect" : "Select"}</button>
-                        </li>
-                      ))}
-                    </ul>
+  {students
+    .filter(
+      (student) =>
+        (student.firstname + ' ' + student.lastname)
+          .toLowerCase()
+          .includes(membersSearch.toLowerCase()) &&
+        student.id !== editedOrganization?.president?.id &&
+        !editedOrganization?.officers.some(
+          (officer) => officer.id === student.id
+        )
+    )
+    .map((student) => (
+      <li key={student.id} onClick={() => toggleMemberSelection(student)}>
+        {renderProfilePic(student.profilePicUrl)}
+        {student.firstname} {student.lastname}
+        <button>
+          {editedOrganization?.members.some((member) => member.id === student.id)
+            ? 'Unselect'
+            : 'Select'}
+        </button>
+      </li>
+    ))}
+</ul>
+
                   </div>
                 </div>
               )}
@@ -338,49 +437,81 @@ const AdminEditOrganization: React.FC = () => {
                         onChange={(e) => setOfficerSearch(e.target.value)}
                         className="CNO-search-input"
                       />
-                      {officerSearch.trim() !== "" && !selectedStudentForOfficer && (
-                        <ul className="CNO-dropdown">
-                          {students.filter(student => (student.firstname + ' ' + student.lastname).toLowerCase().includes(officerSearch.toLowerCase()) && student.id !== editedOrganization?.president && !editedOrganization?.members.includes(`${student.firstname} ${student.lastname}`) && !editedOrganization?.officers.some(officer => officer.student === `${student.firstname} ${student.lastname}`)).map(student => (
-                            <li key={student.id} onClick={() => {
-                              setSelectedStudentForOfficer(student);
-                              setOfficerSearch(student.firstname + ' ' + student.lastname);
-                            }}>
-                              {renderProfilePic(student.profilePicUrl)}
-                              {student.firstname} {student.lastname}
-                              <button>Select</button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                    {officerSearch.trim() !== "" && !selectedStudentForOfficer && (
+  <ul className="CNO-dropdown">
+    {students
+      .filter(
+        (student) =>
+          (student.firstname + " " + student.lastname)
+            .toLowerCase()
+            .includes(officerSearch.toLowerCase()) &&
+          student.id !== editedOrganization?.president?.id &&
+          !editedOrganization?.members.some((member) => member.id === student.id) &&
+          !editedOrganization?.officers.some((officer) => officer.id === student.id)
+      )
+      .map((student) => (
+        <li
+          key={student.id}
+          onClick={() => {
+            setSelectedStudentForOfficer(student);
+            setOfficerSearch(student.firstname + " " + student.lastname);
+          }}
+        >
+          {renderProfilePic(student.profilePicUrl)}
+          {student.firstname} {student.lastname}
+          <button>Select</button>
+        </li>
+      ))}
+  </ul>
+)}
+
                     </div>
 
                     <div className="CNO-officer-role-input">
-                      <label>Officer Role</label>
-                      <input
-                        type="text"
-                        placeholder="Enter role"
-                        value={officerRole}
-                        onChange={(e) => setOfficerRole(e.target.value)}
-                      />
-                    </div>
+  <label>Officer Role</label>
+  <select
+    value={officerRole}
+    onChange={(e) => setOfficerRole(e.target.value)}
+    required
+  >
+    <option value="">Select a Role</option>
+    {officerRoles.map((role, index) => (
+      <option key={index} value={role}>
+        {role}
+      </option>
+    ))}
+  </select>
+</div>
 
                     <button
-                      className="CNO-submit-btn"
-                      onClick={() => {
-                        if (selectedStudentForOfficer && officerRole) {
-                          setEditedOrganization({
-                            ...editedOrganization!,
-                            officers: [...(editedOrganization?.officers || []), { student: `${selectedStudentForOfficer.firstname} ${selectedStudentForOfficer.lastname}`, role: officerRole }],
-                          });
-                          setSelectedStudentForOfficer(null);
-                          setOfficerSearch("");
-                          setOfficerRole("");
-                          setIsOfficersModalOpen(false);
-                        }
-                      }}
-                    >
-                      Add Officer
-                    </button>
+  className="CNO-submit-btn"
+  onClick={() => {
+    if (selectedStudentForOfficer && officerRole) {
+      setEditedOrganization({
+        ...editedOrganization!,
+        officers: [
+          ...(editedOrganization?.officers || []),
+          {
+            id: selectedStudentForOfficer.id,
+            name: `${selectedStudentForOfficer.firstname} ${selectedStudentForOfficer.lastname}`,
+            role: officerRole,
+          },
+        ],
+      });
+      logActivity(
+        `Added officer "${selectedStudentForOfficer.firstname} ${selectedStudentForOfficer.lastname}" with role "${officerRole}" in "${editedOrganization?.name}".`
+      );
+      setSelectedStudentForOfficer(null);
+      setOfficerSearch("");
+      setOfficerRole("");
+      setIsOfficersModalOpen(false);
+    }
+  }}
+>
+  Add Officer
+</button>
+
+
                   </div>
                 </div>
               )}

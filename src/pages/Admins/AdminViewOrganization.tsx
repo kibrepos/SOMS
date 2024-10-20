@@ -8,17 +8,19 @@ import '../../styles/AdminViewOrganization.css';
 interface Officer {
   role: string;
   student: string;
+  name: string;
 }
 
 interface Organization {
   name: string;
   description: string;
-  facultyAdviser: string;
+  facultyAdviser: { id: string; name: string };
   status: string;
-  members: string[];
+  members: { id: string; name: string }[];
   officers: Officer[];
-  president: string;
+  president: { id: string; name: string };
 }
+
 
 const AdminViewOrganization: React.FC = () => {
   const { organizationName } = useParams<{ organizationName: string }>(); 
@@ -66,31 +68,34 @@ const AdminViewOrganization: React.FC = () => {
               <h2>{organization?.name}</h2>
               <p>Description: {organization?.description}</p>
               <p>Status: {organization?.status}</p>
-              <p>President: {organization?.president || "Not Assigned"}</p>
-              <p>Faculty Adviser: {organization?.facultyAdviser || "Not Assigned"}</p>
+              <p>President: {organization?.president?.name}</p>
+              <p>Faculty Adviser: {organization?.facultyAdviser?.name }</p>
+
 
 
               {/* Officers Section */}
               <h3>Officers</h3>
               {organization?.officers && organization.officers.length > 0 ? (
-                <ul>
-                  {organization.officers.map((officer, index) => (
-                    <li key={index}>
-                      {officer.student} - {officer.role}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No officers assigned.</p>
-              )}
+              <ul>
+                {organization.officers.map((officer, index) => (
+              <li key={index}>
+               {officer.name} - {officer.role}
+           </li>
+         ))}
+       </ul>
+) : (
+  <p>No officers assigned.</p>
+)}
+
 
               
               <h3>Members</h3>
               <ul>
-                {organization?.members.map((member) => (
-                  <li key={member}>{member}</li>
-                ))}
-              </ul>
+  {organization?.members.map((member) => (
+    <li key={member.id}>{member.name}</li>
+  ))}
+          </ul>
+
 
               
 

@@ -5,7 +5,7 @@ import { signOut } from 'firebase/auth';
 import { auth, firestore, storage } from '../../services/firebaseConfig'; // Import storage for profile picture
 import { doc, getDoc } from 'firebase/firestore';
 import { getDownloadURL, ref } from 'firebase/storage'; // Import getDownloadURL for profile pic
-import { NavLink } from 'react-router-dom';
+import { NavLink,useLocation } from 'react-router-dom';
 import '../../styles/AdminSidebar.css';
 
 const AdminSidebar: React.FC = () => {
@@ -13,6 +13,16 @@ const AdminSidebar: React.FC = () => {
   const [adminEmail, setAdminEmail] = useState<string>(''); 
   const [profilePicUrl, setProfilePicUrl] = useState<string>('https://via.placeholder.com/150'); // Default profile picture
   const [collapsed, setCollapsed] = useState<boolean>(false); 
+
+  const location = useLocation();
+
+  const isManageOrganizationsActive = () => {
+    return (
+      location.pathname.startsWith('/Admin/ManageOrganizations') ||
+      location.pathname.startsWith('/Admin/CreateOrganization') ||
+      location.pathname.startsWith('/Admin/EditOrganization')||
+      location.pathname.startsWith('/Admin/Organizations')
+    );};
 
   useEffect(() => {
     // Check if sidebar state is stored in localStorage
@@ -92,14 +102,15 @@ const AdminSidebar: React.FC = () => {
           </NavLink>
         </li>
         <li>
-          <NavLink 
-            to="/Admin/ManageOrganizations" 
-            className={({ isActive }) => (isActive ? 'active' : '')}
-          >
-            <FontAwesomeIcon icon={faBuilding} />
-            <span> Manage Organizations</span>
-          </NavLink>
-        </li>
+  <NavLink 
+    to="/Admin/ManageOrganizations" 
+    className={isManageOrganizationsActive() ? 'active' : ''}
+  >
+    <FontAwesomeIcon icon={faBuilding} />
+    <span> Manage Organizations</span>
+  </NavLink>
+</li>
+
         <li>
           <NavLink 
             to="/events-management" 
