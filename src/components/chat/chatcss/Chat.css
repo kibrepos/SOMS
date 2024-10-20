@@ -23,6 +23,21 @@
                     border-radius:50%;
                     object-fit: cover;
                 }
+
+                .texts{
+
+                    p {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 5px;
+                    }
+
+                    span {
+                        font-size: 18;
+                        font-weight: 300;
+                        color: #a5a5a5;
+                    }
+                }
             }
     }
 }
