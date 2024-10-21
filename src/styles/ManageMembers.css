@@ -1,27 +1,180 @@
-.manage-members-wrapper {
-    padding: 20px;
-  }
-  
-  .sidebar-section {
-    width: 250px;
-    float: left; /* Align sidebar to the left */
-  }
-  
-  .main-content {
-    margin-left: 270px; /* Space for sidebar */
-    padding: 20px;
-  }
-  
-  h2, h3 {
-    margin-top: 20px;
-  }
-  
-  ul {
-    list-style-type: none; /* Remove bullet points */
-    padding-left: 0;
-  }
-  
-  li {
-    padding: 5px 0;
-  }
-  
+/* Main content area */
+.MM-main-content {
+  padding: 20px;
+  overflow-y: auto;
+  height: calc(100vh - 60px); /* Adjust height to account for header */
+  margin-left: 250px; /* Aligning with sidebar width */
+}
+
+/* Table wrapper for scrolling */
+.MM-table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+/* Table styling */
+.MM-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+/* Table header */
+.MM-table th {
+  background-color: #f4f4f4;
+  padding: 10px;
+  border-bottom: 2px solid #ddd;
+  position: sticky;
+  top: 0; /* Sticky header when scrolling */
+  z-index: 1;
+  text-align: left;
+}
+
+/* Table rows */
+.MM-table td {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  vertical-align: middle;
+}
+
+/* Profile picture styling */
+.member-profile-pic,
+.default-profile-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.default-profile-icon {
+  font-size: 40px;
+  color: #ccc;
+}
+
+/* Dropdown styling */
+/* Manage Members CSS - Dropdown Fix */
+.MM-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.MM-action-btn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  position: relative;
+  z-index: 0;
+}
+.MM-dropdown-content {
+  display: none;
+  position: absolute;
+  bottom: 70%; /* Position above the button */
+  left: 110%;
+  transform: translateX(-50%);
+  background-color: white;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.MM-dropdown-content button {
+  width: 60%;
+  padding: 8px 20px;
+  text-align: left;
+  border-radius: 90%;
+  cursor: pointer;
+  color: black;
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.MM-dropdown.open .MM-dropdown-content {
+  display: block;
+}
+.MM-dropdown-content button:hover {
+
+  color: #046d27;
+ 
+}
+
+
+
+
+
+.MM-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.MM-modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  width: 300px;
+}
+
+.MM-modal-actions {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 20px;
+}
+
+.MM-confirm-btn {
+  background-color: #28a745;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.MM-cancel-btn {
+  background-color: #dc3545;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.MM-confirm-btn:hover,
+.MM-cancel-btn:hover {
+  opacity: 0.9;
+}
+.MM-error-message {
+  color: red;
+  font-weight: bold;
+  margin-top: 10px;
+  text-align: center;
+}
+.MM-committee-btn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+  margin-top: 10px;
+}
+
+.MM-committee-btn:hover {
+  background-color: #0056b3;
+}

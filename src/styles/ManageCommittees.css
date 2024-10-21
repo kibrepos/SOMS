@@ -1,0 +1,126 @@
+
+  
+  .MC-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+  
+  .MC-sidebar-section {
+    width: 250px;
+    background-color: #f8f9fa;
+    border-right: 1px solid #ddd;
+    overflow-y: auto;
+  }
+  
+  .MC-main-content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    background-color: #f1f1f1;
+  }
+  
+  .MC-main-content h2 {
+    margin-bottom: 20px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  /* Committees Button in Manage Members */
+  .MM-committee-btn {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+    margin-top: 10px;
+    display: inline-block;
+  }
+  
+  .MM-committee-btn:hover {
+    background-color: #0056b3;
+  }
+  
+  /* General Table Styling for Committees */
+  .MC-table-wrapper {
+    margin-top: 20px;
+    overflow-x: auto;
+  }
+  
+  .MC-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .MC-table th,
+  .MC-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .MC-table th {
+    background-color: #f4f4f4;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  
+  .MC-table tr:hover {
+    background-color: #f1f1f1;
+  }
+  
+  .MC-action-btn {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+  }
+  
+  .MC-action-btn:hover {
+    background-color: #218838;
+  }
+  
+  /* Dropdown Styling (if used for Committees) */
+  .MC-dropdown {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .MC-dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: white;
+    box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1;
+    width: 150px;
+    border-radius: 5px;
+  }
+  
+  .MC-dropdown-content button {
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+  }
+  
+  .MC-dropdown-content button:hover {
+    background-color: #f1f1f1;
+  }
+  
+  .MC-dropdown:hover .MC-dropdown-content {
+    display: block;
+  }
+  
