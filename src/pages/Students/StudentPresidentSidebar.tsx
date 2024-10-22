@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {faChartLine, faUsers, faObjectGroup, faTasks,faCalendarAlt,faBullhorn,faChartBar,faClipboardList,faCog,faFolderOpen,faTools ,} from '@fortawesome/free-solid-svg-icons';
-import { NavLink } from 'react-router-dom';
+import { useLocation,NavLink } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { getDownloadURL, ref } from 'firebase/storage';
 import { firestore, storage } from '../../services/firebaseConfig';
@@ -13,7 +13,8 @@ const StudentPresidentSidebar: React.FC = () => {
   const [organizationData, setOrganizationData] = useState<any>(null);
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
-
+  const location = useLocation();
+  
   useEffect(() => {
     const fetchOrganizationData = async () => {
       try {
@@ -70,9 +71,16 @@ const StudentPresidentSidebar: React.FC = () => {
         <NavLink to={`/Organization/${organizationName}/dashboard`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
           <FontAwesomeIcon icon={faChartLine} /> Dashboard Overview
         </NavLink>
-        <NavLink to={`/Organization/${organizationName}/manage-members`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
-          <FontAwesomeIcon icon={faUsers} /> Manage Members
-        </NavLink>
+        <NavLink
+    to={`/Organization/${organizationName}/manage-members`}
+    className={({ isActive }) =>
+      `student-sidebar-navlink ${
+        isActive || location.pathname.includes('manage-committees') ? 'student-active-link' : ''
+      }`
+    }
+  >
+    <FontAwesomeIcon icon={faUsers} /> Manage Members
+  </NavLink>
         <NavLink to={`/president/task-management/${organizationName}`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
           <FontAwesomeIcon icon={faTasks} /> Task Management
         </NavLink>

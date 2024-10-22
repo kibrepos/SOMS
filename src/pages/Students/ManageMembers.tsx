@@ -370,6 +370,7 @@ const handleKick = async () => {
             <button className="MM-committee-btn" onClick={goToManageCommittees}>
               Manage Committees
             </button>
+            <button onClick={() => alert('Di pa nagana niggu')}>Invite a member</button>
           </div>
   
           {/* Faculty Adviser Table */}

@@ -1,10 +1,61 @@
+.MC-dropdown {
+  position: relative;
+  display: inline-block;
+}
 
-  
-  .MC-container {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
+.MC-action-btn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  position: relative;
+  z-index: 0;
+}
+
+.MC-dropdown-content {
+  display: none;
+  position: absolute;
+  bottom: 70%; /* Position above the button */
+  left: 110%;
+  transform: translateX(-50%);
+  background-color: white;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.MC-dropdown-content button {
+  width: 60%;
+  padding: 8px 20px;
+  text-align: left;
+  border-radius: 90%;
+  cursor: pointer;
+  color: black;
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.MC-dropdown.open .MC-dropdown-content {
+  display: block;
+}
+
+.MC-dropdown-content button:hover {
+  color: #046d27;
+}
+
+.MC-main-content {
+  padding: 20px;
+  overflow-y: auto;
+  height: calc(100vh - 60px); /* Adjust height to account for header */
+  margin-left: 250px; /* Aligning with sidebar width */
+}
   
   .MC-sidebar-section {
     width: 250px;
@@ -12,115 +63,217 @@
     border-right: 1px solid #ddd;
     overflow-y: auto;
   }
-  
-  .MC-main-content {
-    flex: 1;
-    padding: 20px;
-    overflow-y: auto;
-    background-color: #f1f1f1;
-  }
-  
-  .MC-main-content h2 {
+  .MC-header-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 20px;
-    font-size: 24px;
-    font-weight: bold;
-    color: #333;
   }
   
-  /* Committees Button in Manage Members */
-  .MM-committee-btn {
-    background-color: #007bff;
+  .MC-add-committee-btn {
+    background-color: #27ae60;
     color: white;
+    padding: 10px 20px;
     border: none;
-    padding: 12px 20px;
     border-radius: 5px;
     cursor: pointer;
     font-size: 16px;
     transition: background-color 0.3s;
-    margin-top: 10px;
-    display: inline-block;
   }
   
-  .MM-committee-btn:hover {
-    background-color: #0056b3;
+  .MC-add-committee-btn:hover {
+    background-color: #2ecc71;
   }
   
-  /* General Table Styling for Committees */
+  /* Table Styling */
   .MC-table-wrapper {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
     margin-top: 20px;
-    overflow-x: auto;
   }
   
   .MC-table {
     width: 100%;
     border-collapse: collapse;
-    background-color: white;
-    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .MC-table thead {
+    background-color: #00240e;
+    color: white;
+    font-weight: bold;
   }
   
   .MC-table th,
   .MC-table td {
     padding: 12px;
-    text-align: left;
     border-bottom: 1px solid #ddd;
+    text-align: left;
   }
   
-  .MC-table th {
-    background-color: #f4f4f4;
-    position: sticky;
+  .MC-table tbody tr:hover {
+    background-color: #ecf0f1;
+  }
+  
+  /* Modal Styling */
+  .MC-modal-overlay {
+    position: fixed;
     top: 0;
-    z-index: 2;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
   }
   
-  .MC-table tr:hover {
-    background-color: #f1f1f1;
+  .MC-modal-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90%;
+    text-align: center;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
   }
   
-  .MC-action-btn {
-    background-color: #28a745;
+  /* Input Fields */
+  .MC-modal-content input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+  }
+  
+  /* Button Styles */
+  .MC-modal-content button {
+    margin-top: 15px;
+    padding: 10px 20px;
+    background-color: #2980b9;
     color: white;
     border: none;
-    padding: 8px 15px;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 14px;
     transition: background-color 0.3s;
+    width: 100%;
   }
   
-  .MC-action-btn:hover {
-    background-color: #218838;
+  .MC-modal-content button:hover {
+    background-color: #3498db;
   }
   
-  /* Dropdown Styling (if used for Committees) */
+  /* Close Button */
+  .MC-modal-content .MC-cancel-btn {
+    background-color: #e74c3c;
+  }
+  
+  .MC-modal-content .MC-cancel-btn:hover {
+    background-color: #c0392b;
+  }
+  
+  /* List in Modal */
+  .MC-modal-content ul {
+    list-style: none;
+    padding: 0;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  
+  .MC-modal-content ul li {
+    padding: 10px;
+    margin: 5px 0;
+    background-color: #ecf0f1;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .MC-modal-content ul li:hover {
+    background-color: #bdc3c7;
+  }
+  
+  /* Scrollbar Customization */
+  .MC-main-content::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .MC-main-content::-webkit-scrollbar-thumb {
+    background-color: #bdc3c7;
+    border-radius: 4px;
+  }
+  
+  .MC-main-content::-webkit-scrollbar-track {
+    background-color: #ecf0f1;
+  }
   .MC-dropdown {
     position: relative;
     display: inline-block;
+  }
+  
+  .MC-action-btn {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
   }
   
   .MC-dropdown-content {
     display: none;
     position: absolute;
     background-color: white;
-    box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1);
+    min-width: 100px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
     z-index: 1;
-    width: 150px;
-    border-radius: 5px;
-  }
-  
-  .MC-dropdown-content button {
-    width: 100%;
-    padding: 8px 10px;
-    border: none;
-    background: none;
-    cursor: pointer;
-    text-align: left;
-  }
-  
-  .MC-dropdown-content button:hover {
-    background-color: #f1f1f1;
   }
   
   .MC-dropdown:hover .MC-dropdown-content {
     display: block;
   }
   
+  .MC-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .MC-modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 400px;
+    width: 100%;
+  }
+  
+  .MC-modal-content h3 {
+    margin-bottom: 16px;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .MC-dashboard {
+      flex-direction: column;
+    }
+  
+    .MC-sidebar-section {
+      width: 100%;
+      padding: 10px;
+    }
+  
+    .MC-main-content {
+      padding: 15px;
+    }
+  }
