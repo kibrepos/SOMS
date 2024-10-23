@@ -7,6 +7,7 @@ import OrganizationDashboard from './pages/Students/OrganizationDashboard';
 import OrganizationSettings from './pages/Students/OrganizationSettings';
 import ManageMembers from './pages/Students/ManageMembers';
 import ManageCommittees from './pages/Students/ManageCommittees';
+import TaskManagement from './pages/Students/TaskManagement';
 import StudentProfile from './pages/Students/StudentProfile';
 import FacultyDashboard from './pages/Faculty/FacultyDashboard';
 import AdminDashboard from './pages/Admins/AdminDashboard';
@@ -47,6 +48,7 @@ const App: React.FC = () => {
           <Route path="/Organization/:organizationName/settings" element={<OrganizationSettings />} />
           <Route path="/Organization/:organizationName/manage-members" element={<ManageMembers />} />
           <Route path="/Organization/:organizationName/manage-committees" element={<ManageCommittees />} />
+          <Route path="/Organization/:organizationName/Alltasks" element={<TaskManagement />} />
 
          
           </Route>
