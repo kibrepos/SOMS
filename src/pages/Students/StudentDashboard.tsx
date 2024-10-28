@@ -1,20 +1,33 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { auth, firestore } from '../../services/firebaseConfig';
 import '../../styles/StudentDashboard.css';
 import Header from '../../components/Header';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUserCircle, faBuilding } from '@fortawesome/free-solid-svg-icons';
 
+interface Member {
+  id: string;
+}
+
+interface Officer {
+  role: string;
+  id: string;
+}
+
+interface President {
+  id: string;
+}
+
 interface Organization {
   name: string;
   description: string;
   head: string;
-  members: string[];
-  officers: { role: string; id:string }[];
-  president: string;
+  members: Member[];
+  officers: Officer[];
+  president: President;
   department: string;
   status: string;
   coverImagePath?: string;
@@ -38,53 +51,29 @@ const StudentDashboard: React.FC = () => {
           if (studentDoc.exists()) {
             const student = studentDoc.data();
             setStudentData(student);
+            console.log("Student Data:", student);
 
             const organizationsRef = collection(firestore, 'organizations');
-
-            const memberQuery = query(
-              organizationsRef,
-              where('members', 'array-contains', { id: user.uid })
-            );
-
-            const presidentQuery = query(
-              organizationsRef,
-              where('president.id', '==', user.uid)
-            );
-
-            const [memberSnapshot, presidentSnapshot] = await Promise.all([
-              getDocs(memberQuery),
-              getDocs(presidentQuery),
-            ]);
+            const organizationsDocs = await getDocs(organizationsRef);
 
             const orgList: Organization[] = [];
 
-            memberSnapshot.forEach((doc) => {
-              const orgData = doc.data() as Organization;
-              if (!orgList.some((org) => org.name === orgData.name)) {
-                orgList.push(orgData);
-              }
-            });
-
-            presidentSnapshot.forEach((doc) => {
-              const orgData = doc.data() as Organization;
-              if (!orgList.some((org) => org.name === orgData.name)) {
-                orgList.push(orgData);
-              }
-            });
-
-            const organizationsDocs = await getDocs(collection(firestore, 'organizations'));
-
             organizationsDocs.forEach((orgDoc) => {
               const orgData = orgDoc.data() as Organization;
+              console.log("Organization Data:", orgData);
 
-              const isOfficer = orgData.officers?.some(
-                (officer) => officer.id === user.uid
-              );
+              const isMember = orgData.members?.some(member => member.id === user.uid);
+              const isPresident = orgData.president.id === user.uid;
+              const isOfficer = orgData.officers?.some(officer => officer.id === user.uid);
 
-              if (isOfficer && !orgList.some((org) => org.name === orgData.name)) {
+              console.log(`Checking org: ${orgData.name} - Member: ${isMember}, President: ${isPresident}, Officer: ${isOfficer}`);
+
+              if (isMember || isPresident || isOfficer) {
                 orgList.push(orgData);
               }
             });
+
+            console.log("Filtered Organization List:", orgList);
 
             const sortedOrganizations = orgList.sort((a, b) => {
               if (a.status === 'archived' && b.status !== 'archived') return 1;
@@ -138,9 +127,7 @@ const StudentDashboard: React.FC = () => {
               {organizations.map((org) => (
                 <div
                   key={org.name}
-                  className={`organization-card ${
-                    org.status === 'archived' ? 'organization-card-archived' : ''
-                  }`}
+                  className={`organization-card ${org.status === 'archived' ? 'organization-card-archived' : ''}`}
                   onClick={() => handleOrganizationClick(org)}
                 >
                   <div className="organization-card-image">
