@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, addDoc, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, firestore, storage } from '../../services/firebaseConfig';
 import '../../styles/StudentProfile.css';
@@ -29,7 +29,64 @@ const StudentProfile: React.FC = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
 
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [submissionCount, setSubmissionCount] = useState(0); // Track the number of submissions
+  const [cooldown, setCooldown] = useState(false); // Track cooldown status
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false); // Track if the feedback is being submitted
+
+    
+
+   // Feedback submission handler
+   const handleFeedbackSubmit = async (): Promise<void> => {
+    if (feedbackText.trim().length > 128) {
+      setFeedbackError('Feedback must be no more than 128 characters long.');
+      return;
+    }
+  
+    if (cooldown) {
+      setFeedbackError('You have reached the limit. Please wait 5 minutes before submitting again.');
+      return;
+    }
+  
+    if (auth.currentUser && submissionCount < 3) {
+      setIsSubmitting(true); // Disable the button during submission
+      setFeedbackError(null); // Clear previous errors
+  
+      try {
+        await addDoc(collection(firestore, 'feedback'), {
+          userId: auth.currentUser.uid,
+          feedbackText: feedbackText.trim(),
+          timestamp: Timestamp.now(),
+        });
+  
+        setFeedbackSuccess('Thank you for your feedback!');
+        setFeedbackText('');
+        setSubmissionCount((prevCount) => prevCount + 1); // Increment submission count
+  
+        if (submissionCount + 1 >= 3) {
+          startCooldown(); // Start cooldown after 3 submissions
+        }
+      } catch (error) {
+        console.error('Error submitting feedback:', error);
+        setFeedbackError('Error submitting feedback. Please try again.');
+      } finally {
+        setIsSubmitting(false); // Re-enable the button after submission
+      }
+    }
+  };
+  
+  const startCooldown = (): void => {
+    setCooldown(true); // Activate cooldown
+    setTimeout(() => {
+      setSubmissionCount(0); // Reset submission count after 5 minutes
+      setCooldown(false); // Deactivate cooldown
+    }, 5 * 60 * 1000); // 5 minutes in milliseconds
+  };
+  
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -51,6 +108,7 @@ const StudentProfile: React.FC = () => {
               setProfilePicUrl(url);
               setPreviewProfilePicUrl(url);
             } catch (err) {
+              console.error('Error fetching profile picture:', err); // Log the error
               setProfilePicUrl('/default-profile.png');
               setPreviewProfilePicUrl('/default-profile.png');
             }
@@ -103,8 +161,9 @@ const StudentProfile: React.FC = () => {
   };
 
   const handleSaveChanges = async () => {
-    if (modalData) {
-      const studentDocRef = doc(firestore, 'students', auth.currentUser?.uid!);
+    const user = auth.currentUser; // Store the current user in a variable for clarity
+    if (modalData && user) {
+      const studentDocRef = doc(firestore, 'students', user.uid);
       try {
         await updateDoc(studentDocRef, {
           firstname: firstName,
@@ -113,24 +172,29 @@ const StudentProfile: React.FC = () => {
           year: modalData.year,
           studentNumber: modalData.studentNumber,
         });
-
+  
         if (newProfilePic) {
           await handleProfilePicUpload();
         }
-
+  
         setStudentData({
           ...modalData,
           firstname: firstName,
           lastname: lastName,
         });
+  
         setIsModalOpen(false);
         window.location.reload();
       } catch (err) {
         console.error('Error saving changes:', err);
         setError('Error saving changes.');
       }
+    } else {
+      console.error('User is not authenticated.');
+      setError('You must be logged in to save changes.');
     }
   };
+  
 
   const handlePasswordChange = async () => {
     let hasError = false;
@@ -203,7 +267,7 @@ const StudentProfile: React.FC = () => {
               <p>{studentData?.email}</p>
               <button onClick={() => setIsModalOpen(true)}>Edit Profile</button>
               <button onClick={() => setIsPasswordModalOpen(true)}>Change Password</button>
-              <button>Send Feedback</button>
+              <button onClick={() => setIsFeedbackModalOpen(true)}>Send Feedback</button>
             </div>
             <div className="locker">
               <Locker />
@@ -211,6 +275,28 @@ const StudentProfile: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Feedback Modal */}
+      {isFeedbackModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Send Feedback</h2>
+            <textarea
+              placeholder="Enter your feedback here..."
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              rows={5}
+            />
+            {feedbackError && <p className="error">{feedbackError}</p>}
+            {feedbackSuccess && <p className="success">{feedbackSuccess}</p>}
+            <button onClick={handleFeedbackSubmit} disabled={isSubmitting || cooldown}>
+            {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+            </button>
+
+            <button className="cancelB" onClick={() => setIsFeedbackModalOpen(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {/* Modal Component for Editing Profile */}
       {isModalOpen && (

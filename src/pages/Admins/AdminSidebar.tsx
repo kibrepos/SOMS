@@ -158,7 +158,7 @@ const AdminSidebar: React.FC = () => {
         </li>
         <li>
           <NavLink 
-            to="/feedback-support" 
+            to="/Admin/feedback-support" 
             className={({ isActive }) => (isActive ? 'active' : '')}
           >
             <FontAwesomeIcon icon={faStar} />
