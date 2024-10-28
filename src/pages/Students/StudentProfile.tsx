@@ -37,6 +37,7 @@ const StudentProfile: React.FC = () => {
   const [submissionCount, setSubmissionCount] = useState(0); // Track the number of submissions
   const [cooldown, setCooldown] = useState(false); // Track cooldown status
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false); // Track if the feedback is being submitted
+  const [cooldownWarning, setCooldownWarning] = useState<string | null>(null); // Track cooldown warning message
 
     
 
@@ -80,12 +81,16 @@ const StudentProfile: React.FC = () => {
   };
   
   const startCooldown = (): void => {
+    setCooldownWarning('You have reached the submission limit. Please wait 5 minutes before submitting again.'); // Show warning
     setCooldown(true); // Activate cooldown
+  
     setTimeout(() => {
       setSubmissionCount(0); // Reset submission count after 5 minutes
       setCooldown(false); // Deactivate cooldown
-    }, 5 * 60 * 1000); // 5 minutes in milliseconds
+      setCooldownWarning(null); // Clear warning after cooldown ends
+    }, 5 * 60 * 1000); // 5 minutes cooldown
   };
+  
   
 
   useEffect(() => {
@@ -289,6 +294,7 @@ const StudentProfile: React.FC = () => {
             />
             {feedbackError && <p className="error">{feedbackError}</p>}
             {feedbackSuccess && <p className="success">{feedbackSuccess}</p>}
+            {cooldownWarning && <p className="warning">{cooldownWarning}</p>} {/* Display warning message */}
             <button onClick={handleFeedbackSubmit} disabled={isSubmitting || cooldown}>
             {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
             </button>
