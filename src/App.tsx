@@ -25,6 +25,7 @@ import SignupFaculty from './components/SignupFaculty';
 import Messenger from './components/Messenger';
 import ChatApp from './components/chat/ChatApp';
 
+
 const App: React.FC = () => {
   return (
     <Router>
@@ -51,7 +52,7 @@ const App: React.FC = () => {
           <Route path="/Organization/:organizationName/manage-committees" element={<ManageCommittees />} />
           <Route path="/Organization/:organizationName/Alltasks" element={<TaskManagement />} />
 
-         
+      
           </Route>
 
 

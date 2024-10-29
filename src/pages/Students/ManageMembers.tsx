@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { doc, getDoc,updateDoc } from 'firebase/firestore';
-import { firestore } from '../../services/firebaseConfig';
+import { doc, getDoc,getDocs,updateDoc,collection,setDoc,arrayUnion  } from 'firebase/firestore';
+import { auth,firestore } from '../../services/firebaseConfig';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
+import { v4 as uuidv4 } from 'uuid';
 import Header from '../../components/Header'; 
 import StudentPresidentSidebar from './StudentPresidentSidebar'; 
 import '../../styles/ManageMembers.css'; 
@@ -59,6 +60,76 @@ const [isEditModalOpen, setIsEditModalOpen] = useState(false); // Manage edit mo
 const [officerToEdit, setOfficerToEdit] = useState<Officer | null>(null); // Holds selected officer
 const [newRole, setNewRole] = useState<string>(''); // Holds the new role for the officer
 const [roleError, setRoleError] = useState<string | null>(null);
+const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+const [allStudents, setAllStudents] = useState<Member[]>([]);
+const [searchQuery, setSearchQuery] = useState('');
+const [invitedStudents, setInvitedStudents] = useState<string[]>([]);
+const [availableStudents, setAvailableStudents] = useState<Member[]>([]);
+const openInviteModal = () => setIsInviteModalOpen(true);
+const closeInviteModal = () => setIsInviteModalOpen(false);
+useEffect(() => {
+  const fetchAvailableStudents = async () => {
+    try {
+      const studentsRef = collection(firestore, 'students');
+      const snapshot = await getDocs(studentsRef);
+
+      const allStudents = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: `${doc.data().firstname} ${doc.data().lastname}`,
+      })) as Member[];
+
+      const eligibleStudents = filterEligibleStudents(allStudents);
+      setAvailableStudents(eligibleStudents);
+    } catch (error) {
+      console.error('Error fetching students:', error);
+    }
+  };
+
+  fetchAvailableStudents();
+}, [organizationData]);
+
+useEffect(() => {
+  const fetchStudents = async () => {
+    const studentsSnapshot = await getDocs(collection(firestore, 'students'));
+    const studentsList: Member[] = studentsSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      name: `${doc.data().firstname} ${doc.data().lastname}`,
+    }));
+    
+    const filteredStudents = studentsList.filter(
+      (student) =>
+        !organizationData?.members.some((member) => member.id === student.id) &&
+        !invitedStudents.includes(student.id)
+    );
+
+    setAllStudents(filteredStudents);
+  };
+
+  fetchStudents();
+}, [organizationData, invitedStudents]);
+
+const filteredStudents = availableStudents.filter((student) =>
+  student.name.toLowerCase().includes(searchQuery.toLowerCase())
+);
+
+
+const filterEligibleStudents = (students: Member[]) => {
+  if (!organizationData) return [];
+
+  const { president, officers, members } = organizationData;
+
+  const excludedIds = new Set([
+    president.id,
+    ...officers.map((officer) => officer.id),
+    ...members.map((member) => member.id),
+  ]);
+
+  return students.filter((student) => !excludedIds.has(student.id));
+};
+
+
+
+
 const allRoles = [
   "Vice President",
   "Secretary",
@@ -81,6 +152,76 @@ const openEditModal = (officer: Officer) => {
   setNewRole(officer.role); // Set the current role as the initial value
   setIsEditModalOpen(true);
 };
+useEffect(() => {
+  const fetchInvitedStudents = async () => {
+    try {
+      const orgDocRef = doc(firestore, 'organizations', organizationName!);
+      const orgDoc = await getDoc(orgDocRef);
+
+      if (orgDoc.exists()) {
+        const data = orgDoc.data();
+        const invited = data.invitedStudents || [];
+        setInvitedStudents(invited);
+      }
+    } catch (error) {
+      console.error('Error fetching invited students:', error);
+    }
+  };
+
+  fetchInvitedStudents();
+}, [organizationName]);
+
+const inviteStudent = async (studentId: string) => {
+  try {
+    // Fetch inviter's information from Firestore
+    const inviterId = auth.currentUser?.uid;
+    const inviterDoc = await getDoc(doc(firestore, 'students', inviterId!));
+
+    let inviterName = 'Unknown';
+    let inviterProfilePic = '/default-profile.png';
+
+    if (inviterDoc.exists()) {
+      const inviterData = inviterDoc.data();
+      inviterName = `${inviterData.firstname} ${inviterData.lastname}`;
+      inviterProfilePic = inviterData.profilePicUrl || '/default-profile.png';
+    }
+
+    const notification = {
+      message: `You have been invited to join ${organizationName}.`,
+      timestamp: new Date(),
+      isRead: false,
+      inviterName,
+      inviterProfilePic,
+      organizationName: organizationName,
+      status: 'pending', // Indicates the invitation is waiting for a response
+      type: 'invite',
+    };
+
+    // Save the notification to the invited student's notifications sub-collection
+    const notificationRef = doc(
+      firestore,
+      `notifications/${studentId}/userNotifications`,
+      uuidv4() // Generate a unique ID for each notification
+    );
+
+    await setDoc(notificationRef, notification);
+
+    // Add student to invited students in the organization document
+    const orgDocRef = doc(firestore, 'organizations', organizationName!);
+    await updateDoc(orgDocRef, {
+      invitedStudents: arrayUnion(studentId),
+    });
+
+    setInvitedStudents((prev) => [...prev, studentId]);
+    alert(`${studentId} has been invited.`);
+  } catch (error) {
+    console.error('Error inviting student:', error);
+    alert('Failed to send the invite. Please try again.');
+  }
+};
+
+
+
 const handleRoleUpdate = async () => {
   if (!officerToEdit || !newRole) return;
 
@@ -268,23 +409,26 @@ const handleKick = async () => {
         const data = studentDoc.data();
         return {
           email: data.email || 'N/A',
+          name: `${data.firstname} ${data.lastname}` || 'Unknown', // Combine first and last names
           profilePicUrl: data.profilePicUrl || null,
         };
       }
-
+  
       const facultyDoc = await getDoc(doc(firestore, 'faculty', userId));
       if (facultyDoc.exists()) {
         const data = facultyDoc.data();
         return {
           email: data.email || 'N/A',
+          name: `${data.firstname} ${data.lastname}` || 'Unknown', // Combine first and last names for faculty
           profilePicUrl: data.profilePicUrl || null,
         };
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
     }
-    return { email: 'N/A', profilePicUrl: null };
+    return { email: 'N/A', name: 'Unknown', profilePicUrl: null };
   };
+  
 
   useEffect(() => {
     const fetchOrganization = async () => {
@@ -356,6 +500,27 @@ const handleKick = async () => {
   if (!organizationData) {
     return <div>No organization data found.</div>;
   }
+  const handleInvite = async (student: Member) => {
+    try {
+      const notificationRef = doc(
+        firestore,
+        'notifications',
+        `${student.id}_${organizationName}`
+      );
+  
+      await updateDoc(notificationRef, {
+        message: `You have been invited to join ${organizationName}`,
+        isRead: false,
+        timestamp: new Date(),
+      });
+  
+      setInvitedStudents((prev) => [...prev, student.id]);
+      alert(`${student.name} has been invited.`);
+    } catch (error) {
+      console.error('Error inviting student:', error);
+    }
+  };
+  
 
   return (
     <div className="MM-dashboard">
@@ -370,9 +535,51 @@ const handleKick = async () => {
             <button className="MM-committee-btn" onClick={goToManageCommittees}>
               Manage Committees
             </button>
-            <button onClick={() => alert('Di pa nagana niggu')}>Invite a member</button>
+            <button onClick={() => setIsInviteModalOpen(true)}>Invite a member</button>
+
           </div>
   
+          {isInviteModalOpen && (
+  <div className="MM-modal-overlay">
+    <div className="MM-modal-content">
+      <h3>Invite a Member</h3>
+
+      <input
+        type="text"
+        placeholder="Search for a student..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="MM-search-bar"
+      />
+
+      <ul className="student-list">
+        {filteredStudents.map((student) => (
+          <li key={student.id} className="student-item">
+            <span>{student.name}</span>
+            <button
+              onClick={() => inviteStudent(student.id)}
+              disabled={invitedStudents.includes(student.id)}
+              style={{
+                backgroundColor: invitedStudents.includes(student.id) ? 'gray' : '#4CAF50',
+                color: 'white',
+                cursor: invitedStudents.includes(student.id) ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {invitedStudents.includes(student.id) ? 'Invited' : 'Invite'}
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <button onClick={closeInviteModal}>Close</button>
+    </div>
+  </div>
+)}
+
+
+
+
+
           {/* Faculty Adviser Table */}
           <div className="MM-table-wrapper">
             <h3>Faculty Adviser</h3>
