@@ -104,6 +104,7 @@ const OrganizationSidebar: React.FC = () => {
           <FontAwesomeIcon icon={faChartLine} /> Dashboard Overview
         </NavLink>
 
+{/* PARA MA VIEW NG MEMBER, OFFICER, or PRESIDENT, need lang is i-type officer, member, or president*/}
         {['officer', 'president'].includes(userRole || '') && (
           <NavLink
             to={`/Organization/${organizationName}/manage-members`}
