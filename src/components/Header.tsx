@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth, storage, firestore } from '../services/firebaseConfig';
@@ -16,6 +16,7 @@ const Header: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const notificationRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,6 +38,18 @@ const Header: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false); // Close the notifications dropdown if clicked outside
+      }
+    };
+  
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
@@ -365,13 +378,12 @@ const Header: React.FC = () => {
 
 
         {showNotifications && (
-          <div className="notifications-dropdown">
+          <div className="notifications-dropdown" ref={notificationRef}>
             <ul className="notification-list">
   {notifications.length > 0 ? (
     notifications.map((notif) => (
       <li key={notif.id} className={`notification-item ${notif.isRead ? 'read' : 'unread'}`}>
         <div className="notification-content">
-          {/* Profile Picture */}
           <div className="profile-avatar">
             {notif.inviterProfilePic ? (
               <img
