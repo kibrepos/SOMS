@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
+import ProtectedOrgRoute from './components/ProtectedOrgRoute';
 import StudentDashboard from './pages/Students/StudentDashboard';
 import OrganizationDashboard from './pages/Students/OrganizationDashboard';
 import OrganizationSettings from './pages/Students/OrganizationSettings';
@@ -47,17 +48,35 @@ const App: React.FC = () => {
           <Route path="/Student/myprofile" element={<StudentProfile />} />
           <Route path="/messages" element={<Messenger />} />
           <Route path="/ChatApp" element={<ChatApp />} />
-          <Route path="/Organization/:organizationName/dashboard" element={<OrganizationDashboard />} />
+
+
+
+
+            {/* Shared Organization Routes */}
+            <Route element={<ProtectedOrgRoute />}>
+            <Route path="/Organization/:organizationName/dashboard" element={<OrganizationDashboard />} />
+          </Route>
+         {/* President Routes */}
+          <Route element={<ProtectedOrgRoute requiredRole="president" />}>
           <Route path="/Organization/:organizationName/settings" element={<OrganizationSettings />} />
           <Route path="/Organization/:organizationName/manage-members" element={<ManageMembers />} />
           <Route path="/Organization/:organizationName/manage-committees" element={<ManageCommittees />} />
           <Route path="/Organization/:organizationName/Alltasks" element={<TaskManagement />} />
           <Route path="/Organization/:organizationName/resources" element={<OrganizationResources />} />
-          <Route path="/Organization/:organizationName/resources" element={<OrganizationResources />} />
-
-      
           </Route>
 
+
+          {/* Officer Routes */}
+          <Route element={<ProtectedOrgRoute requiredRole="officer" />}>
+         
+          </Route>
+
+          {/* Member Routes */}
+          <Route element={<ProtectedOrgRoute requiredRole="member" />}>
+         
+          </Route>
+
+          </Route>
 
 
 
