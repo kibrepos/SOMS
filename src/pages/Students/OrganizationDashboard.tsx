@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { auth, firestore } from '../../services/firebaseConfig'; 
+import { auth, firestore } from '../../services/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 import Header from '../../components/Header';
-import StudentPresidentSidebar from './StudentPresidentSidebar'; 
-import StudentOfficerSidebar from './StudentOfficerSidebar'; 
-import StudentMemberSidebar from './StudentMemberSidebar'; 
-import '../../styles/OrganizationDashboard.css'; 
+import OrganizationSidebar from './OrganizationSidebar'; // Import the unified sidebar
+import '../../styles/OrganizationDashboard.css';
 
 const OrganizationDashboard: React.FC = () => {
   const { organizationName } = useParams<{ organizationName: string }>(); // Get organization name from URL
@@ -21,8 +19,7 @@ const OrganizationDashboard: React.FC = () => {
         const user = auth.currentUser;
 
         if (user) {
-        
-          const userDocRef = doc(firestore, 'students', user.uid); 
+          const userDocRef = doc(firestore, 'students', user.uid);
           const userDoc = await getDoc(userDocRef);
 
           if (userDoc.exists()) {
@@ -49,7 +46,7 @@ const OrganizationDashboard: React.FC = () => {
 
               // Automatically navigate to the dashboard of the organization
               if (organizationName) {
-                navigate(`/Organization/${organizationName}/dashboard`); // Adjust the role and path as needed
+                navigate(`/Organization/${organizationName}/dashboard`);
               }
             }
           }
@@ -72,22 +69,15 @@ const OrganizationDashboard: React.FC = () => {
     return <div>No organization data found.</div>;
   }
 
-  // Render the correct sidebar based on the user's role
-  let SidebarComponent = null;
-  if (userRole === 'president') {
-    SidebarComponent = <StudentPresidentSidebar />;
-  } else if (userRole === 'officer') {
-    SidebarComponent = <StudentOfficerSidebar />;
-  } else if (userRole === 'member') {
-    SidebarComponent = <StudentMemberSidebar />;
-  }
-
   return (
     <div className="organization-dashboard-wrapper">
       <Header />
 
       <div className="dashboard-container">
-        <div className="sidebar-section">{SidebarComponent}</div>
+        {/* Use the unified OrganizationSidebar component */}
+        <div className="sidebar-section">
+          <OrganizationSidebar userRole={userRole} organizationName={organizationName} />
+        </div>
 
         <div className="main-content">
           <div className="dashboard-content">

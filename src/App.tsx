@@ -24,6 +24,7 @@ import SignupStudent from './components/SignupStudent';
 import SignupFaculty from './components/SignupFaculty';
 import Messenger from './components/Messenger';
 import ChatApp from './components/chat/ChatApp';
+import OrganizationResources from './pages/Students/OrganizationResources';
 
 const App: React.FC = () => {
   return (
@@ -50,6 +51,8 @@ const App: React.FC = () => {
           <Route path="/Organization/:organizationName/manage-members" element={<ManageMembers />} />
           <Route path="/Organization/:organizationName/manage-committees" element={<ManageCommittees />} />
           <Route path="/Organization/:organizationName/Alltasks" element={<TaskManagement />} />
+          <Route path="/Organization/:organizationName/resources" element={<OrganizationResources />} />
+          <Route path="/Organization/:organizationName/resources" element={<OrganizationResources />} />
 
          
           </Route>
