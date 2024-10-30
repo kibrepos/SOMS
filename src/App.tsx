@@ -26,6 +26,7 @@ import Messenger from './components/Messenger';
 import ChatApp from './components/chat/ChatApp';
 import OrganizationResources from './pages/Students/OrganizationResources';
 
+
 const App: React.FC = () => {
   return (
     <Router>
@@ -54,7 +55,7 @@ const App: React.FC = () => {
           <Route path="/Organization/:organizationName/resources" element={<OrganizationResources />} />
           <Route path="/Organization/:organizationName/resources" element={<OrganizationResources />} />
 
-         
+      
           </Route>
 
 
