@@ -173,27 +173,27 @@ useEffect(() => {
 
 const inviteStudent = async (studentId: string) => {
   try {
-    // Fetch inviter's information from Firestore
-    const inviterId = auth.currentUser?.uid;
-    const inviterDoc = await getDoc(doc(firestore, 'students', inviterId!));
+    // Fetch organization data from Firestore
+    const orgDocRef = doc(firestore, 'organizations', organizationName!);
+    const orgDoc = await getDoc(orgDocRef);
 
-    let inviterName = 'Unknown';
-    let inviterProfilePic = '/default-profile.png';
+    let inviterName = organizationName || 'Unknown Organization';
+    let inviterProfilePic = '/default-profile.png'; // Default profile picture
 
-    if (inviterDoc.exists()) {
-      const inviterData = inviterDoc.data();
-      inviterName = `${inviterData.firstname} ${inviterData.lastname}`;
-      inviterProfilePic = inviterData.profilePicUrl || '/default-profile.png';
+    if (orgDoc.exists()) {
+      const orgData = orgDoc.data();
+      inviterName = orgData.name || inviterName; // Use the organization name
+      inviterProfilePic = orgData.profileImagePath || inviterProfilePic; // Use the organization's profile image
     }
 
     const notification = {
       message: `You have been invited to join ${organizationName}.`,
       timestamp: new Date(),
       isRead: false,
-      inviterName,
-      inviterProfilePic,
+      inviterName, // Organization name as inviter
+      inviterProfilePic, // Organization profile pic as inviter's image
       organizationName: organizationName,
-      status: 'pending', // Indicates the invitation is waiting for a response
+      status: 'pending',
       type: 'invite',
     };
 
@@ -207,7 +207,6 @@ const inviteStudent = async (studentId: string) => {
     await setDoc(notificationRef, notification);
 
     // Add student to invited students in the organization document
-    const orgDocRef = doc(firestore, 'organizations', organizationName!);
     await updateDoc(orgDocRef, {
       invitedStudents: arrayUnion(studentId),
     });
@@ -219,7 +218,6 @@ const inviteStudent = async (studentId: string) => {
     alert('Failed to send the invite. Please try again.');
   }
 };
-
 
 
 const handleRoleUpdate = async () => {
@@ -373,8 +371,19 @@ const handleKick = async () => {
 
   try {
     const orgDocRef = doc(firestore, 'organizations', organizationName);
+    const orgDoc = await getDoc(orgDocRef);
 
+    let orgProfilePic = '/default-profile.png';
+    let orgDisplayName = organizationName;
 
+    // Fetch the organization's profile picture and name if available
+    if (orgDoc.exists()) {
+      const orgData = orgDoc.data();
+      orgProfilePic = orgData.profileImagePath || '/default-profile.png';
+      orgDisplayName = orgData.name || organizationName;
+    }
+
+    // Filter out the kicked member or officer
     const updatedMembers = organizationData.members.filter(
       (member) => member.id !== selectedUser.id
     );
@@ -388,17 +397,42 @@ const handleKick = async () => {
       officers: updatedOfficers,
     };
 
+    // Update the Firestore document with new members and officers
     await updateDoc(orgDocRef, updatedData);
 
-    // Update the local state and close the modal
+    // Create a notification for the kicked user
+    const message = `You have been kicked from ${orgDisplayName}.`;
+
+    const notifRef = doc(
+      firestore,
+      `notifications/${selectedUser.id}/userNotifications`,
+      uuidv4()
+    );
+
+    await setDoc(notifRef, {
+      message,
+      organizationName: orgDisplayName,
+      timestamp: new Date(),
+      isRead: false,
+      status: 'kicked',
+      type: 'general',
+      inviterProfilePic: orgProfilePic,
+      inviterName: orgDisplayName,
+    });
+
+    // Update local state and close the modal
     setOrganizationData(updatedData);
     alert(`${selectedUser.name} has been kicked successfully.`);
     closeKickModal();
+
+   
   } catch (error) {
-    console.error('Error kicking member:', error);
+    console.error('Error kicking user:', error);
     alert('Failed to kick the user. Please try again.');
   }
 };
+
+
   const toggleDropdown = (id: string) => {
     setOpenDropdown((prev) => (prev === id ? null : id));
   };
@@ -500,28 +534,7 @@ const handleKick = async () => {
   if (!organizationData) {
     return <div>No organization data found.</div>;
   }
-  const handleInvite = async (student: Member) => {
-    try {
-      const notificationRef = doc(
-        firestore,
-        'notifications',
-        `${student.id}_${organizationName}`
-      );
   
-      await updateDoc(notificationRef, {
-        message: `You have been invited to join ${organizationName}`,
-        isRead: false,
-        timestamp: new Date(),
-      });
-  
-      setInvitedStudents((prev) => [...prev, student.id]);
-      alert(`${student.name} has been invited.`);
-    } catch (error) {
-      console.error('Error inviting student:', error);
-    }
-  };
-  
-
   return (
     <div className="MM-dashboard">
       <Header />

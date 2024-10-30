@@ -7,7 +7,7 @@ import '../styles/Header.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBell, faEnvelope } from '@fortawesome/free-solid-svg-icons';
 import { v4 as uuidv4 } from 'uuid';
-import { collection, updateDoc, doc, onSnapshot,getDoc,setDoc,arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, updateDoc, doc, onSnapshot,getDoc,setDoc,writeBatch, arrayRemove } from 'firebase/firestore';
 
 
 const Header: React.FC = () => {
@@ -40,7 +40,6 @@ const Header: React.FC = () => {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        // Correctly reference the logged-in user's notifications
         const notificationsRef = collection(
           firestore,
           `notifications/${user.uid}/userNotifications`
@@ -51,10 +50,16 @@ const Header: React.FC = () => {
             id: doc.id,
             ...doc.data(),
             isRead: doc.data().isRead ?? false,
+            timestamp: doc.data().timestamp || new Date(), // Ensure timestamp exists
           }));
   
-          setNotifications(fetchedNotifications);
-          setUnreadCount(fetchedNotifications.filter((notif) => !notif.isRead).length);
+          // Sort notifications by timestamp (newest first)
+          const sortedNotifications = fetchedNotifications.sort(
+            (a, b) => (b.timestamp?.toMillis?.() || 0) - (a.timestamp?.toMillis?.() || 0)
+          );
+  
+          setNotifications(sortedNotifications);
+          setUnreadCount(sortedNotifications.filter((notif) => !notif.isRead).length);
         });
   
         return () => unsubscribeSnapshot(); // Cleanup listener on unmount
@@ -64,118 +69,193 @@ const Header: React.FC = () => {
     return () => unsubscribe();
   }, []);
   
+  
   const handleAcceptInvite = async (notif: any) => {
     try {
+      const userId = auth.currentUser?.uid;
+      if (!userId) return;
+  
       const orgDocRef = doc(firestore, 'organizations', notif.organizationName);
       const orgDoc = await getDoc(orgDocRef);
-
+  
       if (orgDoc.exists()) {
         const { members = [], invitedStudents = [], president, officers } = orgDoc.data();
-
-        const newMemberId = auth.currentUser?.uid;
-        const newMemberName = auth.currentUser?.displayName || 'Unknown';
-        const newMemberEmail = auth.currentUser?.email || 'unknown@example.com';
-        const newMemberProfilePicUrl = profilePicUrl || '/default-profile.png';
-
-        const updatedMembers = [...members, { id: newMemberId, name: newMemberName, email: newMemberEmail, profilePicUrl: newMemberProfilePicUrl }];
-
-        await updateDoc(orgDocRef, { 
+  
+        const studentDocRef = doc(firestore, 'students', userId);
+        const studentDoc = await getDoc(studentDocRef);
+        
+        let studentName = 'Unknown';
+        let studentProfilePicUrl = '/default-profile.png';
+        
+        if (studentDoc.exists()) {
+          const studentData = studentDoc.data();
+          studentName = `${studentData.firstname} ${studentData.lastname}`;
+          studentProfilePicUrl = studentData.profilePicUrl || '/default-profile.png';
+        }
+        
+        const newMember = {
+          id: userId,
+          name: studentName,
+          email: auth.currentUser?.email || 'unknown@example.com',
+          profilePicUrl: studentProfilePicUrl,
+        };
+        
+  
+        // Update members and remove from invitedStudents
+        const updatedMembers = [...members, newMember];
+        await updateDoc(orgDocRef, {
           members: updatedMembers,
-          invitedStudents: arrayRemove(newMemberId) // Remove from invitedStudents
+          invitedStudents: arrayRemove(userId),
         });
-
-        const notificationsToSend = [];
-
-        // Notify President
+  
+        // Create notification message
+        const message = ` has accepted the invite and joined ${notif.organizationName}.`;
+  
+        // Prepare notification for president
+        const notificationsToSend = [
+          {
+            message,
+  organizationName: notif.organizationName,
+  timestamp: new Date(),
+  isRead: false,
+  status: 'new_member',
+  type: 'general',
+  inviterProfilePic: studentProfilePicUrl,
+  inviterName: studentName,
+          },
+        ];
+  
+        // Send notifications to the president
         if (president) {
-          notificationsToSend.push({
-            email: newMemberEmail,
-            id: newMemberId,
-            name: newMemberName,
-            profilePicUrl: newMemberProfilePicUrl,
-            message: `${newMemberName} has joined ${notif.organizationName}.`,
-            organizationName: notif.organizationName,
-            timestamp: new Date(),
-            isRead: false,
-            status: 'new_member',
-            type: 'general',
-          });
-        }
-
-        // Notify Officers
-        for (const officer of officers) {
-          notificationsToSend.push({
-            email: newMemberEmail,
-            id: newMemberId,
-            name: newMemberName,
-            profilePicUrl: newMemberProfilePicUrl,
-            message: `${newMemberName} has joined ${notif.organizationName}.`,
-            organizationName: notif.organizationName,
-            timestamp: new Date(),
-            isRead: false,
-            status: 'new_member',
-            type: 'general',
-          });
-        }
-
-        // Send notifications
-        for (const notification of notificationsToSend) {
-          const notificationRef = doc(
+          const notifRef = doc(
             firestore,
-            `notifications/${president}/userNotifications`,
+            `notifications/${president.id}/userNotifications`,
             uuidv4()
           );
-
-          await setDoc(notificationRef, notification);
+          await setDoc(notifRef, { ...notificationsToSend[0], recipient: 'President' });
         }
-
-        const originalNotifDocRef = doc(firestore, 'notifications', notif.id);
-        const originalNotifDoc = await getDoc(originalNotifDocRef);
-        if (originalNotifDoc.exists()) {
-          await updateDoc(originalNotifDocRef, { status: 'accepted', isRead: true });
-        } else {
-          console.error('Original notification document does not exist:', notif.id);
+  
+        // Send notifications to each officer
+        for (const officer of officers) {
+          const notifRef = doc(
+            firestore,
+            `notifications/${officer.id}/userNotifications`,
+            uuidv4()
+          );
+          await setDoc(notifRef, { ...notificationsToSend[0], recipient: officer.role });
         }
-
-        
-        // Remove the buttons after accepting
+  
+        // Update original notification to 'accepted'
+        const notifRef = doc(
+          firestore,
+          `notifications/${userId}/userNotifications`,
+          notif.id
+        );
+        await updateDoc(notifRef, { status: 'accepted', isRead: true });
+  
+        // Update local state
         setNotifications((prev) =>
           prev.map((n) =>
             n.id === notif.id ? { ...n, status: 'accepted' } : n
           )
         );
+  
+        alert('You have successfully joined the organization.');
+        window.location.reload();
       }
     } catch (error) {
       console.error('Error accepting invite:', error);
     }
   };
-
+  
   const handleDeclineInvite = async (notif: any) => {
     try {
-      await updateDoc(doc(firestore, 'notifications', notif.id), { status: 'declined', isRead: true });
-
+      const userId = auth.currentUser?.uid;
+      if (!userId) return;
+  
       const orgDocRef = doc(firestore, 'organizations', notif.organizationName);
-      await updateDoc(orgDocRef, {
-        invitedStudents: arrayRemove(auth.currentUser?.uid) // Remove the user from invitedStudents
-      });
-
-      alert('You declined the invite.');
-
-      // Remove the buttons after declining
-      setNotifications((prev) => 
-        prev.map((n) => 
-          n.id === notif.id ? { ...n, status: 'declined' } : n
-        )
-      );
+      const orgDoc = await getDoc(orgDocRef);
+  
+      if (orgDoc.exists()) {
+        const { president, officers } = orgDoc.data();
+      
+        // Fetch student data to use in the notification
+        const studentDocRef = doc(firestore, 'students', userId);
+        const studentDoc = await getDoc(studentDocRef);
+      
+        let studentName = 'Unknown';
+        let studentProfilePicUrl = '/default-profile.png';
+      
+        if (studentDoc.exists()) {
+          const studentData = studentDoc.data();
+          studentName = `${studentData.firstname} ${studentData.lastname}`;
+          studentProfilePicUrl = studentData.profilePicUrl || '/default-profile.png';
+        }
+      
+        // Create notification message
+        const message = `has declined the invite to join ${notif.organizationName}.`;
+      
+        // Prepare notifications for president and officers
+        const notificationsToSend = [
+          {
+            message,
+            organizationName: notif.organizationName,
+            timestamp: new Date(),
+            isRead: false,
+            status: 'invite_declined',
+            type: 'general',
+            inviterProfilePic: studentProfilePicUrl,
+            inviterName: studentName,
+          },
+        ];
+      
+  
+        // Notify president
+        if (president) {
+          const notifRef = doc(
+            firestore,
+            `notifications/${president.id}/userNotifications`,
+            uuidv4()
+          );
+          await setDoc(notifRef, { ...notificationsToSend[0], recipient: 'President' });
+        }
+  
+        // Notify each officer
+        for (const officer of officers) {
+          const notifRef = doc(
+            firestore,
+            `notifications/${officer.id}/userNotifications`,
+            uuidv4()
+          );
+          await setDoc(notifRef, { ...notificationsToSend[0], recipient: officer.role });
+        }
+  
+        // Remove the user from the invitedStudents list
+        await updateDoc(orgDocRef, {
+          invitedStudents: arrayRemove(userId),
+        });
+  
+        // Update the original notification to 'declined'
+        const notifRef = doc(
+          firestore,
+          `notifications/${userId}/userNotifications`,
+          notif.id
+        );
+        await updateDoc(notifRef, { status: 'declined', isRead: true });
+  
+        // Update local state
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === notif.id ? { ...n, status: 'declined' } : n
+          )
+        );
+  
+        alert('You have declined the invite.');
+      }
     } catch (error) {
       console.error('Error declining invite:', error);
     }
   };
-  
-  
-  
-
-  
   
   
   const toggleDropdown = () => {
@@ -209,16 +289,23 @@ const Header: React.FC = () => {
 
   const markAllAsRead = async () => {
     try {
-      const updates = notifications.map((notif) =>
-        updateDoc(doc(firestore, 'notifications', notif.id), { isRead: true })
-      );
-      await Promise.all(updates);
+      const userId = auth.currentUser?.uid;
+      if (!userId) return;
+  
+      const batch = writeBatch(firestore); // Create a batch operation
+  
+      notifications.forEach((notif) => {
+        const notifRef = doc(firestore, `notifications/${userId}/userNotifications`, notif.id);
+        batch.update(notifRef, { isRead: true });
+      });
+  
+      await batch.commit(); // Commit the batch
   
       // Update local state to reflect that all notifications are read
       setNotifications((prev) =>
         prev.map((notif) => ({ ...notif, isRead: true }))
       );
-      setUnreadCount(0); // Reset unread count to 0
+      setUnreadCount(0); // Reset unread count
     } catch (error) {
       console.error('Error marking notifications as read:', error);
     }
@@ -227,10 +314,19 @@ const Header: React.FC = () => {
 
   const deleteAllNotifications = async () => {
     try {
-      const batchDeletes = notifications.map((notif) =>
-        updateDoc(doc(firestore, 'notifications', notif.id), { deleted: true })
-      );
-      await Promise.all(batchDeletes);
+      const userId = auth.currentUser?.uid;
+      if (!userId) return;
+  
+      const batch = writeBatch(firestore); // Create a batch operation
+  
+      notifications.forEach((notif) => {
+        const notifRef = doc(firestore, `notifications/${userId}/userNotifications`, notif.id);
+        batch.delete(notifRef);
+      });
+  
+      await batch.commit(); // Commit the batch
+  
+      // Clear notifications from local state
       setNotifications([]);
       setUnreadCount(0);
     } catch (error) {
@@ -258,53 +354,59 @@ const Header: React.FC = () => {
         </div>
       </div>
       <div className="header-right">
-        <div className="icon" onClick={toggleNotifications}>
-          <FontAwesomeIcon icon={faBell} />
-          {unreadCount > 0 && (
-            <span className="notification-badge">{unreadCount}</span>
-          )}
-        </div>
+      <div className="icon notification-icon" onClick={toggleNotifications}>
+  <FontAwesomeIcon icon={faBell} />
+  {unreadCount > 0 && (
+    <span className="notification-badge">
+      {unreadCount > 9 ? '9+' : unreadCount}
+    </span>
+  )}
+</div>
+
 
         {showNotifications && (
           <div className="notifications-dropdown">
-            <ul className="student-notification-list">
+            <ul className="notification-list">
   {notifications.length > 0 ? (
     notifications.map((notif) => (
-      <li
-        key={notif.id}
-        className={`notification-item ${notif.isRead ? 'read' : 'unread'}`}
-      >
-        <div className="notification-header">
-          <img
-            src={notif.inviterProfilePic || '/default-profile.png'}
-            alt="Profile"
-            className="notification-profile-pic"
-          />
-          <div className="notification-text">
-            <strong>{notif.inviterName}</strong>
-            <p>{notif.message}</p>
+      <li key={notif.id} className={`notification-item ${notif.isRead ? 'read' : 'unread'}`}>
+        <div className="notification-content">
+          {/* Profile Picture */}
+          <div className="profile-avatar">
+            {notif.inviterProfilePic ? (
+              <img
+                src={notif.inviterProfilePic}
+                alt="Profile"
+                className="notification-profile-pic"
+              />
+            ) : (
+              <div className="default-avatar">
+                {notif.inviterName ? notif.inviterName[0] : 'N'}
+              </div>
+            )}
           </div>
-        </div>
-        <div className="notification-actions">
+
+          {/* Notification Text */}
+          <div className="notification-text">
+            <p className="notification-title">
+              <strong>{notif.inviterName}</strong> {notif.message}
+            </p>
+            <span className="notification-timestamp">
+              {new Date(notif.timestamp?.toDate()).toLocaleTimeString()}
+            </span>
+          </div>
+
+          {/* Optional Actions */}
           {notif.type === 'invite' && notif.status === 'pending' && (
-            <>
-              <button
-                onClick={() => handleAcceptInvite(notif)}
-                className="notification-accept-btn"
-              >
+            <div className="notification-actions">
+              <button className="accept-btn" onClick={() => handleAcceptInvite(notif)}>
                 Accept
               </button>
-              <button
-                onClick={() => handleDeclineInvite(notif)}
-                className="notification-decline-btn"
-              >
-                Decline
+              <button className="deny-btn" onClick={() => handleDeclineInvite(notif)}>
+                Deny
               </button>
-            </>
+            </div>
           )}
-          <span className="notification-timestamp">
-            {new Date(notif.timestamp?.toDate()).toLocaleString()}
-          </span>
         </div>
       </li>
     ))
@@ -313,7 +415,9 @@ const Header: React.FC = () => {
   )}
 </ul>
 
+<div className="notification-button-container">
             {renderNotificationButton()}
+            </div>
           </div>
         )}
 
