@@ -159,3 +159,16 @@
     background-color: #5a6268;
   }
   
+  .faculty-pic, .president-pic {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  
+  .default-icon {
+    width: 40px; /* Adjust size as needed */
+    height: 40px;
+    margin-right: 8px; /* Space between icon and text */
+  }
+  

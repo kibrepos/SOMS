@@ -17,6 +17,7 @@ import ActivityLogs from './pages/Admins/AdminActivityLogs';
 import AdminManageStudent from './pages/Admins/AdminManageStudent';
 import ManageOrganizations from './pages/Admins/AdminManageOrganzations';
 import AdminCreateOrganization from './pages/Admins/AdminCreateOrganization';
+import AdminAnnouncements from './pages/Admins/AdminAnnouncements';
 import AdminViewOrganization from './pages/Admins/AdminViewOrganization';
 import AdminEditOrganization from './pages/Admins/AdminEditOrganization';
 import AdminFeedback from './pages/Admins/AdminFeedback';
@@ -89,6 +90,7 @@ const App: React.FC = () => {
           <Route path="/Admin/dashboard" element={<AdminDashboard />} />
           <Route path="/Admin/Activity-Logs" element={<ActivityLogs />} />
           <Route path="/Admin/Manage-Students" element={<AdminManageStudent />} />
+          <Route path="/Admin/Announcements" element={<AdminAnnouncements />} />
           <Route path="/Admin/Account-settings" element={<AdminSettings />} />
           <Route path="/Admin/ManageOrganizations" element={<ManageOrganizations />} />
           <Route path="/Admin/CreateOrganization" element={<AdminCreateOrganization />} />

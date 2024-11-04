@@ -5,13 +5,15 @@ import { collection, getDocs, updateDoc, deleteDoc, doc,Timestamp,addDoc,getDoc 
 import { useNavigate } from "react-router-dom";
 import '../../styles/AdminManageOrganizations.css';
 import AdminSidebar from './AdminSidebar';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
 
 interface Organization {
   id: string;
   name: string;
   description: string;
-  facultyAdviser: { id: string; name: string };
-  president: { id: string; name: string };
+  facultyAdviser: { id: string; name: string, profilePicUrl?: string };
+  president: { id: string; name: string, profilePicUrl?: string };
   status: string; 
 }
 
@@ -27,7 +29,9 @@ const AdminManageOrganizations: React.FC = () => {
   const [organizationToModify, setOrganizationToModify] = useState<Organization | null>(null);
   const [actionType, setActionType] = useState<string>(''); // 'delete', 'archive', 'unarchive'
   const navigate = useNavigate();
-
+  const truncate = (str: string, maxLength: number) => {
+    return str.length > maxLength ? str.slice(0, maxLength) + '...' : str;
+};
   const logActivity = async (activity: string) => {
     const admin = auth.currentUser;
     if (!admin) return;
@@ -172,12 +176,45 @@ const AdminManageOrganizations: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                {activeOrganizations.map((org) => (
+  {activeOrganizations.map((org) => (
     <tr key={org.id}>
-      <td>{org.name}</td>
-      <td>{org.description}</td>
-      <td>{org.facultyAdviser ? org.facultyAdviser.name : "Not Assigned"}</td>
-      <td>{org.president ? org.president.name : "Not Assigned"}</td>
+      <td>{truncate(org.name, 30)}</td> {/* Truncate name */}
+      <td>{truncate(org.description, 50)}</td> {/* Truncate description */}
+      <td>
+  {org.facultyAdviser.profilePicUrl ? (
+    <img 
+      src={org.facultyAdviser.profilePicUrl} 
+      alt={org.facultyAdviser.name} 
+      className="faculty-pic" 
+    />
+  ) : (
+    <FontAwesomeIcon icon={faUserCircle} className="default-icon" />
+  )}
+  {org.facultyAdviser.name || 'Not Assigned'}
+</td>
+
+<td>
+  {org.president ? (
+    <>
+      {org.president.profilePicUrl ? (
+        <img 
+          src={org.president.profilePicUrl} 
+          alt={org.president.name} 
+          className="president-pic" 
+        />
+      ) : (
+        <FontAwesomeIcon icon={faUserCircle} className="default-icon" />
+      )}
+      {org.president.name}
+    </>
+  ) : (
+    <>
+      <FontAwesomeIcon icon={faUserCircle} className="default-icon" />
+      Not Assigned
+    </>
+  )}
+</td>
+
       <td>
         <button onClick={() => handleViewOrganization(org.name)} className="MO-view-btn">View</button>
         <button onClick={() => confirmAction(org, 'archive')} className="MO-archive-btn">Archive</button>
@@ -201,19 +238,59 @@ const AdminManageOrganizations: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-  {archivedOrganizations.map((org) => (
-    <tr key={org.id}>
-      <td>{org.name}</td>
-      <td>{org.description}</td>
-      <td>{org.facultyAdviser ? org.facultyAdviser.name : "Not Assigned"}</td>
-      <td>{org.president ? org.president.name : "Not Assigned"}</td>
-      <td>
-        <button onClick={() => handleViewOrganization(org.name)} className="MO-view-btn">View</button>
-        <button onClick={() => confirmAction(org, 'unarchive')} className="MO-unarchive-btn">Unarchive</button>
-        <button onClick={() => confirmAction(org, 'delete')} className="MO-delete-btn">Delete</button>
-      </td>
-    </tr>
-  ))}
+                {archivedOrganizations.map((org) => (
+  <tr key={org.id}>
+   <td>{truncate(org.name, 30)}</td> {/* Truncate name */}
+   <td>{truncate(org.description, 30)}</td> {/* Truncate description */}
+    <td>
+      {org.facultyAdviser ? (
+        <>
+          {org.facultyAdviser.profilePicUrl ? (
+            <img 
+              src={org.facultyAdviser.profilePicUrl} 
+              alt={org.facultyAdviser.name} 
+              className="faculty-pic" 
+              onError={() => console.error(`Failed to load image: ${org.facultyAdviser.profilePicUrl}`)} // Log error
+            />
+          ) : (
+            <FontAwesomeIcon icon={faUserCircle} className="default-icon" />
+          )}
+          {org.facultyAdviser.name}
+        </>
+      ) : (
+        "Not Assigned"
+      )}
+    </td>
+    <td>
+      {org.president ? (
+        <>
+          {org.president.profilePicUrl ? (
+            <img 
+              src={org.president.profilePicUrl} 
+              alt={org.president.name} 
+              className="president-pic" 
+              onError={() => console.error(`Failed to load image: ${org.president.profilePicUrl}`)} // Log error
+            />
+          ) : (
+            <FontAwesomeIcon icon={faUserCircle} className="default-icon" />
+          )}
+          {org.president.name}
+        </>
+      ) : (
+        <>
+          <FontAwesomeIcon icon={faUserCircle} className="default-icon" />
+          Not Assigned
+        </>
+      )}
+    </td>
+    <td>
+      <button onClick={() => handleViewOrganization(org.name)} className="MO-view-btn">View</button>
+      <button onClick={() => confirmAction(org, 'unarchive')} className="MO-unarchive-btn">Unarchive</button>
+      <button onClick={() => confirmAction(org, 'delete')} className="MO-delete-btn">Delete</button>
+    </td>
+  </tr>
+))}
+
 </tbody>
               </table>
             </>
