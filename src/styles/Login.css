@@ -44,16 +44,7 @@ html,body {
     position: relative;
 }
 
-.pulse::after {
-    content: ' ';
-    position: absolute;
-    width: 10px;
-    height: 2px;
-    background-color: white;
-    bottom: -2px;
-    right: -15px;
-    transform: rotate(-45deg);
-}
+
 
 /* Login Section */
 .login-section {
