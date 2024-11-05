@@ -1,0 +1,81 @@
+
+  /* Dashboard Content */
+  .OAC-activity-logs-content {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-left: 250px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    max-height: 640px; /* Set a maximum height for the logs container */
+    display: flex;
+    flex-direction: column; /* Arrange children in a column */
+  }
+  
+  .OAC-logs-list {
+    list-style-type: none; /* Remove default list styling */
+    padding: 0; /* Remove padding */
+    margin: 0; /* Remove margin */
+    flex-grow: 1; /* Allow the logs list to grow */
+    overflow-y: auto; /* Enable scrolling for the logs list */
+  }
+  
+  .OAC-log-item {
+    border: 1px solid #ccc; /* Border around each log item */
+    border-radius: 5px; /* Rounded corners */
+    padding: 10px; /* Padding inside each log item */
+    margin-bottom: 10px; /* Space between log items */
+    background-color: #f9f9f9; /* Light background color */
+    display: flex; /* Use flexbox for layout */
+    flex-direction: column; /* Arrange items in a column */
+    justify-content: space-between; /* Space out child items */
+    height: 100px; /* Set a fixed height */
+  }
+  
+  .OAC-log-user-name {
+    align-self: flex-start; /* Align user name to the right */
+    font-weight: bold; /* Bold text */
+  }
+  
+  .OAC-log-timestamp {
+    align-self: flex-start; /* Align timestamp to the right */
+    font-size: 0.9em; /* Slightly smaller font */
+    color: #888; /* Gray color for the timestamp */
+  }
+  
+  .OAC-log-message {
+    text-align:right; /* Center the message */
+    margin: 10px 0; /* Margin to separate it from the user name and timestamp */
+    font-size: 1em; /* Font size for the message */
+    color: #333; /* Darker text color for better readability */
+    flex-grow: 1; /* Allow the message area to grow */
+  }
+  .OAC-load-more-button {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 20px;
+  }
+  .OAC-logs-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Set height to fill the available space */
+    overflow: auto; /* Allow scrolling if needed */
+  }
+  
+  .OAC-load-more-button:hover {
+    background-color: #0056b3; /* Darken button on hover */
+  }
+  
+  
+  .OAC-load-more-button[disabled] {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+  .OAC-load-more-wrapper {
+    padding: 10px; /* Add some padding */
+    text-align: center; /* Center the button */
+    background: #f0f0f0; /* Optional: add a background to the button area */
+  }

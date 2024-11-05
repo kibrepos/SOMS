@@ -101,10 +101,10 @@ const AdminAnnouncements: React.FC = () => {
   };
 
   return (
-    <div className="admin-dashboard">
-      <div className="admin-dashboard-main">
+    <div className="admin-Announcent">
+      <div className="admin-Announcent-main">
         <AdminSidebar />
-        <div className="admin-dashboard-content">
+        <div className="admin-Announcent-content">
           <h2>Manage Announcements</h2>
           <button onClick={() => setIsModalOpen(true)}>Create Announcement</button>
   
@@ -144,14 +144,27 @@ const AdminAnnouncements: React.FC = () => {
             </div>
           )}
   
-          <h2>All Announcements</h2>
-          <ul>
+  <h2 className="admin-announcements-title">All Announcements</h2>
+          <ul className="admin-announcements-list">
             {announcements.map(announcement => (
-              <li key={announcement.id}>
-                <strong>{announcement.subject}</strong>: {announcement.text}
-                {announcement.imageUrl && <img src={announcement.imageUrl} alt="Announcement" />}
-                <p>Sent by: {announcement.inviterName}</p>
-                <button onClick={() => handleDelete(announcement.id)}>Delete</button>
+              <li key={announcement.id} className="admin-announcement-item">
+                <p className="admin-announcement-subject">{announcement.subject}</p>
+                <p className="admin-announcement-date">
+                  {new Date(announcement.timestamp.seconds * 1000).toLocaleDateString('en-US', {
+                    weekday: 'long', 
+                    month: 'long', 
+                    day: 'numeric', 
+                    year: 'numeric'
+                  })}
+                </p>
+                <p className="admin-announcement-text">{announcement.text}</p>
+                {announcement.imageUrl && (
+                  <p className="admin-announcement-file">File: {announcement.imageUrl.split('/').pop()}</p>
+                )}
+                <div className="admin-announcement-actions">
+                  <button className="admin-view-button">View</button>
+                  <button className="admin-delete-button" onClick={() => handleDelete(announcement.id)}>Delete</button>
+                </div>
               </li>
             ))}
           </ul>
@@ -159,7 +172,6 @@ const AdminAnnouncements: React.FC = () => {
       </div>
     </div>
   );
-  
 };
 
 export default AdminAnnouncements;

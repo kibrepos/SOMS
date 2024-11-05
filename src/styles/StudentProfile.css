@@ -174,7 +174,7 @@
 }
 
 .modal-content input {
-  width: 100%;
+  width: 95%;
   padding: 8px;
   margin-top: 4px;
   border: 1px solid #ddd;
@@ -331,4 +331,22 @@ hr {
   border-radius: 5px; /* Half of the height to make it an oval */
   width: 70%; /* Adjust width as needed */
   margin: 0 auto; /* Center the HR */
+}
+.modal-content textarea {
+  width: 95%; /* Full width of the modal */
+  height: 100px; /* Set a fixed height */
+  padding: 10px; /* Padding for inner spacing */
+  border: 1px solid #ccc; /* Light gray border */
+  border-radius: 4px; /* Rounded corners */
+  font-size: 16px; /* Font size for the text */
+  font-family: Arial, sans-serif; /* Font family */
+  resize: none; /* Disable resizing */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
+
+/* Focus state for textarea */
+.modal-content textarea:focus {
+  outline: none; /* Remove default outline */
+  border-color: #007BFF; /* Blue border on focus */
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* Blue shadow on focus */
 }

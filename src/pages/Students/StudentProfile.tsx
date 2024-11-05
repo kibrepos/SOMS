@@ -34,28 +34,35 @@ const StudentProfile: React.FC = () => {
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const [submissionCount, setSubmissionCount] = useState(0); // Track the number of submissions
   const [cooldown, setCooldown] = useState(false); // Track cooldown status
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false); // Track if the feedback is being submitted
   const [cooldownWarning, setCooldownWarning] = useState<string | null>(null); // Track cooldown warning message
 
+
     
 
-   // Feedback submission handler
-   const handleFeedbackSubmit = async (): Promise<void> => {
+  const handleFeedbackSubmit = async (): Promise<void> => {
+    if (feedbackText.trim().length === 0) {
+      setFeedbackError('You can\'t send a blank feedback.');
+      return;
+    }
     if (feedbackText.trim().length > 128) {
       setFeedbackError('Feedback must be no more than 128 characters long.');
       return;
     }
   
-    if (cooldown) {
-      setFeedbackError('You have reached the limit. Please wait 5 minutes before submitting again.');
+    const lastSubmissionTime = localStorage.getItem('lastSubmissionTime');
+    const now = new Date().getTime();
+  
+    // Check if 24 hours have passed since the last submission
+    if (lastSubmissionTime && (now - parseInt(lastSubmissionTime)) < 24 * 60 * 60 * 1000) {
+      setFeedbackError('You have reached the limit. Please wait 24 hours before submitting again.');
       return;
     }
   
-    if (auth.currentUser && submissionCount < 3) {
-      setIsSubmitting(true); // Disable the button during submission
-      setFeedbackError(null); // Clear previous errors
+    if (auth.currentUser) {
+      setIsSubmitting(true); 
+      setFeedbackError(null); 
   
       try {
         await addDoc(collection(firestore, 'feedback'), {
@@ -66,11 +73,10 @@ const StudentProfile: React.FC = () => {
   
         setFeedbackSuccess('Thank you for your feedback!');
         setFeedbackText('');
-        setSubmissionCount((prevCount) => prevCount + 1); // Increment submission count
   
-        if (submissionCount + 1 >= 3) {
-          startCooldown(); // Start cooldown after 3 submissions
-        }
+        // Update last submission time in local storage
+        localStorage.setItem('lastSubmissionTime', now.toString());
+  
       } catch (error) {
         console.error('Error submitting feedback:', error);
         setFeedbackError('Error submitting feedback. Please try again.');
@@ -80,16 +86,6 @@ const StudentProfile: React.FC = () => {
     }
   };
   
-  const startCooldown = (): void => {
-    setCooldownWarning('You have reached the submission limit. Please wait 5 minutes before submitting again.'); // Show warning
-    setCooldown(true); // Activate cooldown
-  
-    setTimeout(() => {
-      setSubmissionCount(0); // Reset submission count after 5 minutes
-      setCooldown(false); // Deactivate cooldown
-      setCooldownWarning(null); // Clear warning after cooldown ends
-    }, 5 * 60 * 1000); // 5 minutes cooldown
-  };
   
   
 

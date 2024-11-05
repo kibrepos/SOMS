@@ -3,7 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { auth, firestore } from '../../services/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 import Header from '../../components/Header';
-import OrganizationSidebar from './OrganizationSidebar'; // Import the unified sidebar
+import OrganizationSidebar from './OrganizationSidebar'; 
+import StudentPresidentSidebar from './StudentPresidentSidebar'; 
+import StudentOfficerSidebar from './StudentOfficerSidebar'; 
+import StudentMemberSidebar from './StudentMemberSidebar'; 
 import '../../styles/OrganizationDashboard.css';
 
 const OrganizationDashboard: React.FC = () => {
@@ -68,16 +71,21 @@ const OrganizationDashboard: React.FC = () => {
   if (!organizationData) {
     return <div>No organization data found.</div>;
   }
-
+  let SidebarComponent = null;
+  if (userRole === 'president') {
+    SidebarComponent = <StudentPresidentSidebar />;
+  } else if (userRole === 'officer') {
+    SidebarComponent = <StudentOfficerSidebar />;
+  } else if (userRole === 'member') {
+    SidebarComponent = <StudentMemberSidebar />;
+  }
   return (
     <div className="organization-dashboard-wrapper">
       <Header />
 
       <div className="dashboard-container">
-        {/* Use the unified OrganizationSidebar component */}
-        <div className="sidebar-section">
-          <OrganizationSidebar userRole={userRole} organizationName={organizationName} />
-        </div>
+        
+      <div className="sidebar-section">{SidebarComponent}</div>
 
         <div className="main-content">
           <div className="dashboard-content">

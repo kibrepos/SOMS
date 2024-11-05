@@ -32,7 +32,8 @@ const ActivityLogs: React.FC = () => {
   const [searchName, setSearchName] = useState("");
   const [searchDate, setSearchDate] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false); // Separate loading state for "Load More"
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [allLoaded, setAllLoaded] = useState(false);
 
   // Initial fetch of logs (limit to 10)
   useEffect(() => {
@@ -83,6 +84,11 @@ const ActivityLogs: React.FC = () => {
       const lastDoc = logsSnapshot.docs[logsSnapshot.docs.length - 1];
       setLogs((prevLogs) => [...prevLogs, ...newLogs]);
       setLastVisible(lastDoc);
+  
+      // Check if all logs are loaded
+      if (logsSnapshot.docs.length < 10) {
+        setAllLoaded(true);
+      }
     } catch (error) {
       console.error("Error fetching more logs: ", error);
     } finally {
@@ -195,11 +201,15 @@ const ActivityLogs: React.FC = () => {
         </div>
 
        
-        {lastVisible && (
-          <button onClick={fetchMoreLogs} disabled={loadingMore}>
-            {loadingMore ? "Loading..." : "Load More Logs"}
-          </button>
-        )}
+        {lastVisible ? (
+  <button onClick={fetchMoreLogs} disabled={loadingMore}>
+    {loadingMore ? "Loading..." : "Load More Logs"}
+  </button>
+) : (
+  <button disabled>
+    All logs loaded
+  </button>
+)}
       </div>
     </div>
   );

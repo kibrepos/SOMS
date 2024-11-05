@@ -6,6 +6,7 @@ import ProtectedOrgRoute from './components/ProtectedOrgRoute';
 import StudentDashboard from './pages/Students/StudentDashboard';
 import OrganizationDashboard from './pages/Students/OrganizationDashboard';
 import OrganizationSettings from './pages/Students/OrganizationSettings';
+import OrganizationActivityLogs from './pages/Students/OrganizationActivityLogs';
 import ManageMembers from './pages/Students/ManageMembers';
 import ManageCommittees from './pages/Students/ManageCommittees';
 import TaskManagement from './pages/Students/TaskManagement';
@@ -64,6 +65,7 @@ const App: React.FC = () => {
           <Route path="/Organization/:organizationName/manage-committees" element={<ManageCommittees />} />
           <Route path="/Organization/:organizationName/Alltasks" element={<TaskManagement />} />
           <Route path="/Organization/:organizationName/resources" element={<OrganizationResources />} />
+          <Route path="/Organization/:organizationName/activity-logs" element={<OrganizationActivityLogs />} />
           </Route>
 
 

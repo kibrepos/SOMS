@@ -21,7 +21,7 @@
 
 /* Table header */
 .MM-table th {
-  background-color: #f4f4f4;
+  background-color: #ffffff;
   padding: 10px;
   border-bottom: 2px solid #ddd;
   position: sticky;
@@ -104,10 +104,6 @@
  
 }
 
-
-
-
-
 .MM-modal-overlay {
   position: fixed;
   top: 0;
@@ -170,7 +166,8 @@
   padding: 10px 20px;
   border-radius: 5px;
   cursor: pointer;
-  font-size: 16px;
+  margin-right: 20px;
+  font-size: 13px;
   transition: background-color 0.3s;
   margin-top: 10px;
 }

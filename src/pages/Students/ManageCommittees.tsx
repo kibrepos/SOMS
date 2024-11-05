@@ -4,27 +4,59 @@ import { firestore } from '../../services/firebaseConfig';
 import Header from '../../components/Header';
 import StudentPresidentSidebar from './StudentPresidentSidebar';
 import '../../styles/ManageCommittees.css';
-
-interface Member {
-  id: string;
-  name: string;
-  email: string;
-  profilePicUrl?: string;
-}
-
-interface Officer {
-  id: string;
-  name: string;
-  email: string;
-  profilePicUrl?: string;
-  role: string;
-}
+import { useParams } from 'react-router-dom';
 
 interface Committee {
   id: string;
   name: string;
   head: Officer;
   members: Member[];
+}
+// Define the structure for a student or member
+interface Member {
+  email: string;
+  id: string;
+  name: string;
+  profilePicUrl: string | null; // It can be null
+}
+
+// Define the structure for an officer
+interface Officer {
+  email: string;
+  id: string;
+  name: string;
+  profilePicUrl: string | null; // It can be null
+  role: string;
+}
+
+// Define the structure for the faculty adviser
+interface FacultyAdviser {
+  email: string;
+  id: string;
+  name: string;
+  profilePicUrl: string | null; // It can be null
+}
+
+// Define the structure for the president
+interface President {
+  email: string;
+  id: string;
+  name: string;
+  profilePicUrl: string | null; // It can be null
+}
+
+// Define the structure for the organization
+interface Organization {
+  coverImagePath: string; // URL to the cover image
+  description: string;     // Description of the organization
+  facultyAdviser: FacultyAdviser; // Faculty adviser details
+  id: string;             // Unique identifier for the organization
+  name: string;           // Name of the organization
+  invitedStudents: string[]; // Array of invited student IDs
+  members: Member[];      // Array of members
+  officers: Officer[];    // Array of officers
+  president: President;   
+  committees: Committee[];
 }
 
 const ManageCommittees: React.FC = () => {
@@ -37,64 +69,94 @@ const ManageCommittees: React.FC = () => {
   const [selectedHead, setSelectedHead] = useState<Officer | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<Member[]>([]);
   const [newCommitteeName, setNewCommitteeName] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const { organizationName } = useParams<{ organizationName: string }>();
+  const [organizationData, setOrganizationData] = useState<Organization | null>(null);
+  const [loading, setLoading] = useState(true);
+  
 
-  // Toggle dropdown on click
   const toggleDropdown = (id: string) => {
     setOpenDropdownId((prev) => (prev === id ? null : id));
   };
-  
   useEffect(() => {
-    
     const fetchOrganizationData = async () => {
-      const orgDoc = await getDoc(doc(firestore, 'organizations', 'Bruno Mars'));
-
-      if (orgDoc.exists()) {
-        const data = orgDoc.data();
-
-        const officers = [
-          ...(data.president ? [data.president] : []),
-          ...(Array.isArray(data.officers) ? data.officers : []),
-        ];
-
-        setAvailableOfficers(officers);
-        const allMembers = [...(data.members || []), ...officers];
-        setAvailableMembers(allMembers);
-        setCommittees(data.committees || []);
+      if (!organizationName) return;
+    
+      try {
+        const orgDoc = await getDoc(doc(firestore, 'organizations', organizationName));
+        if (orgDoc.exists()) {
+          const data = orgDoc.data() as Organization;
+          setOrganizationData(data);
+    
+          // Fetch and set officers
+          const officers: Officer[] = data.officers.map(officer => ({
+            id: officer.id,
+            name: officer.name,
+            email: officer.email,
+            profilePicUrl: officer.profilePicUrl,
+            role: officer.role,
+          }));
+          setAvailableOfficers(officers);
+    
+          // Fetch and set members
+          const members: Member[] = data.members.map(member => ({
+            id: member.id,
+            name: member.name,
+            email: member.email,
+            profilePicUrl: member.profilePicUrl,
+          }));
+          setAvailableMembers(members);
+    
+          // Fetch and set committees
+          if (data.committees) {
+            setCommittees(data.committees.map((committee: any) => ({
+              id: committee.id,
+              name: committee.name,
+              head: committee.head,
+              members: committee.members,
+            })));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching organization data:', error);
+      } finally {
+        setLoading(false);
       }
     };
-
+    
+  
     fetchOrganizationData();
-  }, [selectedHead]);
-
+  }, [organizationName]);
+  
   const handleCreateCommittee = async () => {
     if (!newCommitteeName || !selectedHead || selectedMembers.length < 1) {
-      alert('Please provide all details and select at least one member.');
-      return;
+        alert('Please provide all details and select at least one member.');
+        return;
     }
 
     const newCommittee: Committee = {
-      id: Date.now().toString(),
-      name: newCommitteeName,
-      head: selectedHead,
-      members: selectedMembers,
+        id: Date.now().toString(),
+        name: newCommitteeName,
+        head: selectedHead,
+        members: selectedMembers,
     };
 
     try {
-      const orgDocRef = doc(firestore, 'organizations', 'Bruno Mars');
-      await updateDoc(orgDocRef, {
-        committees: arrayUnion(newCommittee),
-      });
+        const orgDocRef = doc(firestore, 'organizations', organizationName!);
+        await updateDoc(orgDocRef, {
+            committees: arrayUnion(newCommittee),
+        });
 
-      setCommittees((prev) => [...prev, newCommittee]);
-      closeCreateCommitteeModal();
-      alert('Committee created successfully!');
+        setCommittees((prev) => [...prev, newCommittee]); // Only if Firestore update is successful
+        closeCreateCommitteeModal();
+        alert('Committee created successfully!');
     } catch (error) {
-      console.error('Error creating committee:', error);
-      alert('Failed to create the committee. Please try again.');
+        console.error('Failed to create the committee:', error); // Log the error for debugging
+        alert('Failed to create the committee. Please try again.');
     }
-  };
+};
+
+  
 
   const toggleMemberSelection = (member: Member) => {
     setSelectedMembers((prev) =>
@@ -110,6 +172,7 @@ const ManageCommittees: React.FC = () => {
   const closeHeadModal = () => setIsHeadModalOpen(false);
   const openMemberModal = () => setIsMemberModalOpen(true);
   const closeMemberModal = () => setIsMemberModalOpen(false);
+  
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedCommittee, setSelectedCommittee] = useState<Committee | null>(null);
@@ -121,22 +184,23 @@ const ManageCommittees: React.FC = () => {
     setNewCommitteeName(committee.name); // Prepopulate name
     setIsEditModalOpen(true);
   };
+
   const handleEditCommittee = async () => {
     if (!selectedCommittee) return;
-  
+
     const updatedCommittee: Committee = {
       ...selectedCommittee,
       name: newCommitteeName,
       head: selectedHead!,
       members: selectedMembers,
     };
-  
+
     try {
-      const orgDocRef = doc(firestore, 'organizations', 'Bruno Mars');
+      const orgDocRef = doc(firestore, 'organizations', organizationName!);
       const updatedCommittees = committees.map((c) =>
         c.id === selectedCommittee.id ? updatedCommittee : c
       );
-  
+
       await updateDoc(orgDocRef, { committees: updatedCommittees });
       setCommittees(updatedCommittees);
       closeEditModal();
@@ -146,28 +210,26 @@ const ManageCommittees: React.FC = () => {
       alert('Failed to update the committee.');
     }
   };
-  
+
   const closeEditModal = () => {
     setIsEditModalOpen(false);
     setSelectedCommittee(null);
   };
-  
-  // Open the Delete Confirmation Modal
+
   const openDeleteModal = (committee: Committee) => {
     setSelectedCommittee(committee);
     setIsDeleteModalOpen(true);
   };
-  
-  // Handle Deletion of the Committee
+
   const handleDeleteCommittee = async () => {
     if (!selectedCommittee) return;
-  
+
     try {
-      const orgDocRef = doc(firestore, 'organizations', 'Bruno Mars');
+      const orgDocRef = doc(firestore, 'organizations', organizationName!);
       const updatedCommittees = committees.filter(
         (c) => c.id !== selectedCommittee.id
       );
-  
+
       await updateDoc(orgDocRef, { committees: updatedCommittees });
       setCommittees(updatedCommittees);
       closeDeleteModal();
@@ -177,11 +239,12 @@ const ManageCommittees: React.FC = () => {
       alert('Failed to delete the committee.');
     }
   };
-  
+
   const closeDeleteModal = () => {
     setIsDeleteModalOpen(false);
     setSelectedCommittee(null);
   };
+
   return (
     <div className="MC-dashboard">
       <Header />
@@ -192,7 +255,6 @@ const ManageCommittees: React.FC = () => {
         <div className="MC-main-content">
           <div className="MC-header-actions">
             <h2>Manage Committees</h2>
-            
             <button className="MC-add-committee-btn" onClick={openCreateCommitteeModal}>
               Create New Committee
             </button>
@@ -216,24 +278,20 @@ const ManageCommittees: React.FC = () => {
                     <td>{committee.head.name}</td>
                     <td>{committee.members.map((m) => m.name).join(', ')}</td>
                     <td>
-                     
-                    <td>
-  <div className="MC-dropdown">
-    <button
-      className="MC-action-btn"
-      onClick={() => toggleDropdown(committee.id)}
-    >
-      Action
-    </button>
-    {openDropdownId === committee.id && (
-      <div className="MC-dropdown-content">
-        <button onClick={() => openEditModal(committee)}>Edit</button>
-        <button onClick={() => openDeleteModal(committee)}>Delete</button>
-      </div>
-    )}
-  </div>
-</td>
-
+                      <div className="MC-dropdown">
+                        <button
+                          className="MC-action-btn"
+                          onClick={() => toggleDropdown(committee.id)}
+                        >
+                          Action
+                        </button>
+                        {openDropdownId === committee.id && (
+                          <div className="MC-dropdown-content">
+                            <button onClick={() => openEditModal(committee)}>Edit</button>
+                            <button onClick={() => openDeleteModal(committee)}>Delete</button>
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -241,6 +299,7 @@ const ManageCommittees: React.FC = () => {
             </table>
           </div>
 
+          {/* Create Committee Modal */}
           {isCreateCommitteeModalOpen && (
             <div className="MC-modal-overlay">
               <div className="MC-modal-content">
@@ -252,117 +311,88 @@ const ManageCommittees: React.FC = () => {
                   onChange={(e) => setNewCommitteeName(e.target.value)}
                 />
                 <div>
-                  <button onClick={openHeadModal}>
-                    {selectedHead ? `Head: ${selectedHead.name}` : 'Select Head (Officer)'}
-                  </button>
+                  <button onClick={openHeadModal}>Select Head</button>
+                  <p>Selected Head: {selectedHead ? selectedHead.name : 'None'}</p>
                 </div>
                 <div>
                   <button onClick={openMemberModal}>Select Members</button>
+                  <p>Selected Members: {selectedMembers.map((m) => m.name).join(', ')}</p>
                 </div>
-                <div>
-                  <button onClick={handleCreateCommittee}>Create</button>
-                  <button onClick={closeCreateCommitteeModal}>Cancel</button>
-                </div>
+                <button onClick={handleCreateCommittee}>Create Committee</button>
+                <button onClick={closeCreateCommitteeModal}>Close</button>
               </div>
             </div>
           )}
-{isEditModalOpen && selectedCommittee && (
-  <div className="MC-modal-overlay">
-    <div className="MC-modal-content">
-      <h3>Edit Committee</h3>
-      <input
-        type="text"
-        value={newCommitteeName}
-        onChange={(e) => setNewCommitteeName(e.target.value)}
-        placeholder="Committee Name"
-      />
-      <button onClick={openHeadModal}>
-        {selectedHead ? `Head: ${selectedHead.name}` : 'Select Head'}
-      </button>
-      <button onClick={openMemberModal}>Select Members</button>
-      <div>
-        <button onClick={handleEditCommittee}>Save</button>
-        <button onClick={closeEditModal}>Cancel</button>
-      </div>
-    </div>
-  </div>
-)}
 
-{isDeleteModalOpen && selectedCommittee && (
-  <div className="MC-modal-overlay">
-    <div className="MC-modal-content">
-      <h3>Are you sure you want to delete "{selectedCommittee.name}"?</h3>
-      <div>
-        <button onClick={handleDeleteCommittee}>Yes</button>
-        <button onClick={closeDeleteModal}>No</button>
-      </div>
-    </div>
-  </div>
-)}
+          {/* Select Head Modal */}
           {isHeadModalOpen && (
             <div className="MC-modal-overlay">
               <div className="MC-modal-content">
-                <h3>Select Head (Officer)</h3>
-                <input
-                  type="text"
-                  placeholder="Search Officers"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <ul>
-                  {availableOfficers
-                    .filter((officer) =>
-                      officer.name.toLowerCase().includes(searchTerm.toLowerCase())
-                    )
-                    .map((officer) => (
-                      <li
-                        key={officer.id}
-                        onClick={() => {
-                          setSelectedHead(officer);
-                          closeHeadModal();
-                        }}
-                      >
-                        {officer.name}
-                      </li>
-                    ))}
-                </ul>
+                <h3>Select Committee Head</h3>
+                <div className="MC-officer-list">
+                  {availableOfficers.map((officer) => (
+                    <div key={officer.id} onClick={() => setSelectedHead(officer)}>
+                      <img src={officer.profilePicUrl || 'default-pic.png'} alt={officer.name} />
+                      <p>{officer.name}</p>
+                    </div>
+                  ))}
+                </div>
                 <button onClick={closeHeadModal}>Close</button>
               </div>
             </div>
           )}
 
+          {/* Select Members Modal */}
           {isMemberModalOpen && (
             <div className="MC-modal-overlay">
               <div className="MC-modal-content">
-                <h3>Select Members</h3>
+                <h3>Select Committee Members</h3>
+                <div className="MC-member-list">
+                  {availableMembers.map((member) => (
+                    <div key={member.id} onClick={() => toggleMemberSelection(member)}>
+                      <img src={member.profilePicUrl || 'default-pic.png'} alt={member.name} />
+                      <p>{member.name}</p>
+                      {selectedMembers.some((m) => m.id === member.id) && <span>Selected</span>}
+                    </div>
+                  ))}
+                </div>
+                <button onClick={closeMemberModal}>Close</button>
+              </div>
+            </div>
+          )}
+
+          {/* Edit Committee Modal */}
+          {isEditModalOpen && (
+            <div className="MC-modal-overlay">
+              <div className="MC-modal-content">
+                <h3>Edit Committee</h3>
                 <input
                   type="text"
-                  placeholder="Search Members"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Committee Name"
+                  value={newCommitteeName}
+                  onChange={(e) => setNewCommitteeName(e.target.value)}
                 />
-                <ul>
-  {availableMembers
-    .filter(
-      (member) =>
-        !selectedHead || member.id !== selectedHead.id // Exclude selected head
-    )
-    .filter((member) =>
-      member.name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .map((member) => (
-      <li key={member.id}>
-        <input
-          type="checkbox"
-          checked={selectedMembers.some((m) => m.id === member.id)}
-          onChange={() => toggleMemberSelection(member)}
-        />
-        {member.name}
-      </li>
-    ))}
-</ul>
+                <div>
+                  <button onClick={openHeadModal}>Select Head</button>
+                  <p>Selected Head: {selectedHead ? selectedHead.name : 'None'}</p>
+                </div>
+                <div>
+                  <button onClick={openMemberModal}>Select Members</button>
+                  <p>Selected Members: {selectedMembers.map((m) => m.name).join(', ')}</p>
+                </div>
+                <button onClick={handleEditCommittee}>Update Committee</button>
+                <button onClick={closeEditModal}>Close</button>
+              </div>
+            </div>
+          )}
 
-                <button onClick={closeMemberModal}>Close</button>
+          {/* Delete Committee Modal */}
+          {isDeleteModalOpen && (
+            <div className="MC-modal-overlay">
+              <div className="MC-modal-content">
+                <h3>Are you sure you want to delete the committee "{selectedCommittee?.name}"?</h3>
+                <button onClick={handleDeleteCommittee}>Delete</button>
+                <button onClick={closeDeleteModal}>Cancel</button>
               </div>
             </div>
           )}

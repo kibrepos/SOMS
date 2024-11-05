@@ -93,7 +93,7 @@ const StudentPresidentSidebar: React.FC = () => {
         <NavLink to={`/president/reporting-analytics/${organizationName}`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
           <FontAwesomeIcon icon={faChartBar} /> Reporting & Analytics
         </NavLink>
-        <NavLink to={`/president/activity-logs/${organizationName}`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
+        <NavLink to={`/Organization/${organizationName}/activity-logs`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
           <FontAwesomeIcon icon={faClipboardList} /> Activity Logs
         </NavLink>
         <NavLink
