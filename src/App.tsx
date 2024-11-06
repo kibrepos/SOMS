@@ -28,6 +28,7 @@ import SignupFaculty from './components/SignupFaculty';
 import Messenger from './components/Messenger';
 import ChatApp from './components/chat/ChatApp';
 import OrganizationResources from './pages/Students/OrganizationResources';
+import OrganizationAnnouncement from './pages/Students/OrganizationAnnouncement';
 
 
 const App: React.FC = () => {
@@ -66,6 +67,8 @@ const App: React.FC = () => {
           <Route path="/Organization/:organizationName/Alltasks" element={<TaskManagement />} />
           <Route path="/Organization/:organizationName/resources" element={<OrganizationResources />} />
           <Route path="/Organization/:organizationName/activity-logs" element={<OrganizationActivityLogs />} />
+          <Route  path="/Organization/:organizationName/announcements" element={<OrganizationAnnouncement />} />
+
           </Route>
 
 
