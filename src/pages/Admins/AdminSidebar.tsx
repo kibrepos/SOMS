@@ -13,7 +13,7 @@ const AdminSidebar: React.FC = () => {
   const [adminEmail, setAdminEmail] = useState<string>(''); 
   const [profilePicUrl, setProfilePicUrl] = useState<string>('https://via.placeholder.com/150'); // Default profile picture
   const [collapsed, setCollapsed] = useState<boolean>(false); 
-
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const location = useLocation();
 
   const isManageOrganizationsActive = () => {
@@ -66,6 +66,24 @@ const AdminSidebar: React.FC = () => {
       console.log('User signed out');
     } catch (error) {
       console.error('Error signing out: ', error);
+    }
+  };
+  const openLogoutModal = () => {
+    setIsLogoutModalOpen(true);
+  };
+  
+  const closeLogoutModal = () => {
+    setIsLogoutModalOpen(false);
+  };
+  
+  const handleConfirmSignOut = async () => {
+    try {
+      await signOut(auth);
+      console.log('User signed out');
+    } catch (error) {
+      console.error('Error signing out: ', error);
+    } finally {
+      setIsLogoutModalOpen(false);
     }
   };
 
@@ -183,7 +201,25 @@ const AdminSidebar: React.FC = () => {
           <p>{adminEmail}</p>
         </div>
        
-        <FontAwesomeIcon icon={faSignOutAlt} className="sign-out-icon" onClick={handleSignOut} />
+        <FontAwesomeIcon 
+  icon={faSignOutAlt} 
+  className="sign-out-icon" 
+  onClick={openLogoutModal} 
+/>
+        {isLogoutModalOpen && (
+  <div className="modal-overlaysadmin">
+    <div className="modal-contentsadmin">
+      <h3>Confirm Logout</h3>
+      <p>Are you sure you want to log out?</p>
+      <button className="confirm-buttonzx" onClick={handleConfirmSignOut}>
+        Yes, Log Out
+      </button>
+      <button className="cancel-buttonzx" onClick={closeLogoutModal}>
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );

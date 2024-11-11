@@ -16,6 +16,7 @@ const Header: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -83,6 +84,24 @@ const Header: React.FC = () => {
   }, []);
   
   
+  const openLogoutModal = () => {
+    setIsLogoutModalOpen(true);
+  };
+  
+  const closeLogoutModal = () => {
+    setIsLogoutModalOpen(false);
+  };
+  
+  const handleConfirmSignOut = async () => {
+    try {
+      await signOut(auth);
+      console.log('User signed out');
+    } catch (error) {
+      console.error('Error signing out: ', error);
+    } finally {
+      setIsLogoutModalOpen(false);
+    }
+  };
   const handleAcceptInvite = async (notif: any) => {
     try {
       const userId = auth.currentUser?.uid;
@@ -445,11 +464,25 @@ const Header: React.FC = () => {
             alt="Profile"
             className="profile-icon"
           />
+           {isLogoutModalOpen && (
+  <div className="modal-overlaysadmin">
+    <div className="modal-contentsadmin">
+      <h3>Confirm Logout</h3>
+      <p>Are you sure you want to log out?</p>
+      <button className="confirm-buttonzx" onClick={handleConfirmSignOut}>
+        Yes, Log Out
+      </button>
+      <button className="cancel-buttonzx" onClick={closeLogoutModal}>
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
           {showDropdown && (
             <div className="header-dropdown" onMouseLeave={() => setShowDropdown(false)}>
               <ul>
                 <li onClick={handleProfileVisit}>Visit Profile</li>
-                <li onClick={handleLogout}>Logout</li>
+                <li onClick={openLogoutModal}>Logout</li>
               </ul>
             </div>
           )}
