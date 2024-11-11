@@ -171,4 +171,9 @@
     height: 40px;
     margin-right: 8px; /* Space between icon and text */
   }
+  .profile-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Space between image/icon and text */
+  }
   

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
-import { doc, getDoc, updateDoc, collection, addDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc,getDocs, updateDoc, collection, addDoc, Timestamp,writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, firestore, storage } from '../../services/firebaseConfig';
 import '../../styles/StudentProfile.css';
@@ -146,20 +146,82 @@ const StudentProfile: React.FC = () => {
 
   const handleProfilePicUpload = async () => {
     if (newProfilePic && auth.currentUser) {
-      const profilePicRef = ref(storage, `profilePics/${auth.currentUser.uid}/profile-picture.jpg`);
+      const studentId = auth.currentUser.uid;
+      const profilePicRef = ref(storage, `profilePics/${studentId}/profile-picture.jpg`);
+  
       try {
+        // Upload the new profile picture to Firebase Storage
         await uploadBytes(profilePicRef, newProfilePic);
-        const url = await getDownloadURL(profilePicRef);
-        setProfilePicUrl(url);
-        await updateDoc(doc(firestore, 'students', auth.currentUser.uid), {
-          profilePicUrl: url,
+  
+        // Get the new download URL
+        const newProfilePicUrl = await getDownloadURL(profilePicRef);
+  
+        // Update the student's profile picture URL in the 'students' collection
+        await updateDoc(doc(firestore, 'students', studentId), {
+          profilePicUrl: newProfilePicUrl,
         });
+  
+        // Update the profile picture in the 'organizations' collection
+        await updateProfilePicInOrganizations(studentId, newProfilePicUrl);
+  
+        // Update local state
+        setProfilePicUrl(newProfilePicUrl);
+        setPreviewProfilePicUrl(newProfilePicUrl);
+        alert('Profile picture updated successfully!');
       } catch (err) {
         console.error('Error uploading profile picture:', err);
         setError('Error uploading profile picture.');
       }
     }
   };
+  const updateProfilePicInOrganizations = async (studentId: string, newProfilePicUrl: string) => {
+    try {
+      // Fetch all organizations
+      const orgsSnapshot = await getDocs(collection(firestore, 'organizations'));
+      const batch = writeBatch(firestore);;
+  
+      orgsSnapshot.forEach((orgDoc) => {
+        const orgData = orgDoc.data();
+  
+        // Check and update profile picture for the president
+        if (orgData.president?.id === studentId) {
+          batch.update(doc(firestore, 'organizations', orgDoc.id), {
+            'president.profilePicUrl': newProfilePicUrl,
+          });
+        }
+  
+        // Check and update profile picture for officers
+        const updatedOfficers = orgData.officers?.map((officer: any) => {
+          if (officer.id === studentId) {
+            return { ...officer, profilePicUrl: newProfilePicUrl };
+          }
+          return officer;
+        });
+  
+        // Check and update profile picture for members
+        const updatedMembers = orgData.members?.map((member: any) => {
+          if (member.id === studentId) {
+            return { ...member, profilePicUrl: newProfilePicUrl };
+          }
+          return member;
+        });
+  
+        // Apply the updates to the Firestore document
+        batch.update(doc(firestore, 'organizations', orgDoc.id), {
+          officers: updatedOfficers,
+          members: updatedMembers,
+        });
+      });
+  
+      // Commit all updates in a single batch
+      await batch.commit();
+      console.log('Organizations updated with new profile picture');
+    } catch (error) {
+      console.error('Error updating profile picture in organizations:', error);
+    }
+  };
+  
+  
 
   const handleSaveChanges = async () => {
     const user = auth.currentUser; // Store the current user in a variable for clarity
