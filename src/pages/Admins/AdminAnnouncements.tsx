@@ -240,9 +240,7 @@ const handleDeleteConfirmation = (announcementId: string, imageUrl?: string) => 
         <div className="admin-dashasdboard-main">
           <AdminSidebar />
           <div className="admin-dashboard-content">
- 
-           
-    
+         
             {/* Announcement Creation Modal */}
             {isModalOpen && (
               <div className="ql-modal-overlay">
@@ -285,6 +283,8 @@ const handleDeleteConfirmation = (announcementId: string, imageUrl?: string) => 
     accept="image/*, video/*"
   />
 
+
+
   {/* Display the file name with a delete button if a file is selected */}
   {image && (
   <div className="ql-file-display">
@@ -317,6 +317,7 @@ const handleDeleteConfirmation = (announcementId: string, imageUrl?: string) => 
               </div>
             )}
     
+    
             {/* List of Announcements */}
          <h2 className="ql-announcements-title">All Announcements</h2>
          <div className="ql-create-button-container">
@@ -324,6 +325,8 @@ const handleDeleteConfirmation = (announcementId: string, imageUrl?: string) => 
     Create New Announcement
   </button>
 </div>
+
+
 <ul className="ql-announcements-list">
   {announcements.map((announcement) => (
     <li
@@ -355,8 +358,25 @@ const handleDeleteConfirmation = (announcementId: string, imageUrl?: string) => 
           ? `${announcement.text.substring(0, 140)}...`
           : announcement.text}
       </p>
+      
     </li>
+    
   ))}
+<div className="ql-load-more-container">
+  {lastVisible && !allLoaded ? (
+    <button
+      onClick={fetchMoreAnnouncements}
+      disabled={loadingMore}
+      className={`load-more-btn ${loadingMore ? 'loading' : ''}`}
+    >
+      {loadingMore ? "Loading..." : "Load More Announcements"}
+    </button>
+  ) : (
+    <button disabled className="load-more-btn disabled">
+      All Announcements Loaded
+    </button>
+  )}
+</div>
 </ul>
 
 
@@ -412,16 +432,8 @@ const handleDeleteConfirmation = (announcementId: string, imageUrl?: string) => 
       </button>
     </div>
   </div>
-)}<div className="ql-load-more-container">
-{lastVisible ? (
-  <button onClick={fetchMoreAnnouncements} disabled={loadingMore} className="load-more-btn">
-    {loadingMore ? "Loading..." : "Load More Announcements"}
-  </button>
-) : (
-  <button disabled>
-    All Announcements Loaded
-  </button>
-)}</div>
+)}
+
 
 
 
