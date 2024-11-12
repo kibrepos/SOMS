@@ -1,181 +1,329 @@
-
-.sidebar.collapsed + .admin-Announcent-content {
-  margin-left: 60px; 
-}
-.admin-Announcent {
-  display: flex;
-  height: 100vh; 
-}
-
-.admin-Announcent-main {
-  display: flex;
-  width: 100%;
-}
-
-.admin-Announcent-content {
-  flex-grow: 1; /* Ensure the content takes the remaining space */
-  margin-left: 300px; /* Same as the expanded sidebar width */
-  padding: 20px;
-  transition: margin-left 0.3s ease; /* Smooth transition when the sidebar collapses */
-}
-
-.admin-announcements-title {
-  font-size: 24px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 20px;
-}
-
 /* Announcements List */
-.admin-announcements-list {
-  list-style-type: none;
+.ql-announcements-list {
+  list-style: none;
   padding: 0;
   margin: 0;
 }
 
-.admin-announcement-item {
-  padding: 20px;
-  background-color: #f9f9f9;
-  border: 1px solid #ddd;
+.ql-announcement-item {
+  background-color: #e9eef2;
   border-radius: 8px;
-  margin-bottom: 15px;
-  position: relative;
-}
-
-.admin-announcement-subject {
-  font-size: 20px;
-  font-weight: bold;
-  color: #333;
-  margin: 0;
-}
-
-.admin-announcement-date {
-  font-size: 14px;
-  color: #888;
-  margin: 5px 0;
-}
-
-.admin-announcement-text {
-  font-size: 16px;
-  color: #555;
-  margin: 10px 0;
-}
-
-.admin-announcement-file {
-  font-size: 14px;
-  color: #777;
-  margin-top: 5px;
-  font-style: italic;
-}
-
-/* Buttons */
-.admin-announcement-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.admin-view-button,
-.admin-delete-button {
-  padding: 8px 12px;
-  font-size: 14px;
-  font-weight: bold;
-  cursor: pointer;
-  border: none;
-  border-radius: 4px;
-  transition: background-color 0.3s ease;
-}
-
-.admin-view-button {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.admin-view-button:hover {
-  background-color: #43a047;
-}
-
-.admin-delete-button {
-  background-color: #f44336;
-  color: white;
-}
-
-.admin-delete-button:hover {
-  background-color: #e53935;
-}
-
-/* Modal Styling */
-.aa-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-}
-
-.aa-modal-content {
-  background-color: #fff;
   padding: 20px;
-  width: 500px;
-  border-radius: 8px;
-  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
-  position: relative;
-}
-
-.aa-modal-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  font-size: 24px;
-  color: #333;
-  cursor: pointer;
-}
-
-.aa-modal h2 {
-  font-size: 24px;
-  font-weight: bold;
-  color: #333;
   margin-bottom: 15px;
-}
-
-/* Form Styling */
-.aa-modal form {
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   display: flex;
   flex-direction: column;
 }
 
-.aa-modal form input[type="text"],
-.aa-modal form textarea,
-.aa-modal form select,
-.aa-modal form input[type="file"] {
-  padding: 10px;
+.ql-announcement-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.ql-announcement-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* Align items to the left */
+  margin-bottom: 10px;
+  text-align: left; /* Ensure text inside is left-aligned */
+  width: 100%; /* Ensure it takes the full width of the container */
+}
+.ql-announcement-textsd {
+  font-size: 1rem;
+  color: #444;
+  margin-top: 10px;
+  text-align: left; /* Ensure text is aligned to the left */
+  overflow: hidden;
+  white-space: nowrap; /* Keep text on a single line */
+  width: 100%;
+  
+}
+
+
+.ql-announcement-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.ql-announcement-sender {
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: #555;
+  margin-bottom: 5px;
+}
+
+.ql-announcement-subject {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.ql-announcement-date {
+  font-size: 0.9rem;
+  color: #777;
   margin-bottom: 15px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+}
+
+
+
+/* Button Styles */
+.ql-create-button-container {
+  display: flex;
+  justify-content: flex-end; /* Aligns button to the right */
+  margin-bottom: 20px; /* Adds spacing below the button */
+}
+
+.ql-create-button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
   font-size: 16px;
 }
 
-.aa-modal form textarea {
+.ql-create-button:hover {
+  background-color: #388e3c;
+}
+
+/* Modal Styles */
+.ql-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 5000;
+}
+
+.ql-modal-content {
+  background-color: #fff;
+  padding: 30px;
+  border-radius: 10px;
+  width: 80%;
+  max-width: 700px;
+  height: 80vh; /* Set fixed height */
+  overflow-y: auto; /* Enable scrolling */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+.ql-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.ql-modal-sender {
+  font-size: 1rem;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+.ql-announcement-image img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin-top: 15px;
+}
+
+.ql-announcement-video video {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin-top: 15px;
+}
+.ql-announcement-date-modal{
+  color: #a8a6a6;
+}
+.ql-modal-sender{
+  color: #a8a6a6;
+}
+.ql-modal-content form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+/* Style for the file link */
+.ql-file-link {
+  color: #007bff;
+  text-decoration: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+  flex-grow: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ql-file-remove-button {
+  background-color: transparent;
+  border: none;
+  color: #ff4d4d;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 5px;
+  margin-left: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  transition: background-color 0.3s ease;
+}
+.ql-file-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 10px;
+  padding-right: 10px;
+}
+
+.ql-file-remove-button:hover {
+  color: #ff0000;
+}
+
+.ql-file-link:hover {
+  text-decoration: underline;
+}
+/* Input and Textarea Styling */
+.ql-modal-content input[type="text"],
+.ql-modal-content textarea,
+.ql-modal-content select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.ql-modal-content textarea {
+  min-height: 185px;
   resize: vertical;
 }
 
-.aa-modal form button {
-  padding: 10px;
-  font-size: 16px;
-  font-weight: bold;
+/* File Input */
+.ql-modal-content input[type="file"] {
+  margin-top: 10px;
+}
+
+/* Submit Button */
+/* Container for file input and button */
+.ql-file-button-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 10px;
+  gap: 5px;
+}
+
+/* Style for the file input to look like a button */
+.ql-file-input {
+  display: none;
+}
+.ql-file-input-label {
+  background-color: #4caf50;
   color: white;
-  background-color: #4CAF50;
   border: none;
-  border-radius: 4px;
+  border-radius: 5px;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  font-size: 0.8rem;
+  text-align: center;
+  display: inline-block;
+}
+.ql-file-name {
+  font-size: 0.9rem;
+  color: #333;
+  margin-top: 5px;
+  word-break: break-all;
+}
+.ql-file-input:hover {
+  background-color: #388e3c;
+}
+
+/* Remove the default file input styles */
+.ql-file-input::file-selector-button {
+  display: none;
+}
+
+.ql-modal-submit-button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 15px 25px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  align-self: flex-end;
+}
+
+.ql-modal-submit-button:hover {
+  background-color: #388e3c;
+}
+/* Wrapper for the button */
+.ql-load-more-container {
+  width: 100%;
+  background-color: #f5f5f5; /* Light grey background to separate the button */
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  z-index: 999;
+  border-top: 1px solid #ddd; /* Optional: border to distinguish the section */
+}
+.ql-delete-button {
+  background-color: #e74c3c;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  margin-top: 20px;
+  border-radius: 5px;
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
 
-.aa-modal form button:hover {
-  background-color: #43a047;
+.ql-delete-button:hover {
+  background-color: #c0392b;
+}
+/* Button styles */
+.ql-load-more-button, .ql-load-more-button-disabled {
+  width: 100%; /* Make the button almost full-width */
+  max-width: 400px; /* Limit the max width */
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.ql-load-more-button:hover {
+  background-color: #388e3c;
+}
+
+.ql-load-more-button-disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  color: #666;
 }
