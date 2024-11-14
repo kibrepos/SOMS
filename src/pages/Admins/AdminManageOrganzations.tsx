@@ -19,7 +19,6 @@ interface Organization {
 
 
 const AdminManageOrganizations: React.FC = () => {
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [activeOrganizations, setActiveOrganizations] = useState<Organization[]>([]);
   const [archivedOrganizations, setArchivedOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,6 +130,19 @@ const AdminManageOrganizations: React.FC = () => {
   useEffect(() => {
     fetchOrganizations();
   }, []);
+  const renderProfilePic = (profilePicUrl?: string) => (
+    profilePicUrl ? (
+      <img
+        src={`${profilePicUrl}?t=${new Date().getTime()}`} // Cache-busting technique
+        alt="Profile"
+        className="member-profile-pic"
+        onError={(e) => (e.currentTarget.style.display = 'none')}
+      />
+    ) : (
+      <FontAwesomeIcon icon={faUserCircle} className="default-profile-icon" />
+    )
+  );
+  
 
   return (
     <div className="admin-dashboard">
@@ -181,38 +193,43 @@ const AdminManageOrganizations: React.FC = () => {
       <td>{truncate(org.name, 30)}</td> {/* Truncate name */}
       <td>{truncate(org.description, 50)}</td> {/* Truncate description */}
       <td>
-  {org.facultyAdviser.profilePicUrl ? (
-    <img 
-      src={org.facultyAdviser.profilePicUrl} 
-      alt={org.facultyAdviser.name} 
-      className="faculty-pic" 
-    />
-  ) : (
-    <FontAwesomeIcon icon={faUserCircle} className="default-icon" />
-  )}
-  {org.facultyAdviser.name || 'Not Assigned'}
+  <div className="profile-cell">
+    {org.facultyAdviser?.profilePicUrl ? (
+      <img
+        src={`${org.facultyAdviser.profilePicUrl}?t=${new Date().getTime()}`}
+        alt={org.facultyAdviser.name}
+        className="faculty-pic"
+        onError={(e) => (e.currentTarget.style.display = 'none')}
+      />
+    ) : (
+      <FontAwesomeIcon icon={faUserCircle} className="default-icon" />
+    )}
+    <span>{org.facultyAdviser?.name || 'Not Assigned'}</span>
+  </div>
 </td>
 
 <td>
-  {org.president ? (
-    <>
-      {org.president.profilePicUrl ? (
-        <img 
-          src={org.president.profilePicUrl} 
-          alt={org.president.name} 
-          className="president-pic" 
-        />
-      ) : (
+  <div className="profile-cell">
+    {org.president ? (
+      <>
+        {org.president.profilePicUrl ? (
+          <img
+            src={org.president.profilePicUrl}
+            className="president-pic"
+            alt={org.president.name}
+          />
+        ) : (
+          <FontAwesomeIcon icon={faUserCircle} className="default-icon" />
+        )}
+        <span>{org.president.name}</span>
+      </>
+    ) : (
+      <>
         <FontAwesomeIcon icon={faUserCircle} className="default-icon" />
-      )}
-      {org.president.name}
-    </>
-  ) : (
-    <>
-      <FontAwesomeIcon icon={faUserCircle} className="default-icon" />
-      Not Assigned
-    </>
-  )}
+        <span>Not Assigned</span>
+      </>
+    )}
+  </div>
 </td>
 
       <td>

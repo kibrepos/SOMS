@@ -65,7 +65,7 @@ const StudentDashboard: React.FC = () => {
               const isMember = orgData.members?.some(member => member.id === user.uid);
               const isPresident = orgData.president.id === user.uid;
               const isOfficer = orgData.officers?.some(officer => officer.id === user.uid);
-
+           
               console.log(`Checking org: ${orgData.name} - Member: ${isMember}, President: ${isPresident}, Officer: ${isOfficer}`);
 
               if (isMember || isPresident || isOfficer) {
@@ -114,7 +114,12 @@ const StudentDashboard: React.FC = () => {
   if (error) {
     return <div>Error: {error}</div>;
   }
-
+  const truncateText = (text: string, maxLength: number) => {
+    if (text.length > maxLength) {
+      return text.slice(0, maxLength) + '...';
+    }
+    return text;
+  };
   return (
     <div className="dashboard-wrapper">
       <Header />
@@ -166,7 +171,7 @@ const StudentDashboard: React.FC = () => {
                       </p>
                     ) : (
                       <>
-                        <p>{org.description}</p>
+                       <p>{truncateText(org.description, 80)}</p>
                         <p className="org-department">{org.department}</p>
                       </>
                     )}

@@ -16,7 +16,10 @@ const Header: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+const [selectedNotification, setSelectedNotification] = useState<any>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -82,7 +85,57 @@ const Header: React.FC = () => {
     return () => unsubscribe();
   }, []);
   
+  const openNotificationModal = async (notif: any) => {
+    try {
+      const userId = auth.currentUser?.uid;
+      if (!userId || notif.isRead) {
+        // If user is not logged in or notification is already read, skip updating
+        setSelectedNotification(notif);
+        setIsNotificationModalOpen(true);
+        return;
+      }
   
+      // Mark the notification as read in Firestore
+      const notifRef = doc(firestore, `notifications/${userId}/userNotifications`, notif.id);
+      await updateDoc(notifRef, { isRead: true });
+  
+      // Update local state to reflect the change
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n))
+      );
+  
+      setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0)); // Decrement unread count
+  
+      // Open the modal with the selected notification
+      setSelectedNotification(notif);
+      setIsNotificationModalOpen(true);
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  };
+  
+  const closeNotificationModal = () => {
+    setIsNotificationModalOpen(false);
+    setSelectedNotification(null);
+  };
+  const openLogoutModal = () => {
+    setIsLogoutModalOpen(true);
+  };
+  
+  const closeLogoutModal = () => {
+    setIsLogoutModalOpen(false);
+  };
+  
+  const handleConfirmSignOut = async () => {
+    try {
+      await signOut(auth);
+      console.log('User signed out');
+    } catch (error) {
+      console.error('Error signing out: ', error);
+    } finally {
+      setIsLogoutModalOpen(false);
+    }
+  };
   const handleAcceptInvite = async (notif: any) => {
     try {
       const userId = auth.currentUser?.uid;
@@ -121,13 +174,13 @@ const Header: React.FC = () => {
           invitedStudents: arrayRemove(userId),
         });
   
-        // Create notification message
-        const message = ` has accepted the invite and joined ${notif.organizationName}.`;
+       
+        const subject = ` has accepted the invite and joined ${notif.organizationName}.`;
   
         // Prepare notification for president
         const notificationsToSend = [
           {
-            message,
+            subject,
   organizationName: notif.organizationName,
   timestamp: new Date(),
   isRead: false,
@@ -205,13 +258,13 @@ const Header: React.FC = () => {
           studentProfilePicUrl = studentData.profilePicUrl || '/default-profile.png';
         }
       
-        // Create notification message
-        const message = `has declined the invite to join ${notif.organizationName}.`;
+
+        const subject = `has declined the invite to join ${notif.organizationName}.`;
       
         // Prepare notifications for president and officers
         const notificationsToSend = [
           {
-            message,
+            subject,
             organizationName: notif.organizationName,
             timestamp: new Date(),
             isRead: false,
@@ -379,11 +432,17 @@ const Header: React.FC = () => {
 
         {showNotifications && (
           <div className="notifications-dropdown" ref={notificationRef}>
-            <ul className="notification-list">
+
+          <ul className="notification-list">
   {notifications.length > 0 ? (
     notifications.map((notif) => (
-      <li key={notif.id} className={`notification-item ${notif.isRead ? 'read' : 'unread'}`}>
+      <li 
+        key={notif.id} 
+        className={`notification-item ${notif.isRead ? 'read' : 'unread'}`} 
+        onClick={() => openNotificationModal(notif)} // Open modal on click
+      >
         <div className="notification-content">
+          {/* Profile Avatar */}
           <div className="profile-avatar">
             {notif.inviterProfilePic ? (
               <img
@@ -401,10 +460,17 @@ const Header: React.FC = () => {
           {/* Notification Text */}
           <div className="notification-text">
             <p className="notification-title">
-              <strong>{notif.inviterName}</strong> {notif.message}
+              <strong>{notif.inviterName}</strong>: {notif.subject}
             </p>
             <span className="notification-timestamp">
-              {new Date(notif.timestamp?.toDate()).toLocaleTimeString()}
+              {new Date(notif.timestamp?.toDate()).toLocaleString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: 'numeric',
+                hour12: true,
+              })}
             </span>
           </div>
 
@@ -427,6 +493,83 @@ const Header: React.FC = () => {
   )}
 </ul>
 
+{/* Notification Detail Modal */}
+{isNotificationModalOpen && selectedNotification && (
+  <div className="notification-modal-overlay">
+    <div className="notification-modal-content">
+      <span className="notification-modal-close" onClick={closeNotificationModal}>
+        &times;
+      </span>
+      <div className="notification-modal-sender">
+        <img
+          src={selectedNotification.inviterProfilePic || '/default-profile.png'}
+          alt="Sender"
+          className="notification-modal-profile-pic"
+        />
+        <span className="notification-modal-sender-name">
+          {selectedNotification.inviterName || 'Unknown Sender'}
+        </span>
+      </div>
+      <h2 className="notification-modal-header">{selectedNotification.subject}</h2>
+
+      <p className="notification-modal-timestamp">
+        {new Date(selectedNotification.timestamp?.toDate()).toLocaleString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: 'numeric',
+          hour12: true,
+        })}
+      </p>
+
+      
+
+      <div className="notification-modal-body">
+        {selectedNotification.message}
+      </div>
+
+      {/* Show attached image if available */}
+    {selectedNotification.imageUrl && (
+  <div className="notification-modal-media-container">
+    <img
+      src={selectedNotification.imageUrl}
+      alt="Attached"
+      className="notification-modal-image"
+    />
+  </div>
+)}
+{/* Show attached video if available */}
+{selectedNotification.videoUrl && (
+  <div className="notification-modal-media-container">
+    <video
+      src={selectedNotification.videoUrl}
+      controls
+      className="notification-modal-video"
+    />
+  </div>
+)}
+      {/* Optional Actions for invites */}
+      {selectedNotification.type === 'invite' && selectedNotification.status === 'pending' && (
+        <div className="notification-modal-actions">
+          <button
+            className="notification-modal-btn accept"
+            onClick={() => handleAcceptInvite(selectedNotification)}
+          >
+            Accept
+          </button>
+          <button
+            className="notification-modal-btn decline"
+            onClick={() => handleDeclineInvite(selectedNotification)}
+          >
+            Decline
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
 <div className="notification-button-container">
             {renderNotificationButton()}
             </div>
@@ -445,11 +588,25 @@ const Header: React.FC = () => {
             alt="Profile"
             className="profile-icon"
           />
+           {isLogoutModalOpen && (
+  <div className="modal-overlaysadmin">
+    <div className="modal-contentsadmin">
+      <h3>Confirm Logout</h3>
+      <p>Are you sure you want to log out?</p>
+      <button className="confirm-buttonzx" onClick={handleConfirmSignOut}>
+        Yes, Log Out
+      </button>
+      <button className="cancel-buttonzx" onClick={closeLogoutModal}>
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
           {showDropdown && (
             <div className="header-dropdown" onMouseLeave={() => setShowDropdown(false)}>
               <ul>
                 <li onClick={handleProfileVisit}>Visit Profile</li>
-                <li onClick={handleLogout}>Logout</li>
+                <li onClick={openLogoutModal}>Logout</li>
               </ul>
             </div>
           )}

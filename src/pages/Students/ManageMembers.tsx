@@ -187,7 +187,7 @@ const inviteStudent = async (studentId: string) => {
     }
 
     const notification = {
-      message: `You have been invited to join ${organizationName}.`,
+      subject: `You have been invited to join ${organizationName}.`,
       timestamp: new Date(),
       isRead: false,
       inviterName, // Organization name as inviter
@@ -350,7 +350,7 @@ const closePromoteModal = () => {
   setSelectedMember(null);
   setSelectedRole('');
   setIsPromoteModalOpen(false);
-  setRoleError(null); // Clear any error message
+  setRoleError(null); 
 };
 
 
@@ -401,7 +401,7 @@ const handleKick = async () => {
     await updateDoc(orgDocRef, updatedData);
 
     // Create a notification for the kicked user
-    const message = `You have been kicked from ${orgDisplayName}.`;
+    const subject = `You have been kicked from ${orgDisplayName}.`;
 
     const notifRef = doc(
       firestore,
@@ -410,7 +410,7 @@ const handleKick = async () => {
     );
 
     await setDoc(notifRef, {
-      message,
+      subject,
       organizationName: orgDisplayName,
       timestamp: new Date(),
       isRead: false,
