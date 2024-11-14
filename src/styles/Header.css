@@ -355,6 +355,11 @@
 .notification-modal-sender-name {
   font-weight: bold;
 }
+.notification-modal-sender-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px; /* Minimal gap between sender's name and organization */
+}
 
 /* Modal Content */
 .notification-modal-body {
@@ -424,4 +429,17 @@
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   outline: none;
+}
+.notification-modal-body a {
+  color: blue;
+  text-decoration: underline;
+}
+
+.notification-modal-body a:hover {
+  color: darkblue;
+
+}.notification-modal-organization {
+  font-size: 0.9rem;
+  color: #878888;
+  margin-top: 0px;
 }

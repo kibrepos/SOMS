@@ -10,6 +10,32 @@ import { v4 as uuidv4 } from 'uuid';
 import { collection, updateDoc, doc, onSnapshot,getDoc,setDoc,writeBatch, arrayRemove } from 'firebase/firestore';
 
 
+function formatMessageWithLinks(message: string): JSX.Element {
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[^\s]+\.[a-z]{2,})/gi;
+  const parts = message.split(urlRegex);
+
+  return (
+    <>
+      {parts.map((part, index) =>
+        urlRegex.test(part) ? (
+          <a
+            key={index}
+            href={part.startsWith("http") ? part : `https://${part}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'blue', textDecoration: 'underline' }}
+          >
+            {part}
+          </a>
+        ) : (
+          <span key={index}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
+
+
 const Header: React.FC = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [profilePicUrl, setProfilePicUrl] = useState<string | null>(null);
@@ -186,8 +212,8 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
   isRead: false,
   status: 'new_member',
   type: 'general',
-  inviterProfilePic: studentProfilePicUrl,
-  inviterName: studentName,
+  senderProfilePic: studentProfilePicUrl,
+  senderName: studentName,
           },
         ];
   
@@ -270,8 +296,8 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
             isRead: false,
             status: 'invite_declined',
             type: 'general',
-            inviterProfilePic: studentProfilePicUrl,
-            inviterName: studentName,
+            senderProfilePic: studentProfilePicUrl,
+            senderName: studentName,
           },
         ];
       
@@ -332,14 +358,6 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
     setShowNotifications((prev) => !prev);
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      navigate('/login');
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
-  };
 
   const handleProfileVisit = () => {
     navigate('/Student/myprofile');
@@ -444,15 +462,15 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
         <div className="notification-content">
           {/* Profile Avatar */}
           <div className="profile-avatar">
-            {notif.inviterProfilePic ? (
+            {notif.senderProfilePic ? (
               <img
-                src={notif.inviterProfilePic}
+                src={notif.senderProfilePic}
                 alt="Profile"
                 className="notification-profile-pic"
               />
             ) : (
               <div className="default-avatar">
-                {notif.inviterName ? notif.inviterName[0] : 'N'}
+                {notif.senderName ? notif.senderName[0] : 'N'}
               </div>
             )}
           </div>
@@ -460,7 +478,7 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
           {/* Notification Text */}
           <div className="notification-text">
             <p className="notification-title">
-              <strong>{notif.inviterName}</strong>: {notif.subject}
+              <strong>{notif.senderName}</strong>: {notif.subject}
             </p>
             <span className="notification-timestamp">
               {new Date(notif.timestamp?.toDate()).toLocaleString('en-US', {
@@ -500,16 +518,28 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
       <span className="notification-modal-close" onClick={closeNotificationModal}>
         &times;
       </span>
+      
+      {/* Sender Information */}
       <div className="notification-modal-sender">
         <img
-          src={selectedNotification.inviterProfilePic || '/default-profile.png'}
+          src={selectedNotification.senderProfilePic || '/default-profile.png'}
           alt="Sender"
           className="notification-modal-profile-pic"
         />
-        <span className="notification-modal-sender-name">
-          {selectedNotification.inviterName || 'Unknown Sender'}
-        </span>
+        <div className="notification-modal-sender-info">
+          <span className="notification-modal-sender-name">
+            {selectedNotification.senderName || 'Unknown Sender'}
+          </span>
+
+          {/* Organization name appears right below sender's name */}
+          {selectedNotification.organizationNameAnnouncement && (
+            <span className="notification-modal-organization">
+              via {selectedNotification.organizationNameAnnouncement}
+            </span>
+          )}
+        </div>
       </div>
+
       <h2 className="notification-modal-header">{selectedNotification.subject}</h2>
 
       <p className="notification-modal-timestamp">
@@ -522,12 +552,11 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
           hour12: true,
         })}
       </p>
-
-      
+     
 
       <div className="notification-modal-body">
-        {selectedNotification.message}
-      </div>
+  {formatMessageWithLinks(selectedNotification.message)}
+</div>
 
       {/* Show attached image if available */}
     {selectedNotification.imageUrl && (
@@ -546,6 +575,15 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
       src={selectedNotification.videoUrl}
       controls
       className="notification-modal-video"
+    />
+  </div>
+)}
+    {selectedNotification.fileUrl && (
+  <div className="notification-modal-media-container">
+    <img
+      src={selectedNotification.fileUrl}
+      alt="Attached"
+      className="notification-modal-image"
     />
   </div>
 )}

@@ -177,21 +177,21 @@ const inviteStudent = async (studentId: string) => {
     const orgDocRef = doc(firestore, 'organizations', organizationName!);
     const orgDoc = await getDoc(orgDocRef);
 
-    let inviterName = organizationName || 'Unknown Organization';
-    let inviterProfilePic = '/default-profile.png'; // Default profile picture
+    let senderName = organizationName || 'Unknown Organization';
+    let senderProfilePic = '/default-profile.png'; // Default profile picture
 
     if (orgDoc.exists()) {
       const orgData = orgDoc.data();
-      inviterName = orgData.name || inviterName; // Use the organization name
-      inviterProfilePic = orgData.profileImagePath || inviterProfilePic; // Use the organization's profile image
+      senderName = orgData.name || senderName; // Use the organization name
+      senderProfilePic = orgData.profileImagePath || senderProfilePic; // Use the organization's profile image
     }
 
     const notification = {
       subject: `You have been invited to join ${organizationName}.`,
       timestamp: new Date(),
       isRead: false,
-      inviterName, // Organization name as inviter
-      inviterProfilePic, // Organization profile pic as inviter's image
+      senderName, 
+      senderProfilePic, 
       organizationName: organizationName,
       status: 'pending',
       type: 'invite',
@@ -416,8 +416,8 @@ const handleKick = async () => {
       isRead: false,
       status: 'kicked',
       type: 'general',
-      inviterProfilePic: orgProfilePic,
-      inviterName: orgDisplayName,
+      senderProfilePic: orgProfilePic,
+      senderName: orgDisplayName,
     });
 
     // Update local state and close the modal
