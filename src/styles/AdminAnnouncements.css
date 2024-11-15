@@ -1,99 +1,347 @@
-/* Announcements List */
-.ql-announcements-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+/* General styling for the container */
+.admin-dashboard-content {
+  background-color: #f5f7fa;
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.ql-announcement-item {
-  background-color: #e9e9e9;
-  border-radius: 4px;
-  padding: 20px;
-  margin-bottom:15px;
-
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+/* Create Announcement Button */
+.ql-create-button-container {
   display: flex;
-  flex-direction: column;
+  justify-content:first baseline;
+  margin-bottom: 1.5rem;
+}
+
+.ql-create-button {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.ql-create-button:hover {
+  background-color: #0056b3;
+}
+
+/* Filters Section */
+.filters-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background-color: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.filters-section select,
+.filters-section input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.filters-section input[type="text"] {
+  flex: 1;
+}
+
+.apply-button {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-top: -0px;
+}
+
+.apply-button:hover {
+  background-color: #0056b3;
+}
+
+.reset-button {
+  background-color: #6c757d;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Space between icon and text */
+  margin-top: -0px;
+  transition: background-color 0.2s ease;
+}
+
+
+.reset-button:hover {
+  background-color: #5a6268;
+}
+
+/* Announcements List */
+.ql-announcements-list {
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 600px; /* Set max height for the list */
+  padding: 0;
+  margin-bottom: 1px; /* Add margin to avoid overlap with the button */
+}
+
+/* Announcements List Items */
+.ql-announcement-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e6e6e6;
+  padding: 15px;
+  background-color: #fff;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.announcement-content {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.announcement-date {
+  min-width: 190px;
+  text-align: left;
+  padding-right: 20px;
+  border-right: 1px solid #ddd;
+  padding-left: 80px;
+}
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+}
+
+.loading-spinner {
+  border: 6px solid #f3f3f3;
+  border-top: 6px solid #014d33;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.announcement-date-text {
+  font-weight: bold;
+}
+
+.announcement-time-text {
+  color: #888;
+  font-size: 14px;
+}
+
+.announcement-details {
+  flex-grow: 1;
+  padding: 0 20px;
+}
+
+.announcement-sender {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.announcement-subject {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+.announcement-message {
+  color: #666;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  display: block;
+  cursor: pointer;
+}
+
+.announcement-details-button {
+  background-color: transparent;
+  color: #4c9bf0;
+  border: 2px solid #4c9bf0; /* Define the border here */
+  border-radius: 5px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.announcement-details-button:hover {
+  background-color: #4c9bf0;
+  color: white; /* Change text color on hover */
+
+}
+
+/* Styling for the Announcements Header */
+.ql-announcements-header {
+  display: flex;
+  align-items: center;
+  background-color: #f5f7fa;
+  border-bottom: 2px solid #e6e6e6;
+  padding: 12px 20px;
+  border-radius: 8px 8px 0 0;
+  font-weight: bold;
+  color: #888;
+}
+
+/* Checkbox Column */
+.ql-checkbox-column {
+  flex: 0 0 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Date Header */
+.ql-date-header {
+  flex: 1;
+  text-align: center;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+/* Announcement Header */
+.ql-announcement-header {
+  flex: 4;
+  padding-left: 20px;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+
+.ql-actions-header {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* Remove default checkbox styles and center it */
+input[type="checkbox"] {
+  transform: scale(1.2);
+  cursor: pointer;
+}
+
+
+.delete-all-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.3s ease;
+  margin-top: -0px;
+}
+
+.delete-all-button:disabled {
+  background-color: transparent;
+  cursor: not-allowed;
+  color: gray;
+}
+
+.delete-all-button:hover:not(:disabled) {
+  background-color: #c82333;
+}
+.ql-announcement-item:hover {
+  background-color: #f5f7fa;
+}
+
+/* When the list is empty */
+.ql-announcements-list:empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: #888;
+  font-size: 1.2rem;
+}
+
+.ql-announcements-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ql-announcements-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.ql-announcements-list::-webkit-scrollbar-thumb {
+  background-color: #007bff;
+  border-radius: 10px;
+}
+.ql-announcement-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
 }
 
 .ql-announcement-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  background-color: #f5f7fa;
 }
 
 .ql-announcement-details {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start; /* Align items to the left */
-  margin-bottom: 10px;
-  text-align: left; /* Ensure text inside is left-aligned */
-  width: 100%; /* Ensure it takes the full width of the container */
-}
-.ql-announcement-textsd {
-  font-size: 1rem;
-  color: #444;
-  margin-top: 10px;
-  text-align: left; /* Ensure text is aligned to the left */
-  overflow: hidden;
-  white-space: nowrap; /* Keep text on a single line */
-  width: 100%;
-  
-}
-
-
-.ql-announcement-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
+  flex-grow: 1;
 }
 
 .ql-announcement-sender {
-  font-weight: bold;
   font-size: 0.9rem;
-  color: #555;
-  margin-bottom: 5px;
+  color: #888;
 }
 
 .ql-announcement-subject {
-  font-size: 1.4rem;
   font-weight: bold;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
   color: #333;
-  margin-bottom: 5px;
 }
 
 .ql-announcement-date {
   font-size: 0.9rem;
-  color: #777;
-  margin-bottom: 15px;
+  color: #555;
+
 }
 
-
-
-/* Button Styles */
-.ql-create-button-container {
-  display: flex;
-  justify-content: flex-end; /* Aligns button to the right */
-  margin-bottom: 20px; /* Adds spacing below the button */
+.ql-announcement-textsd {
+  margin-top: 0.5rem;
+  color: #666;
 }
 
-.ql-create-button {
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  padding: 10px 20px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  font-size: 16px;
-}
-
-.ql-create-button:hover {
-  background-color: #388e3c;
-}
-
-/* Modal Styles */
 .ql-modal-overlay {
   position: fixed;
   top: 0;
@@ -280,34 +528,18 @@
 }
 /* Wrapper for the button */
 .ql-load-more-container {
-  position: sticky; /* Keeps it visible at the bottom of the viewport */
-  bottom: -10px; /* Adjust this value to move it down */
+  position: sticky;
+  bottom: 0; /* Sticks to the bottom of the container */
   left: 0;
   width: 100%;
   background-color: #ffffff;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 15px 0; /* Add more padding if needed */
+  padding: 10px 0; /* Adjust padding as needed */
   z-index: 10;
-  margin-top: 20px; /* Adjust margin to create space between the list and the button */
- 
+  border-top: 1px solid #eee; /* Optional border to separate it from the list */
 }
-.ql-delete-button {
-  background-color: #e74c3c;
-  color: #fff;
-  border: none;
-  padding: 10px 20px;
-  margin-top: 20px;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.ql-delete-button:hover {
-  background-color: #c0392b;
-}
-
 
 .load-more-btn {
   background-color: #007bff;

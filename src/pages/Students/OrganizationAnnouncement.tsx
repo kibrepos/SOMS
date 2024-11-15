@@ -37,6 +37,9 @@ const [applyFilters, setApplyFilters] = useState(false); // Flag to trigger filt
 const [selectedAnnouncements, setSelectedAnnouncements] = useState<string[]>([]);
 const [currentUserName, setCurrentUserName] = useState<string>("Unknown");
 const [currentUserProfilePic, setCurrentUserProfilePic] = useState<string>("");
+const [isSending, setIsSending] = useState(false);
+const [selectedAnnouncementDetails, setSelectedAnnouncementDetails] = useState<any>(null);
+const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
 const fetchStudentData = async () => {
   const user = auth.currentUser;
@@ -122,19 +125,19 @@ useEffect(() => {
     setApplyFilters(true);
     applySearchAndFilters();
   };
-  // Handle search and filter by applying both search term and date filter
-const applySearchAndFilters = () => {
-  let filtered = [...announcements];
-  if (audience === "officers") {
+ 
+
+ const applySearchAndFilters = () => {
+  let filtered = [...announcements]; // Use the original announcements list
+
+  // Filter by audience
+  if (audience !== "All") {
     filtered = filtered.filter(
-      (announcement) => announcement.audience === "officers"
-    );
-  } else if (audience === "everyone") {
-    filtered = filtered.filter(
-      (announcement) => announcement.audience === "everyone"
+      (announcement) => announcement.audience.toLowerCase() === audience.toLowerCase()
     );
   }
-  // Apply date filter if selected
+
+  // Apply date filter if a date is selected
   if (selectedDate) {
     filtered = filtered.filter((announcement) => {
       const announcementDate = new Date(announcement.timestamp.seconds * 1000);
@@ -152,9 +155,18 @@ const applySearchAndFilters = () => {
     );
   }
 
+  // Sort the filtered results
+  filtered.sort((a, b) => {
+    const dateA = new Date(a.timestamp.seconds * 1000).getTime();
+    const dateB = new Date(b.timestamp.seconds * 1000).getTime();
+    return sortBy === "desc" ? dateB - dateA : dateA - dateB;
+  });
+
   setFilteredAnnouncements(filtered);
   setApplyFilters(false); // Reset the flag after applying filters
 };
+
+  
 
   const fetchAnnouncements = async () => {
     try {
@@ -186,11 +198,22 @@ const applySearchAndFilters = () => {
     }
   };
   const resetFilters = () => {
+    // Reset all filter inputs
     setAudience("All");
     setSortBy("desc");
     setSearchInput("");
     setSelectedDate("");
-    setFilteredAnnouncements(announcements); // Reset to original list
+  
+    // Ensure filtered announcements reset to the original list
+    setFilteredAnnouncements([...announcements]);
+  
+    // Trigger a re-render by applying default sorting
+    const sortedAnnouncements = [...announcements].sort((a, b) => {
+      const dateA = new Date(a.timestamp.seconds * 1000).getTime();
+      const dateB = new Date(b.timestamp.seconds * 1000).getTime();
+      return sortBy === "desc" ? dateB - dateA : dateA - dateB;
+    });
+    setFilteredAnnouncements(sortedAnnouncements);
   };
   
   const handleSelectAnnouncement = (id: string) => {
@@ -228,26 +251,41 @@ const applySearchAndFilters = () => {
       console.error("Error deleting announcements:", error);
     }
   };
-
+  const openDetailsModal = (announcement: any) => {
+    setSelectedAnnouncementDetails(announcement);
+    setIsDetailsModalOpen(true);
+  };
+  const closeDetailsModal = () => {
+    setIsDetailsModalOpen(false);
+    setSelectedAnnouncementDetails(null);
+  };
+  
 
   const handleAddAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
-  
+    setIsSending(true);
     const user = auth.currentUser;
     if (!user || !organizationData) return;
   
     let fileUrl: string | null = null;
-  
+    let isImage = false;
+    let isVideo = false;
+
     const selectedAudience = audience.trim() === "" ? "everyone" : audience;
-    if (file) {
-      try {
-        const fileRef = ref(storage, `announcements/${organizationName}/${file.name}`);
-        await uploadBytes(fileRef, file);
-        fileUrl = await getDownloadURL(fileRef);
-      } catch (error) {
-        console.error("Error uploading file:", error);
-      }
+      if (file) {
+    try {
+      const fileRef = ref(storage, `announcements/${organizationName}/${file.name}`);
+      await uploadBytes(fileRef, file);
+      fileUrl = await getDownloadURL(fileRef);
+
+      // Determine if the file is an image or video
+      const fileType = file.type;
+      isImage = fileType.startsWith("image/");
+      isVideo = fileType.startsWith("video/");
+    } catch (error) {
+      console.error("Error uploading file:", error);
     }
+  }
   
     const newAnnouncement = {
       organizationNameAnnouncement: organizationName,
@@ -258,6 +296,8 @@ const applySearchAndFilters = () => {
       senderProfilePic: currentUserProfilePic,
       timestamp: Timestamp.now(),
       fileUrl,
+      isImage,
+      isVideo,
       type: "announcement",
       isRead: false,
     };
@@ -287,6 +327,7 @@ const applySearchAndFilters = () => {
   
     // Fetch the updated announcements
     await fetchAnnouncements();
+    setIsSending(false);
   };
   
 
@@ -399,7 +440,6 @@ const applySearchAndFilters = () => {
             type="file"
             id="fileUpload"
             onChange={(e) => setFile(e.target.files?.[0] || null)}
-            accept="image/*, video/*"
           />
         </div>
 
@@ -411,7 +451,11 @@ const applySearchAndFilters = () => {
     </div>
   </div>
 )}
-
+{isSending && (
+  <div className="loading-overlay">
+    <div className="loading-spinner"></div>
+  </div>
+)}
     {/* Filters Section */}
     <div className="organization-announcements-filters-section">
   {/* Audience Dropdown */}
@@ -442,12 +486,9 @@ const applySearchAndFilters = () => {
     placeholder="Search..."
     onChange={(e) => setSearchInput(e.target.value)}
   />
-
-  {/* Apply Button */}
   <button onClick={handleApplyFilters} className="organization-announcements-apply-button">
     Apply
   </button>
-    {/* Reset Button with Icon */}
     <button onClick={resetFilters} className="organization-announcements-reset-button">
     <FontAwesomeIcon icon={faSync} /> Reset
   </button>
@@ -457,6 +498,83 @@ const applySearchAndFilters = () => {
 
 </div>
 
+{isDetailsModalOpen && selectedAnnouncementDetails && (
+  <div className="orgy-announcy-overlay">
+    <div className="orgy-announcy-content">
+      <span className="orgy-announcy-close" onClick={closeDetailsModal}>&times;</span>
+
+      {/* Sender Information */}
+      <div className="orgy-announcy-header">
+        <img
+          src={selectedAnnouncementDetails.senderProfilePic || '/default-profile.png'}
+          alt="Sender"
+          className="orgy-announcy-profile-pic"
+        />
+        <div className="orgy-announcy-sender-info">
+          <strong>{selectedAnnouncementDetails.senderName || "Unknown Sender"}</strong>
+          {selectedAnnouncementDetails.organizationNameAnnouncement && (
+            <span>via {selectedAnnouncementDetails.organizationNameAnnouncement}</span>
+          )}
+        </div>
+      </div>
+
+      <h2 className="orgy-announcy-subject">{selectedAnnouncementDetails.subject}</h2>
+
+      {/* Announcement Date and Time */}
+      <p className="orgy-announcy-timestamp">
+        {new Date(selectedAnnouncementDetails.timestamp.seconds * 1000).toLocaleString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: 'numeric',
+          hour12: true,
+        })}
+      </p>
+
+      {/* Message with original formatting */}
+      <div className="orgy-announcy-message" style={{ whiteSpace: 'pre-wrap' }}>
+        {selectedAnnouncementDetails.message}
+      </div>
+
+      {/* Display attached file */}
+      {selectedAnnouncementDetails.fileUrl && (
+        <>
+          {selectedAnnouncementDetails.isImage && (
+            <div className="orgy-announcy-image-container">
+              <img
+                src={`${selectedAnnouncementDetails.fileUrl}?t=${new Date().getTime()}`}
+                alt="Attachment"
+                className="orgy-announcy-image"
+              />
+            </div>
+          )}
+          {selectedAnnouncementDetails.isVideo && (
+            <div className="orgy-announcy-video-container">
+              <video
+                src={`${selectedAnnouncementDetails.fileUrl}?t=${new Date().getTime()}`}
+                controls
+                className="orgy-announcy-video"
+              />
+            </div>
+          )}
+          {!selectedAnnouncementDetails.isImage && !selectedAnnouncementDetails.isVideo && (
+            <div className="orgy-announcy-file-container">
+              <a
+                href={`${selectedAnnouncementDetails.fileUrl}?t=${new Date().getTime()}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="orgy-announcy-file-link"
+              >
+                {selectedAnnouncementDetails.fileName || "Download Attachment"}
+              </a>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  </div>
+)}
 
 
 
@@ -493,7 +611,12 @@ const applySearchAndFilters = () => {
             </a>
           )}
         </div>
-        <button className="organization-announcements-details-button">Details</button>
+        <button
+        className="organization-announcements-details-button"
+        onClick={() => openDetailsModal(announcement)}
+      >
+        Details
+      </button>
       </div>
     ))
   ) : (

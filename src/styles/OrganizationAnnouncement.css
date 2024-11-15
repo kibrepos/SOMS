@@ -248,6 +248,114 @@
     font-size: 16px;
     color: #333;
   }
+  .loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+  }
+  .orgy-announcy-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+  }
+  
+  .orgy-announcy-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 600px;
+    width: 90%;
+    position: relative;
+  }
+  
+  .orgy-announcy-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    cursor: pointer;
+    font-size: 24px;
+  }
+  
+  .orgy-announcy-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .orgy-announcy-profile-pic {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+  }
+  
+  .orgy-announcy-sender-info {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .orgy-announcy-subject {
+    margin-top: 20px;
+    font-size: 24px;
+    font-weight: bold;
+  }
+  
+  .orgy-announcy-timestamp {
+    font-size: 14px;
+    color: gray;
+    margin-top: 10px;
+  }
+  
+  .orgy-announcy-message {
+    margin-top: 20px;
+    white-space: pre-wrap;
+  }
+  
+  .orgy-announcy-image {
+    margin-top: 20px;
+    max-width: 100%;
+    border-radius: 8px;
+  }
+  
+  .orgy-announcy-video {
+    margin-top: 20px;
+    width: 100%;
+    border-radius: 8px;
+  }
+  
+  .orgy-announcy-file-link {
+    margin-top: 20px;
+    display: block;
+    color: blue;
+    text-decoration: underline;
+  }
+  
+  .loading-spinner {
+    border: 6px solid #f3f3f3;
+    border-top: 6px solid #015e3a;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
   
   .organization-announcements-details p {
     margin: 5px 0;

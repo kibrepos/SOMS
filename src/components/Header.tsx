@@ -578,15 +578,36 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
     />
   </div>
 )}
-    {selectedNotification.fileUrl && (
+   {/* Show attached file if available */}
+{selectedNotification.fileUrl && (
   <div className="notification-modal-media-container">
-    <img
-      src={selectedNotification.fileUrl}
-      alt="Attached"
-      className="notification-modal-image"
-    />
+    {/* Determine if the file is an image */}
+    {selectedNotification.isImage ? (
+      <img
+        src={selectedNotification.fileUrl}
+        alt="Attached Image"
+        className="notification-modal-image"
+      />
+    ) : selectedNotification.isVideo ? (
+      <video
+        src={selectedNotification.fileUrl}
+        controls
+        className="notification-modal-video"
+      />
+    ) : (
+      // If it's not an image or video, just show a link to download/view the file
+      <a
+        href={selectedNotification.fileUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="notification-modal-file-link"
+      >
+        View Attachment
+      </a>
+    )}
   </div>
 )}
+
       {/* Optional Actions for invites */}
       {selectedNotification.type === 'invite' && selectedNotification.status === 'pending' && (
         <div className="notification-modal-actions">
