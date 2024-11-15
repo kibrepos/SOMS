@@ -348,30 +348,32 @@ input[type="checkbox"] {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 5000;
+  z-index: 9999;
+  padding: 10px; /* Ensure some padding so content doesn't get clipped */
+}
+.ql-modal-content {
+  position: relative; /* Make it relative so the close button is positioned correctly */
+  background-color: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  width: 80%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  z-index: 10000;
 }
 
-.ql-modal-content {
-  background-color: #fff;
-  padding: 30px;
-  border-radius: 10px;
-  width: 80%;
-  max-width: 700px;
-  height: 80vh; /* Set fixed height */
-  overflow-y: auto; /* Enable scrolling */
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  position: relative;
-}
 
 .ql-modal-close {
   position: absolute;
   top: 10px;
   right: 10px;
-  font-size: 24px;
+  font-size: 20px;
   cursor: pointer;
 }
 
@@ -381,22 +383,7 @@ input[type="checkbox"] {
   margin-bottom: 15px;
 }
 
-.ql-announcement-image img {
-  width: 100%;
-  height: auto;
-  border-radius: 8px;
-  margin-top: 15px;
-}
 
-.ql-announcement-video video {
-  width: 100%;
-  height: auto;
-  border-radius: 8px;
-  margin-top: 15px;
-}
-.ql-announcement-date-modal{
-  color: #a8a6a6;
-}
 .ql-modal-sender{
   color: #a8a6a6;
 }
@@ -406,15 +393,57 @@ input[type="checkbox"] {
   gap: 20px;
 }
 /* Style for the file link */
+.ql-announcement-file-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  margin-top: 15px;
+}
+
 .ql-file-link {
-  color: #007bff;
+  font-size: 16px;
+  color: #333;
   text-decoration: none;
-  font-size: 0.9rem;
-  cursor: pointer;
-  flex-grow: 1;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+}
+
+.ql-file-link:hover {
+  color: #0056b3;
+}
+
+/* File Icon */
+.ql-file-icon {
+  font-size: 20px;
+  color: #666;
+}
+
+/* Image Styling */
+.ql-announcement-image-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.ql-announcement-image {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+/* Video Styling */
+.ql-announcement-video-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.ql-announcement-video {
+  width: 100%;
+  max-height: 400px;
+  border-radius: 8px;
 }
 .ql-file-remove-button {
   background-color: transparent;

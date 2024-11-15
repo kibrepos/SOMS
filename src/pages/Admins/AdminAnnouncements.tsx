@@ -5,7 +5,7 @@ import AdminSidebar from './AdminSidebar';
 import { auth } from "../../services/firebaseConfig";
 import { getStorage, ref, uploadBytes, getDownloadURL, } from "firebase/storage";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrash,faSync } from '@fortawesome/free-solid-svg-icons';
+import { faTrash,faSync,faFilePdf, faFileWord, faFilePowerpoint, faFileExcel, faFileAlt } from '@fortawesome/free-solid-svg-icons';
 import '../../styles/AdminAnnouncements.css';
 
 const AdminAnnouncements: React.FC = () => {
@@ -24,34 +24,53 @@ const AdminAnnouncements: React.FC = () => {
 const [filterSelectedDate, setFilterSelectedDate] = useState<string>("");
 const [filterAudience, setFilterAudience] = useState("everyone");
 const [filterSortBy, setFilterSortBy] = useState("desc");
-const [allAnnouncements, setAllAnnouncements] = useState<any[]>([]); // All fetched announcements
-const [filteredAnnouncements, setFilteredAnnouncements] = useState<any[]>([]); // Filtered announcements
-const [lastLoadedIndex, setLastLoadedIndex] = useState(10); // Pagination index
+const [allAnnouncements, setAllAnnouncements] = useState<any[]>([]); 
+const [filteredAnnouncements, setFilteredAnnouncements] = useState<any[]>([]); 
+const [lastLoadedIndex, setLastLoadedIndex] = useState(10); 
 const [selectedAnnouncements, setSelectedAnnouncements] = useState<string[]>([]);
 const [selectAll, setSelectAll] = useState(false);
 const [isLoading, setIsLoading] = useState(false);
 
 
+const getFileIcon = (fileName: string) => {
+  if (fileName.endsWith('.pdf')) return faFilePdf;
+  if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) return faFileWord;
+  if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) return faFilePowerpoint;
+  if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) return faFileExcel;
+  return faFileAlt;
+};
+
+const getFileIconClass = (fileName: string) => {
+  if (fileName.endsWith('.pdf')) return 'pdf-icon';
+  if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) return 'word-icon';
+  if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) return 'powerpoint-icon';
+  if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) return 'excel-icon';
+  return 'file-icon';
+};
 
   const storage = getStorage();
 
   useEffect(() => {
-    fetchSenderFirstName();
+    fetchSenderInfo();
     fetchAnnouncements();
   }, []);
 
-  const fetchSenderFirstName = async () => {
+  const fetchSenderInfo = async () => {
     const user = auth.currentUser;
     if (user) {
       const userDocRef = doc(firestore, "admin", user.uid);
       const userDoc = await getDoc(userDocRef);
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        return `${userData.firstname} ${userData.lastname}`; // Return full name
+        return {
+          senderName: `${userData.firstname} ${userData.lastname}`,
+          senderProfilePic: userData.profilePicture || null,
+        };
       }
     }
-    return "Unknown User";
+    return { senderName: "Unknown User", senderProfilePic: null };
   };
+  
 
 
   const fetchMoreAnnouncements = async () => {
@@ -239,8 +258,10 @@ const [isLoading, setIsLoading] = useState(false);
     subject: string,
     message: string,
     senderName: string,
+    senderProfilePic: string,
     audience: string,
     fileUrl: string | null = null,
+    fileName: string | null = null,
     isImage: boolean = false,
     isVideo: boolean = false
   ) => {
@@ -252,9 +273,11 @@ const [isLoading, setIsLoading] = useState(false);
     await setDoc(userNotificationRef, {
       senderName: `GPadmin ${senderName}`,
       subject,
+      senderProfilePic,
       message,
       audience,
       fileUrl,
+      fileName, 
       isImage,
       isVideo,
       timestamp: new Date(),
@@ -267,9 +290,10 @@ const [isLoading, setIsLoading] = useState(false);
     e.preventDefault();
     
     setIsLoading(true);
-    const senderName = await fetchSenderFirstName();
+    const { senderName, senderProfilePic } = await fetchSenderInfo();
 
-    let fileUrl = null;
+    let fileUrl: string | null = null;
+    let fileName: string | null = null;
     let isImage = false;
     let isVideo = false;
 
@@ -277,15 +301,14 @@ const [isLoading, setIsLoading] = useState(false);
   const storageRef = ref(storage, `announcements/${image.name}`);
   await uploadBytes(storageRef, image);
   fileUrl = await getDownloadURL(storageRef);
+  fileName = image.name;
 
   // Check the file type
   const fileType = image.type;
-  if (fileType.startsWith("image/")) {
-    isImage = true;
-  } else if (fileType.startsWith("video/")) {
-    isVideo = true;
-  }
+  isImage = fileType.startsWith("image/");
+  isVideo = fileType.startsWith("video/");
 }
+
 
   
 const announcementDocRef = await addDoc(collection(firestore, "notifications"), {
@@ -294,7 +317,9 @@ const announcementDocRef = await addDoc(collection(firestore, "notifications"), 
   audience,
   timestamp: Timestamp.now(),
   senderName,
+  senderProfilePic,
   fileUrl,
+  fileName,
   isImage,
   isVideo,
 });
@@ -320,8 +345,12 @@ const announcementDocRef = await addDoc(collection(firestore, "notifications"), 
           announcementSubject,
           announcementText,
           senderName,
+          senderProfilePic,
           audience,
-          fileUrl
+          fileUrl,
+          fileName, // Pass the file name here
+          isImage,
+          isVideo
         )
       )
     );
@@ -578,60 +607,76 @@ const getUserIDsByType = async (userType: string) => {
     
             {/* View Modal for Individual Announcements */}
          {/* View Modal for Individual Announcements */}
-{isViewModalOpen && selectedAnnouncement && (
+         {isViewModalOpen && selectedAnnouncement && (
   <div className="ql-modal-overlay">
     <div className="ql-modal-content">
+      {/* Close Button */}
       <span className="ql-modal-close" onClick={() => setIsViewModalOpen(false)}>
         &times;
       </span>
-      
+
+      {/* Sender Information */}
       <p className="ql-modal-sender">Sent by: {selectedAnnouncement.senderName || "Admin"}</p>
       <h2>{selectedAnnouncement.subject}</h2>
-      
+
+      {/* Display Timestamp */}
       <p className="ql-announcement-date-modal">
-  {selectedAnnouncement.timestamp
-    ? new Date(
-        selectedAnnouncement.timestamp.seconds
-          ? selectedAnnouncement.timestamp.seconds * 1000 // Firestore Timestamp
-          : selectedAnnouncement.timestamp // JavaScript Date
-      ).toLocaleString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: 'numeric',
-        hour12: true, // Use 12-hour format (am/pm)
-      })
-    : 'No Date Available'}
-</p>
-      <p>{selectedAnnouncement.text}</p>
-      
-      {selectedAnnouncement.fileUrl && selectedAnnouncement.isImage && (
-  <div className="ql-announcement-image">
-    <img src={selectedAnnouncement.fileUrl} alt="Announcement Attachment" style={{ maxWidth: '100%' }} />
-  </div>
-)}
+        {selectedAnnouncement.timestamp
+          ? new Date(
+              selectedAnnouncement.timestamp.seconds
+                ? selectedAnnouncement.timestamp.seconds * 1000 // Firestore Timestamp
+                : selectedAnnouncement.timestamp // JavaScript Date
+            ).toLocaleString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+              hour: 'numeric',
+              minute: 'numeric',
+              hour12: true,
+            })
+          : 'No Date Available'}
+      </p>
 
-{selectedAnnouncement.fileUrl && selectedAnnouncement.isVideo && (
-  <div className="ql-announcement-video">
-    <video controls src={selectedAnnouncement.fileUrl} style={{ maxWidth: '100%' }} />
-  </div>
-)}
+      {/* Display Message */}
+      <div className="ql-announcement-message">{selectedAnnouncement.text}</div>
 
-{selectedAnnouncement.fileUrl && !selectedAnnouncement.isImage && !selectedAnnouncement.isVideo && (
-  <div className="ql-announcement-file">
-    <a href={selectedAnnouncement.fileUrl} target="_blank" rel="noopener noreferrer">
-      View Attachment
-    </a>
-  </div>
-)}
-
-       
+      {/* Display Attached File */}
+      {selectedAnnouncement.fileUrl && (
+        <>
+          {selectedAnnouncement.isImage ? (
+            <div className="ql-announcement-image-container">
+              <img
+                src={selectedAnnouncement.fileUrl}
+                alt="Attached Image"
+                className="ql-announcement-image"
+              />
+            </div>
+          ) : selectedAnnouncement.isVideo ? (
+            <div className="ql-announcement-video-container">
+              <video controls src={selectedAnnouncement.fileUrl} className="ql-announcement-video" />
+            </div>
+          ) : (
+            // For other file types, display the icon and filename
+            <div className="ql-announcement-file-container">
+              <FontAwesomeIcon
+                icon={getFileIcon(selectedAnnouncement.fileName)}
+                className={`ql-file-icon ${getFileIconClass(selectedAnnouncement.fileName)}`}
+              />
+              <a
+                href={selectedAnnouncement.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ql-file-link"
+              >
+                {selectedAnnouncement.fileName}
+              </a>
+            </div>
+          )}
+        </>
+      )}
     </div>
   </div>
 )}
-
-
 
 
           </div>

@@ -4,7 +4,7 @@ import {  doc, getDoc, collection, setDoc, Timestamp,getDocs, deleteDoc } from "
 import { auth, firestore, storage } from "../../services/firebaseConfig";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSync,faTrash  } from '@fortawesome/free-solid-svg-icons';
+import { faSync,faTrash,faFileAlt, faFilePdf, faFileWord, faFilePowerpoint, faFileExcel, faFile   } from '@fortawesome/free-solid-svg-icons';
 import Header from '../../components/Header';
 import StudentPresidentSidebar from './StudentPresidentSidebar';
 import '../../styles/OrganizationAnnouncement.css';
@@ -18,7 +18,32 @@ type OrganizationData = {
   officers: Array<any>;
   president?: any;
 };
-
+const getFileIcon = (fileName: string) => {
+  if (fileName.endsWith('.pdf')) {
+    return faFilePdf;
+  } else if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) {
+    return faFileWord;
+  } else if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) {
+    return faFilePowerpoint;
+  } else if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) {
+    return faFileExcel;
+  } else {
+    return faFileAlt;
+  }
+};
+const getFileIconClass = (fileName: string) => {
+  if (fileName.endsWith('.pdf')) {
+    return 'pdf-icon';
+  } else if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) {
+    return 'word-icon';
+  } else if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) {
+    return 'powerpoint-icon';
+  } else if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) {
+    return 'excel-icon';
+  } else {
+    return 'file-icon';
+  }
+};
 const OrganizationAnnouncements: React.FC = () => {
   const { organizationName } = useParams<{ organizationName: string }>();
   const [organizationData, setOrganizationData] = useState<OrganizationData | null>(null);
@@ -268,6 +293,7 @@ useEffect(() => {
     if (!user || !organizationData) return;
   
     let fileUrl: string | null = null;
+    let fileName: string | null = null;
     let isImage = false;
     let isVideo = false;
 
@@ -277,6 +303,7 @@ useEffect(() => {
       const fileRef = ref(storage, `announcements/${organizationName}/${file.name}`);
       await uploadBytes(fileRef, file);
       fileUrl = await getDownloadURL(fileRef);
+      fileName = file.name; // Save the file name
 
       // Determine if the file is an image or video
       const fileType = file.type;
@@ -296,6 +323,7 @@ useEffect(() => {
       senderProfilePic: currentUserProfilePic,
       timestamp: Timestamp.now(),
       fileUrl,
+      fileName, 
       isImage,
       isVideo,
       type: "announcement",
@@ -515,13 +543,12 @@ useEffect(() => {
           {selectedAnnouncementDetails.organizationNameAnnouncement && (
             <span>via {selectedAnnouncementDetails.organizationNameAnnouncement}</span>
           )}
+          
         </div>
+        
       </div>
-
-      <h2 className="orgy-announcy-subject">{selectedAnnouncementDetails.subject}</h2>
-
-      {/* Announcement Date and Time */}
-      <p className="orgy-announcy-timestamp">
+  {/* Announcement Date and Time */}
+  <p className="orgy-announcy-timestamp">
         {new Date(selectedAnnouncementDetails.timestamp.seconds * 1000).toLocaleString('en-US', {
           month: 'long',
           day: 'numeric',
@@ -532,46 +559,52 @@ useEffect(() => {
         })}
       </p>
 
+      <h2 className="orgy-announcy-subject">{selectedAnnouncementDetails.subject}</h2>
+
+    
       {/* Message with original formatting */}
       <div className="orgy-announcy-message" style={{ whiteSpace: 'pre-wrap' }}>
         {selectedAnnouncementDetails.message}
       </div>
 
-      {/* Display attached file */}
-      {selectedAnnouncementDetails.fileUrl && (
-        <>
-          {selectedAnnouncementDetails.isImage && (
-            <div className="orgy-announcy-image-container">
-              <img
-                src={`${selectedAnnouncementDetails.fileUrl}?t=${new Date().getTime()}`}
-                alt="Attachment"
-                className="orgy-announcy-image"
-              />
-            </div>
-          )}
-          {selectedAnnouncementDetails.isVideo && (
-            <div className="orgy-announcy-video-container">
-              <video
-                src={`${selectedAnnouncementDetails.fileUrl}?t=${new Date().getTime()}`}
-                controls
-                className="orgy-announcy-video"
-              />
-            </div>
-          )}
-          {!selectedAnnouncementDetails.isImage && !selectedAnnouncementDetails.isVideo && (
-            <div className="orgy-announcy-file-container">
-              <a
-                href={`${selectedAnnouncementDetails.fileUrl}?t=${new Date().getTime()}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="orgy-announcy-file-link"
-              >
-                {selectedAnnouncementDetails.fileName || "Download Attachment"}
-              </a>
-            </div>
-          )}
-        </>
-      )}
+   {/* Display attached file */}
+{/* Display attached file */}
+{selectedAnnouncementDetails.fileUrl && (
+  <>
+    {selectedAnnouncementDetails.isImage ? (
+      <div className="orgy-announcy-image-container">
+        <img
+          src={selectedAnnouncementDetails.fileUrl}
+          alt="Attachment"
+          className="orgy-announcy-image"
+        />
+      </div>
+    ) : selectedAnnouncementDetails.isVideo ? (
+      <div className="orgy-announcy-video-container">
+        <video
+          src={selectedAnnouncementDetails.fileUrl}
+          controls
+          className="orgy-announcy-video"
+        />
+      </div>
+    ) : (
+      <div className="orgy-announcy-file-container">
+        {/* Displaying icon and file name for other file types */}
+        <FontAwesomeIcon icon={getFileIcon(selectedAnnouncementDetails.fileName)} className={getFileIconClass(selectedAnnouncementDetails.fileName)} />
+        <a
+          href={selectedAnnouncementDetails.fileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="orgy-announcy-file-link"
+        >
+          {selectedAnnouncementDetails.fileName}
+        </a>
+      </div>
+    )}
+  </>
+)}
+
+
     </div>
   </div>
 )}

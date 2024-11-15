@@ -5,7 +5,7 @@ import { auth, storage, firestore } from '../services/firebaseConfig';
 import { ref, getDownloadURL } from 'firebase/storage';
 import '../styles/Header.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBell, faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import { faBell, faEnvelope,faFilePdf,faFileWord,faFilePowerpoint,faFileExcel,faFileAlt } from '@fortawesome/free-solid-svg-icons';
 import { v4 as uuidv4 } from 'uuid';
 import { collection, updateDoc, doc, onSnapshot,getDoc,setDoc,writeBatch, arrayRemove } from 'firebase/firestore';
 
@@ -13,6 +13,7 @@ import { collection, updateDoc, doc, onSnapshot,getDoc,setDoc,writeBatch, arrayR
 function formatMessageWithLinks(message: string): JSX.Element {
   const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[^\s]+\.[a-z]{2,})/gi;
   const parts = message.split(urlRegex);
+
 
   return (
     <>
@@ -35,6 +36,21 @@ function formatMessageWithLinks(message: string): JSX.Element {
   );
 }
 
+const getFileIcon = (fileName: string) => {
+  if (fileName.endsWith('.pdf')) return faFilePdf;
+  if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) return faFileWord;
+  if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) return faFilePowerpoint;
+  if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) return faFileExcel;
+  return faFileAlt;
+};
+
+const getFileIconClass = (fileName: string) => {
+  if (fileName.endsWith('.pdf')) return 'pdf-icon';
+  if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) return 'word-icon';
+  if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) return 'powerpoint-icon';
+  if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) return 'excel-icon';
+  return 'file-icon';
+};
 
 const Header: React.FC = () => {
   const [showDropdown, setShowDropdown] = useState(false);
@@ -450,7 +466,6 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
 
         {showNotifications && (
           <div className="notifications-dropdown" ref={notificationRef}>
-
           <ul className="notification-list">
   {notifications.length > 0 ? (
     notifications.map((notif) => (
@@ -459,9 +474,9 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
         className={`notification-item ${notif.isRead ? 'read' : 'unread'}`} 
         onClick={() => openNotificationModal(notif)} // Open modal on click
       >
-        <div className="notification-content">
-          {/* Profile Avatar */}
-          <div className="profile-avatar">
+            <div className="notification-content">
+            <div className="notification-header">
+            <div className="notification-avatar">
             {notif.senderProfilePic ? (
               <img
                 src={notif.senderProfilePic}
@@ -477,9 +492,11 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
 
           {/* Notification Text */}
           <div className="notification-text">
+            
             <p className="notification-title">
-              <strong>{notif.senderName}</strong>: {notif.subject}
+              <strong>{notif.senderName} :</strong>
             </p>
+            {notif.subject}
             <span className="notification-timestamp">
               {new Date(notif.timestamp?.toDate()).toLocaleString('en-US', {
                 month: 'long',
@@ -503,7 +520,7 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
               </button>
             </div>
           )}
-        </div>
+        </div></div>
       </li>
     ))
   ) : (
@@ -540,7 +557,6 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
         </div>
       </div>
 
-      <h2 className="notification-modal-header">{selectedNotification.subject}</h2>
 
       <p className="notification-modal-timestamp">
         {new Date(selectedNotification.timestamp?.toDate()).toLocaleString('en-US', {
@@ -552,61 +568,59 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
           hour12: true,
         })}
       </p>
-     
+      <h2 className="notification-modal-header">{selectedNotification.subject}</h2>
 
       <div className="notification-modal-body">
   {formatMessageWithLinks(selectedNotification.message)}
 </div>
 
-      {/* Show attached image if available */}
-    {selectedNotification.imageUrl && (
-  <div className="notification-modal-media-container">
-    <img
-      src={selectedNotification.imageUrl}
-      alt="Attached"
-      className="notification-modal-image"
-    />
-  </div>
-)}
-{/* Show attached video if available */}
-{selectedNotification.videoUrl && (
-  <div className="notification-modal-media-container">
-    <video
-      src={selectedNotification.videoUrl}
-      controls
-      className="notification-modal-video"
-    />
-  </div>
-)}
+      
+
    {/* Show attached file if available */}
-{selectedNotification.fileUrl && (
-  <div className="notification-modal-media-container">
-    {/* Determine if the file is an image */}
-    {selectedNotification.isImage ? (
-      <img
-        src={selectedNotification.fileUrl}
-        alt="Attached Image"
-        className="notification-modal-image"
-      />
-    ) : selectedNotification.isVideo ? (
-      <video
-        src={selectedNotification.fileUrl}
-        controls
-        className="notification-modal-video"
-      />
-    ) : (
-      // If it's not an image or video, just show a link to download/view the file
-      <a
-        href={selectedNotification.fileUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="notification-modal-file-link"
-      >
-        View Attachment
-      </a>
+   {selectedNotification.fileUrl && (
+  <>
+    {/* For Image Attachments */}
+    {selectedNotification.isImage && (
+      <div className="notification-modal-image-container">
+        <img
+          src={selectedNotification.fileUrl}
+          alt="Attached Image"
+          className="notification-modal-image"
+        />
+      </div>
     )}
-  </div>
+
+    {/* For Video Attachments */}
+    {selectedNotification.isVideo && (
+      <div className="notification-modal-video-container">
+        <video
+          src={selectedNotification.fileUrl}
+          controls
+          className="notification-modal-video"
+        />
+      </div>
+    )}
+
+    {/* For Other File Types */}
+    {!selectedNotification.isImage && !selectedNotification.isVideo && (
+      <div className="notification-modal-file-container">
+        <FontAwesomeIcon
+          icon={getFileIcon(selectedNotification.fileName)}
+          className={`notification-modal-file-icon ${getFileIconClass(selectedNotification.fileName)}`}
+        />
+        <a
+          href={selectedNotification.fileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="notification-modal-file-link"
+        >
+          {selectedNotification.fileName}
+        </a>
+      </div>
+    )}
+  </>
 )}
+
 
       {/* Optional Actions for invites */}
       {selectedNotification.type === 'invite' && selectedNotification.status === 'pending' && (

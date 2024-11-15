@@ -115,11 +115,13 @@
   list-style: none;
   padding: 0;
   margin: 0;
-  max-width: 600px;
-  margin: auto;
 }
 
-/* Notification Item */
+/* Notification Item */.notification-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
 .notification-item {
   display: flex;
   align-items: center;
@@ -198,10 +200,13 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  font-size: 14px;
+  color: #535353;
+  
 }
 
 .notification-title {
-  font-size: 14px;
+  font-size: 15px;
   margin: 0;
   color: #333;
 }
@@ -370,18 +375,42 @@
   word-wrap: break-word;
 }
 
-/* Image Display */
-.notification-modal-image {
-  width: 100%;
-  border-radius: 8px;
-  margin-top: 15px;
-}
+
+
 
 /* Action Button Container */
 .notification-modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+/* Updated Styles for Notification Modal */
+.notification-modal-file-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background-color: #f5f5f5; /* Light grey background */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
+
+.notification-modal-file-link {
+  font-size: 16px;
+  color: #333; /* Darker color */
+  text-decoration: none; /* Remove underline */
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.notification-modal-file-link:hover {
+  color: #0056b3; /* Slightly darker color on hover */
+}
+
+.notification-modal-file-icon {
+  font-size: 20px;
+  color: #666;
 }
 
 .notification-modal-btn {
@@ -405,31 +434,43 @@
 .notification-modal-btn:hover {
   opacity: 0.9;
 }
-/* Container for media (image and video) */
-.notification-modal-media-container {
+
+
+
+
+/* Styles for the notification modal video */
+.notification-modal-image-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 1rem;
+  margin-top: 20px;
 }
 
-/* Styles for the notification modal image */
 .notification-modal-image {
   max-width: 100%;
-  max-height: 300px;
-  object-fit: contain;
+  max-height: 400px; /* Adjust to control the maximum height */
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  object-fit: cover; /* Ensures the image scales properly */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow */
 }
 
-/* Styles for the notification modal video */
-.notification-modal-video {
-  max-width: 100%;
-  max-height: 300px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  outline: none;
+/* Video Container Styling */
+.notification-modal-video-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
 }
+
+.notification-modal-video {
+  width: 100%;
+  max-width: 100%;
+  max-height: 450px; /* Adjust to control the maximum height */
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  object-fit: contain; /* Ensures the video maintains its aspect ratio */
+}
+
 .notification-modal-body a {
   color: blue;
   text-decoration: underline;
