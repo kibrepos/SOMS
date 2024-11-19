@@ -1,211 +1,383 @@
 import React, { useState, useEffect } from 'react';
-import { ref, getStorage, uploadBytes, uploadBytesResumable, listAll, getDownloadURL, deleteObject, StorageReference, getMetadata } from 'firebase/storage';
-import { storage } from '../../services/firebaseConfig';
+import { useParams } from 'react-router-dom';
+import { firestore, storage, auth } from '../../services/firebaseConfig';
 import '../../styles/OrganizationResources.css';
-import { useParams } from "react-router-dom";
-import { authStateListener } from '../../services/auth';
+import {
+  ref,
+  listAll,
+  uploadBytes,
+  deleteObject,
+  getDownloadURL,
+  getMetadata,
+  StorageReference,
+} from 'firebase/storage';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import Header from '../../components/Header';
-import OrganizationSidebar from './OrganizationSidebar'; 
-import StudentPresidentSidebar from './StudentPresidentSidebar'; 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faFolder, faFolderPlus, faSearch, faEllipsisV, faArrowLeft, faPaperclip, faImage, faVideo, faFileAlt, faFilePdf, faFileWord, faFilePowerpoint, faFileExcel } from '@fortawesome/free-solid-svg-icons';
+import StudentPresidentSidebar from './StudentPresidentSidebar';
 
-const OrganizationResources = () => {
-  const { organizationName } = useParams(); // Get organization name from URL
-  const [files, setFiles] = useState<StorageReference[]>([]); // State to hold file references
-  const [folders, setFolders] = useState<StorageReference[]>([]); // State to hold folder references
-  const [user, setUser] = useState<any | null>(null); // State to hold user data
-  const [folderName, setFolderName] = useState(''); // State to hold new folder name
-  const [currentPath, setCurrentPath] = useState<string | null>(null); // State for the current folder path
-  const [imageModal, setImageModal] = useState<string | null>(null); // State to handle image modal
-  const [showCreateFolderModal, setShowCreateFolderModal] = useState(false); // State to control folder creation modal visibility
-  const [searchQuery, setSearchQuery] = useState(''); // State to hold the search query for files
-  const [dropdownIndex, setDropdownIndex] = useState<string | null>(null); // State to manage dropdown selection
-  const [detailsModal, setDetailsModal] = useState<{ name: string, size: string, path: string, date: string } | null>(null); // State for file details modal
-  const [videoModal, setVideoModal] = useState<string | null>(null); // State to handle video modal
-  const [loading, setLoading] = useState(false); // State for loading status
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null); // State to track upload progress
-  const [dragging, setDragging] = useState(false); // State to handle drag-and-drop functionality
+interface UploadedFile {
+  name: string;
+  url: string;
+  type: string;
+}
 
-  // Function to determine the icon for a file based on its name
-  const getFileIcon = (fileName: string) => {
-    // Determine the file extension and return corresponding icon
-    if (fileName.endsWith('.pdf')) return <FontAwesomeIcon icon={faFilePdf} />;
-    if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) return <FontAwesomeIcon icon={faFileWord} />;
-    if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) return <FontAwesomeIcon icon={faFilePowerpoint} />;
-    if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) return <FontAwesomeIcon icon={faFileExcel} />;
-    if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png')) return <FontAwesomeIcon icon={faImage} />;
-    if (fileName.endsWith('.mp4') || fileName.endsWith('.mov')) return <FontAwesomeIcon icon={faVideo} />;
-    return <FontAwesomeIcon icon={faFileAlt} />; // Default icon for other file types
-  };
+const OrganizationResources: React.FC = () => {
+  const { organizationName } = useParams<{ organizationName: string }>();
+  const [role, setRole] = useState<string>(''); // User's role: 'president', 'officer', 'member', 'guest'
+  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [folderType, setFolderType] = useState<'public' | 'private'>('public');
+  const [file, setFile] = useState<File | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set()); // Track selected files for deletion
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc'); // Track sorting order
+  const [folderName, setFolderName] = useState<string>(''); // State for new folder name
+  const [folders, setFolders] = useState<string[]>([]); // State for folders
+  const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set());
+  const [currentPath, setCurrentPath] = useState<string>(''); // Tracks the current folder path
 
-  // Function to return CSS class for a file icon based on its name
-  const getFileIconClass = (fileName: string) => {
-    // Logic for returning the appropriate class name for file icons can be added here
-    return 'file-icon';
-  };
 
-  // Effect hook to listen for authentication state changes
   useEffect(() => {
-    const unsubscribe = authStateListener(setUser); // Subscribe to auth state listener
-    return () => unsubscribe(); // Cleanup on unmount
-  }, []);
+    if (organizationName) {
+      fetchUserRole();
+    }
+  }, [organizationName]);
 
-  // Effect hook to fetch files when user and organization name are available
   useEffect(() => {
-    if (user && organizationName) fetchFiles(); // Fetch files if user is authenticated and organization is defined
-  }, [user, organizationName, currentPath]);
+    if (role) {
+      fetchFilesAndFolders();
+    }
+  }, [folderType, role, currentPath]); 
 
-  // Function to fetch files and folders from Firebase Storage
-  const fetchFiles = async () => {
-    if (!user || !organizationName) return; // Exit if user or organization is not defined
-    const folderRef = ref(storage, `organizations/${organizationName}/files${currentPath ? `/${currentPath}` : ''}`); // Reference to the storage folder
+  const fetchUserRole = async () => {
+    if (!organizationName) {
+      console.error('Error: organizationName is undefined.');
+      setRole('guest');
+      return;
+    }
+
+    const user = auth.currentUser;
+    if (!user) {
+      console.error('User is not authenticated.');
+      setRole('guest');
+      return;
+    }
+
     try {
-      const res = await listAll(folderRef); // List all files and folders in the current directory
-      setFolders(res.prefixes); // Set state with fetched folder references
-      setFiles(res.items); // Set state with fetched file references
+      const orgQuery = query(
+        collection(firestore, 'organizations'),
+        where('name', '==', organizationName)
+      );
+      const orgSnapshot = await getDocs(orgQuery);
+
+      if (!orgSnapshot.empty) {
+        const orgData = orgSnapshot.docs[0].data();
+        console.log('Organization data:', orgData);
+
+        if (orgData?.president?.id === user.uid) {
+          setRole('president');
+        } else if (orgData?.officers?.some((officer: { id: string }) => officer.id === user.uid)) {
+          setRole('officer');
+        } else if (orgData?.members?.some((member: { id: string }) => member.id === user.uid)) {
+          setRole('member');
+        } else {
+          setRole('guest');
+        }
+      } else {
+        console.error(`Organization with name '${organizationName}' does not exist.`);
+        setRole('guest');
+      }
     } catch (error) {
-      console.error("Error fetching files:", error); // Log error if fetching fails
+      console.error('Error fetching user role:', error);
+      setRole('guest');
     }
   };
+const createFolder = async () => {
+  if (!folderName.trim()) {
+    alert('Folder name cannot be empty.');
+    return;
+  }
 
-  // Function to handle file uploads from input change event
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (user && organizationName && e.target.files) handleFileUpload(e.target.files); // Call file upload function if files are present
-  };
+  try {
+    const folderPath = `organizations/${organizationName}/ORG_files/${folderType}/${folderName}/placeholder.txt`;
+    const folderRef = ref(storage, folderPath);
 
-  // Function to handle the actual file upload process
-  const handleFileUpload = async (files: FileList) => {
-    if (!organizationName) return; // Exit if organization name is not defined
-    const uploads = Array.from(files).map(file => {
-      const fileRef = ref(storage, `organizations/${organizationName}/files${currentPath ? `/${currentPath}` : ''}/${file.name}`); // Create reference for each file
-      return uploadBytes(fileRef, file); // Upload file and return promise
+    // Create a placeholder file to ensure the folder is created in Firebase
+    await uploadBytes(folderRef, new Blob(['Placeholder file'], { type: 'text/plain' }));
+    setFolders((prevFolders) => [...prevFolders, folderName]);
+    setFolderName(''); // Clear input after creation
+    alert(`Folder '${folderName}' created successfully.`);
+  } catch (error) {
+    console.error('Error creating folder:', error);
+    alert('Error creating folder.');
+  }
+};
+const deleteSelectedFolders = async () => {
+  try {
+    const folderPath = `organizations/${organizationName}/ORG_files/${folderType}`;
+    const foldersToDelete = Array.from(selectedFolders); // Convert Set to Array
+
+    for (const folderName of foldersToDelete) {
+      const folderRef = ref(storage, `${folderPath}/${folderName}/`);
+      const folderList = await listAll(folderRef);
+
+      // Delete all files in the folder
+      for (const fileRef of folderList.items) {
+        await deleteObject(fileRef);
+      }
+
+      // Delete all subfolders
+      for (const subfolderRef of folderList.prefixes) {
+        await deleteObject(subfolderRef);
+      }
+    }
+
+    setFolders((prevFolders) => prevFolders.filter((folder) => !selectedFolders.has(folder)));
+    setSelectedFolders(new Set());
+    alert('Selected folders deleted successfully.');
+  } catch (error) {
+    console.error('Error deleting folders:', error);
+    alert('Error deleting folders.');
+  }
+};
+
+const fetchFilesAndFolders = async () => {
+  try {
+    const basePath = `organizations/${organizationName}/ORG_files/${folderType}`;
+    const fullPath = currentPath ? `${basePath}/${currentPath}` : basePath;
+    const storageRef = ref(storage, fullPath);
+
+    const listResult = await listAll(storageRef);
+
+    const filePromises = listResult.items.map(async (item: StorageReference) => {
+      const url = await getDownloadURL(item);
+      const metadata = await getMetadata(item);
+      return { name: item.name, url, type: metadata.contentType || 'unknown' };
     });
 
+    const folderNames = listResult.prefixes.map((prefix) => prefix.name); // Get folder names
+
+    const resolvedFiles = await Promise.all(filePromises);
+
+    setFolders(folderNames);
+    setFiles(resolvedFiles);
+  } catch (error) {
+    console.error('Error fetching files and folders:', error);
+  }
+};
+
+const openFolder = (folderName: string) => {
+  setCurrentPath((prevPath) => (prevPath ? `${prevPath}/${folderName}` : folderName));
+};
+const navigateUp = () => {
+  setCurrentPath((prevPath) => {
+    const parts = prevPath.split('/').filter(Boolean); // Split and remove empty strings
+    parts.pop(); // Remove the last part of the path
+    return parts.join('/');
+  });
+};
+
+  const handleUpload = async () => {
+    if (!file) {
+      alert('Please select a file.');
+      return;
+    }
+
     try {
-      await Promise.all(uploads); // Wait for all uploads to complete
-      fetchFiles(); // Refresh the file list after uploads
+      const folderPath = `organizations/${organizationName}/ORG_files/${folderType}/${file.name}`;
+      const storageRef = ref(storage, folderPath);
+
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      const uploadedFile: UploadedFile = {
+        name: file.name,
+        url: downloadURL,
+        type: file.type,
+      };
+
+      setFiles((prevFiles) => [...prevFiles, uploadedFile]);
+      alert(`File uploaded successfully: ${downloadURL}`);
     } catch (error) {
-      console.error("Error uploading files:", error); // Log error if upload fails
+      console.error('Error uploading file:', error);
+      alert('File upload failed.');
     }
   };
 
-  // Function to create a new folder in Firebase Storage
-  const handleCreateFolder = async () => {
-    if (!organizationName || !folderName) return; // Exit if organization name or folder name is not defined
-    const folderRef = ref(storage, `organizations/${organizationName}/files${currentPath ? `/${currentPath}` : ''}/${folderName}`); // Create reference for the new folder
+  const handleDelete = async () => {
     try {
-      await uploadBytes(folderRef, new Uint8Array()); // Upload an empty byte array to create a folder
-      setFolderName(''); // Reset folder name
-      setShowCreateFolderModal(false); // Hide create folder modal
-      fetchFiles(); // Refresh the file list
+      const folderPath = `organizations/${organizationName}/ORG_files/${folderType}`;
+      const filesToDelete = Array.from(selectedFiles); // Convert Set to Array
+  
+      for (const fileName of filesToDelete) {
+        const fileRef = ref(storage, `${folderPath}/${fileName}`);
+        await deleteObject(fileRef);
+      }
+  
+      setFiles((prevFiles) => prevFiles.filter((file) => !selectedFiles.has(file.name)));
+      alert('Selected files deleted successfully.');
+      setSelectedFiles(new Set());
     } catch (error) {
-      console.error("Error creating folder:", error); // Log error if folder creation fails
+      console.error('Error deleting files:', error);
+      alert('Error deleting files.');
     }
   };
+  
+  
 
-  // Function to handle folder click and set the current path
-  const handleFolderClick = (folder: StorageReference) => {
-    setCurrentPath(prevPath => prevPath ? `${prevPath}/${folder.name}` : folder.name); // Update current path to include clicked folder
+  const toggleFileSelection = (fileName: string) => {
+    setSelectedFiles((prevSelected) => {
+      const updatedSelected = new Set(prevSelected);
+      if (updatedSelected.has(fileName)) {
+        updatedSelected.delete(fileName);
+      } else {
+        updatedSelected.add(fileName);
+      }
+      return updatedSelected;
+    });
   };
 
-  // Function to handle going back to the previous folder
-  const handleGoBack = () => {
-    setCurrentPath(prevPath => prevPath ? prevPath.substring(0, prevPath.lastIndexOf('/')) : null); // Update current path to go back one level
+  const toggleSortOrder = () => {
+    const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+    setSortOrder(newOrder);
+
+    setFiles((prevFiles) =>
+      [...prevFiles].sort((a, b) =>
+        newOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
+      )
+    );
   };
 
-  // Function to handle file click and retrieve file URL and metadata
-  const handleFileClick = async (file: StorageReference) => {
-    const url = await getDownloadURL(file); // Get the download URL for the file
-    const metadata = await getMetadata(file); // Get the metadata for the file
-    // Display modal or perform any action with the file
-  };
+  const filteredFiles = files.filter((file) =>
+    file.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  // Function to handle file deletion
-  const handleDelete = async (file: StorageReference) => {
-    try {
-      await deleteObject(file); // Delete the specified file
-      fetchFiles(); // Refresh the file list after deletion
-    } catch (error) {
-      console.error("Error deleting file:", error); // Log error if deletion fails
+  const FilePreview: React.FC<{ fileUrl: string; fileType: string }> = ({ fileUrl, fileType }) => {
+    if (fileType.startsWith('image/')) {
+      return <img src={fileUrl} alt="Preview" style={{ maxWidth: '100%' }} />;
+    } else if (fileType.startsWith('video/')) {
+      return <video src={fileUrl} controls style={{ maxWidth: '100%' }} />;
     }
+    return <p>Preview not available</p>;
   };
 
-  // Function to handle folder deletion
-  const handleDeleteFolder = async (folder: StorageReference) => {
-    try {
-      await deleteFolderRecursively(folder); // Delete the folder recursively
-      fetchFiles(); // Refresh the file list after deletion
-    } catch (error) {
-      console.error("Error deleting folder:", error); // Log error if deletion fails
-    }
-  };
-
-  // Function to delete a folder and all its contents recursively
-  const deleteFolderRecursively = async (folderRef: StorageReference) => {
-    // Fetch and delete all files within the folder before deleting the folder itself
-    const res = await listAll(folderRef); // List all items in the folder
-    await Promise.all(res.items.map(file => deleteObject(file))); // Delete all files
-    await Promise.all(res.prefixes.map(subFolder => deleteFolderRecursively(subFolder))); // Recursively delete subfolders
-    await deleteObject(folderRef); // Finally, delete the folder itself
-  };
-
-  // Function to close any open modals
-  const handleCloseModal = () => {
-    setImageModal(null); // Close image modal
-    setDetailsModal(null); // Close details modal
-    setVideoModal(null); // Close video modal
-  };
-
-  // Function to handle search input change
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value.toLowerCase()); // Update search query based on user input
-  };
+  if (!role) {
+    return <p>Loading...</p>;
+  }
 
   return (
-    <div className={`locker-container ${dragging ? 'dragging' : ''}`}>
-      <Header/> {/* Render the header component */}
-      <StudentPresidentSidebar/> {/* Render the sidebar for the student president */}
-      <h1>Files for {organizationName}</h1> {/* Display the organization name */}
-      {/* Add JSX for displaying files, folders, and modals */}
-      <input 
-        type="text" 
-        placeholder="Search files..." 
-        value={searchQuery} 
-        onChange={handleSearch} // Bind search input to search query state
-      />
-      <button onClick={() => setShowCreateFolderModal(true)}>
-        <FontAwesomeIcon icon={faFolderPlus} /> Create Folder
-      </button>
-      {showCreateFolderModal && (
-        <div className="modal">
-          <h2>Create New Folder</h2>
-          <input 
-            type="text" 
-            value={folderName} 
-            onChange={(e) => setFolderName(e.target.value)} 
-            placeholder="Folder Name" 
-          />
-          <button onClick={handleCreateFolder}>Create</button>
-          <button onClick={() => setShowCreateFolderModal(false)}>Cancel</button>
-        </div>
-      )}
-      <div className="files-container">
-        {folders.filter(folder => folder.name.toLowerCase().includes(searchQuery)).map(folder => (
-          <div key={folder.name} onClick={() => handleFolderClick(folder)}>
-            {getFileIcon(folder.name)} {folder.name} {/* Render folder icon and name */}
+    <div className="organization-resources">
+      <Header />
+      <div className="layout">
+        <StudentPresidentSidebar />
+        <main className="main-content">
+          <h1>Organization Resources: {organizationName}</h1>
+          <h2>Your Role: {role}</h2>
+  
+          <div className="breadcrumbs">
+  <span onClick={() => setCurrentPath('')}>/</span>
+  {currentPath.split('/').map((part, index, arr) => (
+    <span
+      key={index}
+      onClick={() => setCurrentPath(arr.slice(0, index + 1).join('/'))}
+    >
+      {` / ${part}`}
+    </span>
+  ))}
+</div>
+
+  
+          <div className="toolbar">
+            <select
+              value={folderType}
+              onChange={(e) => setFolderType(e.target.value as 'public' | 'private')}
+              disabled={role === 'member' && folderType === 'private'}
+            >
+              <option value="public">Public Folder</option>
+              {role !== 'member' && <option value="private">Private Folder</option>}
+            </select>
+            <input
+              type="text"
+              placeholder="Enter folder name"
+              value={folderName}
+              onChange={(e) => setFolderName(e.target.value)}
+            />
+            <button onClick={createFolder}>Create Folder</button>
+            <button onClick={deleteSelectedFolders} disabled={selectedFolders.size === 0}>
+              Delete Selected Folders
+            </button>
+            <button onClick={navigateUp} disabled={!currentPath}>
+              Go Up
+            </button>
+            <input
+              type="file"
+              onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
+            />
+            <button onClick={handleUpload}>Upload</button>
+            <button onClick={handleDelete} disabled={selectedFiles.size === 0}>
+              Delete Selected Files
+            </button>
+            <input
+              type="text"
+              placeholder="Search files..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <button onClick={toggleSortOrder}>
+              Sort {sortOrder === 'asc' ? 'Descending' : 'Ascending'}
+            </button>
           </div>
-        ))}
-        {files.filter(file => file.name.toLowerCase().includes(searchQuery)).map(file => (
-          <div key={file.name} onClick={() => handleFileClick(file)}>
-            {getFileIcon(file.name)} {file.name} {/* Render file icon and name */}
-            <button onClick={() => handleDelete(file)}>Delete</button> {/* Delete button for each file */}
+  
+          <div className="folder-list">
+            <h3>Folders</h3>
+            {folders.length > 0 ? (
+              folders.map((folder) => (
+                <div key={folder} className="folder-item">
+                  <input
+                    type="checkbox"
+                    checked={selectedFolders.has(folder)}
+                    onChange={() => {
+                      setSelectedFolders((prev) => {
+                        const updated = new Set(prev);
+                        if (updated.has(folder)) {
+                          updated.delete(folder);
+                        } else {
+                          updated.add(folder);
+                        }
+                        return updated;
+                      });
+                    }}
+                  />
+                  <p onClick={() => openFolder(folder)}>{folder}</p>
+                </div>
+              ))
+            ) : (
+              <p>No folders found.</p>
+            )}
           </div>
-        ))}
+  
+          <div className="file-list">
+            <h3>Files</h3>
+            {filteredFiles.length > 0 ? (
+              filteredFiles.map((file) => (
+                <div key={file.name} className="file-item">
+                  <input
+                    type="checkbox"
+                    checked={selectedFiles.has(file.name)}
+                    onChange={() => toggleFileSelection(file.name)}
+                  />
+                  <p>{file.name}</p>
+                  <FilePreview fileUrl={file.url} fileType={file.type} />
+                </div>
+              ))
+            ) : (
+              <p>No files found.</p>
+            )}
+          </div>
+        </main>
       </div>
-      {/* Other UI elements such as modals for file preview and details would go here */}
     </div>
   );
+  
 };
 
 export default OrganizationResources;

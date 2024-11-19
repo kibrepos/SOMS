@@ -3,11 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { auth, firestore } from '../../services/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 import Header from '../../components/Header';
-import OrganizationSidebar from './OrganizationSidebar'; 
 import StudentPresidentSidebar from './StudentPresidentSidebar'; 
 import StudentOfficerSidebar from './StudentOfficerSidebar'; 
 import StudentMemberSidebar from './StudentMemberSidebar'; 
 import '../../styles/OrganizationDashboard.css';
+import OrganizationSidebar from './OrganizationSidebar'; 
 
 const OrganizationDashboard: React.FC = () => {
   const { organizationName } = useParams<{ organizationName: string }>(); // Get organization name from URL

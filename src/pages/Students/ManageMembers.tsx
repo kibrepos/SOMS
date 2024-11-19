@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, getDoc,getDocs,updateDoc,collection,setDoc,arrayUnion  } from 'firebase/firestore';
-import { auth,firestore } from '../../services/firebaseConfig';
+import { firestore } from '../../services/firebaseConfig';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUserCircle } from '@fortawesome/free-solid-svg-icons';

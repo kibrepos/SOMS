@@ -58,6 +58,7 @@ const App: React.FC = () => {
             {/* Shared Organization Routes */}
             <Route element={<ProtectedOrgRoute />}>
             <Route path="/Organization/:organizationName/dashboard" element={<OrganizationDashboard />} />
+            <Route path="/Organization/:organizationName/resources" element={<OrganizationResources />} />
           </Route>
          {/* President Routes */}
           <Route element={<ProtectedOrgRoute requiredRole="president" />}>
@@ -65,7 +66,6 @@ const App: React.FC = () => {
           <Route path="/Organization/:organizationName/manage-members" element={<ManageMembers />} />
           <Route path="/Organization/:organizationName/manage-committees" element={<ManageCommittees />} />
           <Route path="/Organization/:organizationName/Alltasks" element={<TaskManagement />} />
-          <Route path="/Organization/:organizationName/resources" element={<OrganizationResources />} />
           <Route path="/Organization/:organizationName/activity-logs" element={<OrganizationActivityLogs />} />
           <Route  path="/Organization/:organizationName/announcements" element={<OrganizationAnnouncement />} />
 

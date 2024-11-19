@@ -11,9 +11,13 @@ import { collection, updateDoc, doc, onSnapshot,getDoc,setDoc,writeBatch, arrayR
 
 
 function formatMessageWithLinks(message: string): JSX.Element {
+  // If message is undefined or null, return an empty span or fallback message
+  if (!message) {
+    return <span></span>;  // Or return nothing (empty <></>)
+  }
+
   const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[^\s]+\.[a-z]{2,})/gi;
   const parts = message.split(urlRegex);
-
 
   return (
     <>
@@ -35,6 +39,7 @@ function formatMessageWithLinks(message: string): JSX.Element {
     </>
   );
 }
+
 
 const getFileIcon = (fileName: string) => {
   if (fileName.endsWith('.pdf')) return faFilePdf;
@@ -140,7 +145,7 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
       // Mark the notification as read in Firestore
       const notifRef = doc(firestore, `notifications/${userId}/userNotifications`, notif.id);
       await updateDoc(notifRef, { isRead: true });
-  
+      console.log("Opening Notification: ", notif);
       // Update local state to reflect the change
       setNotifications((prev) =>
         prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n))
