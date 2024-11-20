@@ -2,15 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { firestore, storage, auth } from '../../services/firebaseConfig';
 import '../../styles/OrganizationResources.css';
-import {
-  ref,
-  listAll,
-  uploadBytes,
-  deleteObject,
-  getDownloadURL,
-  getMetadata,
-  StorageReference,
-} from 'firebase/storage';
+import { ref, listAll, uploadBytes, deleteObject, getDownloadURL, getMetadata, StorageReference,} from 'firebase/storage';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faArrowLeft ,faFileAlt,faImage,faVideo,faFilePdf,faFileWord,faFilePowerpoint,faFileExcel,faFolder,} from '@fortawesome/free-solid-svg-icons';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import Header from '../../components/Header';
 import StudentPresidentSidebar from './StudentPresidentSidebar';
@@ -19,7 +13,17 @@ interface UploadedFile {
   name: string;
   url: string;
   type: string;
+  size?: string;
+  uploadedBy?: string;
+  dateUploaded?: string;
 }
+interface Folder {
+  name: string;
+  uploadedBy: string;
+  dateUploaded: string;
+}
+
+
 
 const OrganizationResources: React.FC = () => {
   const { organizationName } = useParams<{ organizationName: string }>();
@@ -31,15 +35,34 @@ const OrganizationResources: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set()); // Track selected files for deletion
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc'); // Track sorting order
   const [folderName, setFolderName] = useState<string>(''); // State for new folder name
-  const [folders, setFolders] = useState<string[]>([]); // State for folders
+  const [folders, setFolders] = useState<Folder[]>([]); // Update state type
   const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set());
   const [currentPath, setCurrentPath] = useState<string>(''); // Tracks the current folder path
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<{ type: string; url: string } | null>(null);
   const [selectedItem, setSelectedItem] = useState<string | null>(null); 
   const [detailsContent, setDetailsContent] = useState<{name: string; type?: string;url?: string;size?: string;uploadedBy?: string;dateUploaded?: string;} | null>(null);
-  
+  const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
 
+
+
+  const getFileIcon = (fileName: string) => {
+    if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png')) {
+        return faImage;
+    } else if (fileName.endsWith('.mp4') || fileName.endsWith('.avi') || fileName.endsWith('.mov') || fileName.endsWith('.webm')) {
+        return faVideo;
+    } else if (fileName.endsWith('.pdf')) {
+        return faFilePdf;
+    } else if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) {
+        return faFileWord;
+    } else if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) {
+        return faFilePowerpoint;
+    } else if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) {
+        return faFileExcel;
+    } else {
+        return faFileAlt; // Default icon for other file types
+    }
+};
 
 
 
@@ -108,66 +131,96 @@ const OrganizationResources: React.FC = () => {
     }
   };
 
-const createFolder = async () => {
-  if (!folderName.trim()) {
-    alert('Folder name cannot be empty.');
-    return;
-  }
-
-  try {
-    const userName = await fetchUserFullName(); // Fetch the uploader's full name
-    const folderPath = `organizations/${organizationName}/ORG_files/${folderType}${
-      currentPath ? `/${currentPath}` : ''
-    }/${folderName}/placeholder.txt`; // Path for placeholder file
-
-    const folderRef = ref(storage, folderPath);
-
-    // Create a placeholder file with metadata
-    const metadata = {
-      customMetadata: {
-        uploadedBy: userName,
-        dateUploaded: new Date().toISOString(), // Add the current date
-      },
-    };
-
-    await uploadBytes(folderRef, new Blob(['Placeholder file'], { type: 'text/plain' }), metadata);
-    setFolders((prevFolders) => [...prevFolders, folderName]);
-    setFolderName(''); // Clear input after creation
-    alert(`Folder '${folderName}' created successfully.`);
-  } catch (error) {
-    console.error('Error creating folder:', error);
-    alert('Error creating folder.');
-  }
-};
-
-
-
-  const fetchFilesAndFolders = async () => {
+  const createFolder = async () => {
+    if (!folderName.trim()) {
+      alert('Folder name cannot be empty.');
+      return;
+    }
+  
     try {
-      const basePath = `organizations/${organizationName}/ORG_files/${folderType}`;
-      const fullPath = currentPath ? `${basePath}/${currentPath}` : basePath;
-      const storageRef = ref(storage, fullPath);
+      const userName = await fetchUserFullName(); // Fetch uploader's name
+      const folderPath = `organizations/${organizationName}/ORG_files/${folderType}${
+        currentPath ? `/${currentPath}` : ''
+      }/${folderName}/placeholder.txt`;
   
-      const listResult = await listAll(storageRef);
+      const folderRef = ref(storage, folderPath);
   
-      const filePromises = listResult.items
-        .filter((item) => item.name !== 'placeholder.txt') // Exclude placeholder file
-        .map(async (item: StorageReference) => {
-          const url = await getDownloadURL(item);
-          const metadata = await getMetadata(item);
-          return { name: item.name, url, type: metadata.contentType || 'unknown' };
-        });
+      const metadata = {
+        customMetadata: {
+          uploadedBy: userName,
+          dateUploaded: new Date().toISOString(),
+        },
+      };
   
-      const folderNames = listResult.prefixes.map((prefix) => prefix.name); // Get folder names
+      // Upload a placeholder file with metadata
+      await uploadBytes(folderRef, new Blob(['Placeholder file'], { type: 'text/plain' }), metadata);
   
-      const resolvedFiles = await Promise.all(filePromises);
-  
-      setFolders(folderNames);
-      setFiles(resolvedFiles);
+      setFolders((prevFolders) => [
+        ...prevFolders,
+        { name: folderName, uploadedBy: userName, dateUploaded: new Date().toISOString() },
+      ]);
+      setFolderName(''); // Clear folder input
+      setIsCreateFolderModalOpen(false); // Close modal if used with modal
+      setIsCreateFolderModalOpen(false); // Close modal if used with modal
+    alert(`Folder '${folderName}' created successfully.`);
     } catch (error) {
-      console.error('Error fetching files and folders:', error);
+      console.error('Error creating folder:', error);
+      alert('Error creating folder.');
     }
   };
+  
+  const fetchFilesAndFolders = async () => {
+    try {
+        const basePath = `organizations/${organizationName}/ORG_files/${folderType}`;
+        const fullPath = currentPath ? `${basePath}/${currentPath}` : basePath;
+        const storageRef = ref(storage, fullPath);
+
+        const listResult = await listAll(storageRef);
+
+        const filePromises = listResult.items.map(async (item: StorageReference) => {
+            const url = await getDownloadURL(item);
+            const metadata = await getMetadata(item); // Fetch file metadata
+            return {
+                name: item.name,
+                url,
+                type: metadata.contentType || 'Unknown',
+                size: `${(metadata.size / 1024).toFixed(2)} KB`, // Convert bytes to KB
+                uploadedBy: metadata.customMetadata?.uploadedBy || 'Unknown',
+                dateUploaded: metadata.timeCreated || 'Unknown',
+            };
+        });
+
+        const folderPromises = listResult.prefixes.map(async (prefix) => {
+            const placeholderRef = ref(storage, `${prefix.fullPath}/placeholder.txt`);
+            try {
+                const metadata = await getMetadata(placeholderRef);
+                return {
+                    name: prefix.name,
+                    uploadedBy: metadata.customMetadata?.uploadedBy || 'Unknown',
+                    dateUploaded: metadata.customMetadata?.dateUploaded || 'Unknown',
+                };
+            } catch {
+                return {
+                    name: prefix.name,
+                    uploadedBy: 'Unknown',
+                    dateUploaded: 'Unknown',
+                };
+            }
+        });
+
+        const resolvedFiles = (await Promise.all(filePromises)).filter(
+          (file) => file.name !== 'placeholder.txt' // Exclude placeholder.txt
+        );
+        const resolvedFolders = await Promise.all(folderPromises);
+
+        setFolders(resolvedFolders); // Update folders state
+        setFiles(resolvedFiles); // Update files state
+    } catch (error) {
+        console.error('Error fetching files and folders:', error);
+    }
+};
+
+  
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -284,39 +337,45 @@ const navigateUp = () => {
 
 const handleUpload = async () => {
   if (!file) {
-    alert('Please select a file.');
-    return;
+      alert('Please select a file.');
+      return;
   }
 
   try {
-    const userName = await fetchUserFullName();
+      const userName = await fetchUserFullName(); // Get uploader's name
 
-    const folderPath = `organizations/${organizationName}/ORG_files/${folderType}${
-      currentPath ? `/${currentPath}` : ''
-    }/${file.name}`;
-    const storageRef = ref(storage, folderPath);
+      const filePath = `organizations/${organizationName}/ORG_files/${folderType}${
+          currentPath ? `/${currentPath}` : ''
+      }/${file.name}`;
+      const storageRef = ref(storage, filePath);
 
-    // Add custom metadata for the uploader
-    const metadata = {
-      customMetadata: {
-        uploadedBy: userName,
-      },
-    };
+      // Add custom metadata
+      const metadata = {
+          customMetadata: {
+              uploadedBy: userName,
+          },
+      };
 
-    const snapshot = await uploadBytes(storageRef, file, metadata);
-    const downloadURL = await getDownloadURL(snapshot.ref);
+      const snapshot = await uploadBytes(storageRef, file, metadata);
 
-    const uploadedFile: UploadedFile = {
-      name: file.name,
-      url: downloadURL,
-      type: file.type,
-    };
+      // Ensure `getDownloadURL` and metadata fetching are working correctly
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      const fetchedMetadata = await getMetadata(snapshot.ref);
 
-    setFiles((prevFiles) => [...prevFiles, uploadedFile]);
-    alert(`File uploaded successfully by ${userName}`);
+      const uploadedFile: UploadedFile = {
+          name: file.name,
+          url: downloadURL,
+          type: fetchedMetadata.contentType || 'Unknown',
+          size: `${(fetchedMetadata.size / 1024).toFixed(2)} KB`, // Convert size to KB
+          uploadedBy: fetchedMetadata.customMetadata?.uploadedBy || 'Unknown',
+          dateUploaded: fetchedMetadata.timeCreated || 'Unknown',
+      };
+
+      setFiles((prevFiles) => [...prevFiles, uploadedFile]);
+      alert(`File uploaded successfully by ${userName}`);
   } catch (error) {
-    console.error('Error uploading file:', error);
-    alert('File upload failed.');
+      console.error('Error uploading file:', error);
+      alert('File upload failed.');
   }
 };
 
@@ -388,7 +447,7 @@ const handleDelete = async () => {
       prevFiles.filter((file) => !selectedFiles.has(file.name))
     );
     setFolders((prevFolders) =>
-      prevFolders.filter((folder) => !selectedFolders.has(folder))
+      prevFolders.filter((folder) => !selectedFolders.has(folder.name)) // Compare folder.name with selectedFolders
     );
     setSelectedFiles(new Set());
     setSelectedFolders(new Set());
@@ -485,139 +544,199 @@ const deleteFolderRecursively = async (folderPath: string) => {
     if (!content) return null;
   
     return (
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="OrgResour-modal-overlay" onClick={onClose}>
+    <div className="OrgResour-modal-content" onClick={(e) => e.stopPropagation()}>
           {content.type.startsWith('image/') ? (
             <img src={content.url} alt="Preview" style={{ maxWidth: '100%' }} />
           ) : content.type.startsWith('video/') ? (
             <video src={content.url} controls style={{ maxWidth: '100%' }} />
           ) : null}
-          <button onClick={onClose} className="close-modal">Close</button>
+            <button onClick={onClose} className="OrgResour-close-modal">Close</button>
         </div>
       </div>
     );
   };
   
   return (
-    <div className="organization-resources">
-      <Header />
-      <div className="layout">
-        <StudentPresidentSidebar />
-        <main className="main-content">
-          <h1>Organization Resources: {organizationName}</h1>
-          <h2>Your Role: {role}</h2>
-  
-          <div className="breadcrumbs">
-            <span onClick={() => setCurrentPath('')}>/</span>
-            {currentPath.split('/').map((part, index, arr) => (
-              <span
-                key={index}
-                onClick={() => setCurrentPath(arr.slice(0, index + 1).join('/'))}
-              >
-                {` / ${part}`}
-              </span>
-            ))}
-          </div>
-  
-          <div className="toolbar">
-            <select
-              value={folderType}
-              onChange={(e) => setFolderType(e.target.value as 'public' | 'private')}
-              disabled={role === 'member' && folderType === 'private'}
-            >
-              <option value="public">Public Folder</option>
-              {role !== 'member' && <option value="private">Private Folder</option>}
-            </select>
-            <input
-              type="text"
-              placeholder="Enter folder name"
-              value={folderName}
-              onChange={(e) => setFolderName(e.target.value)}
-            />
-            <button onClick={createFolder}>Create Folder</button>
-            <button onClick={navigateUp} disabled={!currentPath}>
-              Go Up
-            </button>
-            <input
-              type="file"
-              onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
-            />
-            <button onClick={handleUpload}>Upload</button>
-            <button onClick={handleDelete} disabled={selectedFiles.size === 0 && selectedFolders.size === 0}>
-  Delete Selected
-</button>
+    <div className="OrgResour-organization-resources">
+  <Header />
+  <div className="OrgResour-layout">
+    <StudentPresidentSidebar />
+    <main className="main-content">
+      <h2>{organizationName}, All files</h2>
 
-            <input
-              type="text"
-              placeholder="Search files..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <button onClick={toggleSortOrder}>
-              Sort {sortOrder === 'asc' ? 'Descending' : 'Ascending'}
-            </button>
-          </div>
-  
-          <div className="resources-list">
-            {folders.length > 0 || filteredFiles.length > 0 ? (
-              <>
-                {/* Render Folders */}
-                {folders.map((folder) => (
-                  <div key={folder} className="folder-item">
-                    <input
-                      type="checkbox"
-                      checked={selectedFolders.has(folder)}
-                      onChange={() => toggleFolderSelection(folder)}
-                    />
-                    <p onClick={() => openFolder(folder)}>{folder}</p>
-                    <div className="options-menu">
-  <span onClick={() => handleMenuClick(folder)}>⋮</span>
-  {selectedItem === folder && (
-    <div className="menu-dropdown">
-    <p onClick={() => handleViewDetails(folder, true)}>View Details</p>
-  </div>
-  
-  )}
+
+      <div className="OrgResour-toolbar-upload">
+  <input
+    type="file"
+    onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
+  />
+  <button onClick={handleUpload} className="OrgResour-button-upload">
+    Upload
+  </button>
+  <button onClick={() => setIsCreateFolderModalOpen(true)} className="create-folder-button">
+    Create Folder
+  </button>
 </div>
-                  </div>
-                ))}
-  
-                {/* Render Files */}
-                {filteredFiles.map((file) => (
-                  <div key={file.name} className="file-item">
-                    <input
-                      type="checkbox"
-                      checked={selectedFiles.has(file.name)}
-                      onChange={() => toggleFileSelection(file.name)}
-                    />
-                    <p onClick={() => handleFileClick(file)}>{file.name}</p>
-                    <div className="options-menu">
-  <span onClick={() => handleMenuClick(file.name)}>⋮</span>
-  {selectedItem === file.name && (
-    <div className="menu-dropdown">
-      <p onClick={() => handleViewDetails(file.name, false)}>View Details</p>
+      {/* Breadcrumbs */}
+      <div className="OrgResour-breadcrumbs">
+        <span onClick={() => setCurrentPath('')}>/</span>
+        {currentPath.split('/').map((part, index, arr) => (
+          <span
+            key={index}
+            onClick={() => setCurrentPath(arr.slice(0, index + 1).join('/'))}
+          >
+            {` / ${part}`}
+          </span>
+        ))}
+      </div>
+<div className="OrgResour-toolbar-actions">
+    <div className="OrgResour-toolbar-left">
+        <button onClick={navigateUp} disabled={!currentPath} title="Go Back">
+            <FontAwesomeIcon icon={faArrowLeft} />
+        </button>
+        <select
+            value={folderType}
+            onChange={(e) => setFolderType(e.target.value as 'public' | 'private')}
+            disabled={role === 'member' && folderType === 'private'}
+        >
+            <option value="public">Public Folder</option>
+            {role !== 'member' && <option value="private">Private Folder</option>}
+        </select>
+        <input
+            type="text"
+            placeholder="Search files..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="OrgResour-input-search"
+        />
     </div>
-  )}
+     <div className="OrgResour-toolbar-right">
+        <button
+            onClick={handleDelete}
+            disabled={selectedFiles.size === 0 && selectedFolders.size === 0}
+            className="OrgResour-button-delete"
+        >
+            Delete Selected
+        </button>
+        <button onClick={toggleSortOrder} className="OrgResour-button-sort">
+            Sort {sortOrder === 'asc' ? 'Descending' : 'Ascending'}
+        </button>
+    </div>
 </div>
 
-                  </div>
-                ))}
-              </>
-            ) : (
-              <p>No folders or files found.</p>
-            )}
+          <div className="OrgResour-resources-table">
+  <div className="OrgResour-scrollable-container">
+    <table className="OrgResour-table">
+      <thead>
+        <tr>
+          <th>Select</th>
+          <th>Name</th>
+          <th>Size</th>
+          <th>Type</th>
+          <th>Uploaded By</th>
+          <th>Date Uploaded</th>
+        </tr>
+      </thead>
+      <tbody>
+      {folders.length === 0 && files.length === 0 ? (
+    <tr>
+      <td>
+        There's no file or folder.
+      </td>
+    </tr>
+  ) : (
+    <>
+        {folders.map((folder) => (
+          <tr key={folder.name} onClick={() => openFolder(folder.name)} style={{ cursor: 'pointer' }}>
+            <td onClick={(e) => e.stopPropagation()}>
+              <input
+                type="checkbox"
+                checked={selectedFolders.has(folder.name)}
+                onChange={() => toggleFolderSelection(folder.name)}
+              />
+            </td>
+            <td>
+              <FontAwesomeIcon icon={faFolder} className="OrgResour-icon folder" />
+              {folder.name}
+            </td>
+            <td>—</td>
+            <td>Folder</td>
+            <td>{folder.uploadedBy}</td>
+            <td>{folder.dateUploaded !== 'Unknown' ? formatDate(folder.dateUploaded) : 'Unknown'}</td>
+          </tr>
+        ))}
 
-  {detailsContent && <DetailsModal content={detailsContent} onClose={() => setDetailsContent(null)} />}
+        {files.map((file) => {
+          const fileClass =
+            file.type.includes('image') ? 'image' :
+            file.type.includes('video') ? 'video' :
+            file.type.includes('pdf') ? 'pdf' :
+            file.type.includes('word') ? 'word' :
+            file.type.includes('presentation') ? 'powerpoint' :
+            file.type.includes('spreadsheet') ? 'excel' :
+            'default';
 
-            {/* Modal for Image/Video Preview */}
-            {isModalOpen && modalContent && (
-              <Modal content={modalContent} onClose={() => setIsModalOpen(false)} />
-            )}
-          </div>
+          return (
+            <tr key={file.name} onClick={() => handleFileClick(file)} style={{ cursor: 'pointer' }}>
+              <td onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={selectedFiles.has(file.name)}
+                  onChange={() => toggleFileSelection(file.name)}
+                />
+              </td>
+              <td>
+                <FontAwesomeIcon icon={getFileIcon(file.name)} className={`OrgResour-icon ${fileClass}`} />
+                {file.name.replace(/\.[^/.]+$/, '') /* Remove file extension */}
+              </td>
+              <td>{file.size || '—'}</td>
+              <td>{file.type || 'Unknown'}</td>
+              <td>{file.uploadedBy || 'Unknown'}</td>
+              <td>{file.dateUploaded ? formatDate(file.dateUploaded) : 'Unknown'}</td>
+              </tr>
+        );
+      })}
+    </>
+  )}
+</tbody>
+    </table>
+  </div>
+</div>
+
+{isCreateFolderModalOpen && (
+  <div className="modal-overlay">
+    <div className="modal-content">
+      <h2>Create a New Folder</h2>
+      <input
+        type="text"
+        placeholder="Folder name"
+        value={folderName}
+        onChange={(e) => setFolderName(e.target.value)}
+      />
+      <button onClick={createFolder}>Create</button>
+      <button onClick={() => setIsCreateFolderModalOpen(false)}>Cancel</button>
+    </div>
+  </div>
+)}
+
+        
+          {detailsContent && (
+            <DetailsModal
+              content={detailsContent}
+              onClose={() => setDetailsContent(null)}
+            />
+          )}
+  
+          {/* Modal for Image/Video Preview */}
+          {isModalOpen && modalContent && (
+            <Modal content={modalContent} onClose={() => setIsModalOpen(false)} />
+          )}
         </main>
       </div>
     </div>
   );
+  
   
 
   

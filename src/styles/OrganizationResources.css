@@ -1,0 +1,333 @@
+/* General Table Styling */
+.OrgResour-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Arial', sans-serif;
+    font-size: 14px;
+    color: #333;
+  }
+  
+  .OrgResour-table th {
+    background-color: #f9f9f9;
+    text-align: left;
+    padding: 12px 16px;
+    font-weight: bold;
+    border-bottom: 1px solid #e0e0e0;
+    color: #555;
+  }
+  
+  .OrgResour-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e0e0e0;
+    vertical-align: middle;
+  }
+  
+  .OrgResour-table tr:hover {
+    background-color: #f5f5f5; /* Light hover effect */
+    cursor: pointer;
+  }
+  
+  /* Icon Styling */
+  .OrgResour-icon {
+    margin-right: 8px;
+    color: #ffbf00; /* Icon color for folders */
+    font-size: 16px;
+    vertical-align: middle;
+  }
+  /* Icon Colors for Specific Types */
+.OrgResour-icon.folder {
+    color: #ffbf00; /* Yellow for folders */
+  }
+  
+  .OrgResour-icon.image {
+    color: #ff5722; /* Orange for images */
+  }
+  
+  .OrgResour-icon.video {
+    color: #2196f3; /* Blue for videos */
+  }
+  
+  .OrgResour-icon.pdf {
+    color: #e53935; /* Red for PDFs */
+  }
+  
+  .OrgResour-icon.word {
+    color: #3f51b5; /* Dark blue for Word files */
+  }
+  
+  .OrgResour-icon.powerpoint {
+    color: #ff9800; /* Orange for PowerPoint files */
+  }
+  
+  .OrgResour-icon.excel {
+    color: #4caf50; /* Green for Excel files */
+  }
+  
+  .OrgResour-icon.default {
+    color: #9e9e9e; /* Grey for unknown file types */
+  }
+  /* Action Menu Styling */
+  .OrgResour-action-menu {
+    position: relative;
+  }
+  
+  .OrgResour-action-menu button {
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: #888;
+    cursor: pointer;
+  }
+  
+  .OrgResour-action-menu ul {
+    display: none;
+    position: absolute;
+    right: 0;
+    margin: 0;
+    padding: 8px 0;
+    list-style: none;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+  }
+  
+  .OrgResour-action-menu:hover ul {
+    display: block;
+  }
+  
+  .OrgResour-action-menu ul li {
+    padding: 8px 16px;
+    font-size: 14px;
+    color: #333;
+    cursor: pointer;
+  }
+  
+  .OrgResour-action-menu ul li:hover {
+    background-color: #f5f5f5;
+  }
+  
+  /* Adjust the "Last Edit" column for consistency */
+  .OrgResour-table td:last-child {
+    font-size: 13px;
+    color: #777;
+  }
+  /* Scrollable Table Content */
+
+  
+  /* Fixed Header */
+  .OrgResour-table th {
+    position: sticky;
+    top: 0;
+    background-color: #f9f9f9;
+    z-index: 1;
+  }
+  
+
+
+
+
+
+
+
+
+
+
+
+.OrgResour-layout {
+    display: flex;
+    gap: 20px;
+}
+
+/* Breadcrumbs */
+.OrgResour-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: #555;
+    border-radius: 2px;
+    border: 1px solid #ddd; /* Add a subtle border */
+    padding: 8px; /* Add padding for spacing inside the border */
+    background-color: #f9f9f9; /* Optional: Add a light background */
+}
+
+
+.OrgResour-breadcrumbs span {
+    cursor: pointer;
+    color: #007bff;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.OrgResour-breadcrumbs span:hover {
+    color: #0056b3;
+}
+
+.OrgResour-breadcrumbs span:not(:last-child)::after {
+    content: '/';
+    margin: 0 5px;
+    color: #999;
+}
+
+/* Toolbar Upload Section */
+.OrgResour-toolbar-upload {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+/* Actions Section */
+.OrgResour-toolbar-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.OrgResour-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.OrgResour-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* General Button Styling */
+button {
+    cursor: pointer;
+    font-size: 14px;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-weight: bold;
+    border: none;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+.OrgResour-button-go-up {
+    background-color: #ddd;
+    color: #333;
+}
+
+.OrgResour-button-go-up:hover {
+    background-color: #ccc;
+}
+
+.OrgResour-button-upload {
+    background-color: #28a745;
+    color: white;
+}
+
+.OrgResour-button-delete {
+    background-color: #dc3545;
+    color: white;
+}
+
+.OrgResour-button-delete:disabled {
+    background-color: #e0e0e0;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.OrgResour-button-sort {
+    background-color: #6c757d;
+    color: white;
+}
+
+.create-folder-button {
+    background-color: #007bff;
+    color: white;
+}
+
+/* Dropdown Styling */
+.OrgResour-toolbar-navigation select {
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+/* Search Bar */
+.OrgResour-input-search {
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    width: 100%;
+    max-width: 300px;
+}
+
+.OrgResour-input-search:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+/* Scrollable Container */
+.OrgResour-scrollable-container {
+    max-height: 385px;
+    overflow-y: auto;
+}
+
+.OrgResour-scrollable-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.OrgResour-scrollable-container::-webkit-scrollbar-thumb {
+    background-color: #ccc;
+    border-radius: 4px;
+}
+
+.OrgResour-scrollable-container::-webkit-scrollbar-thumb:hover {
+    background-color: #aaa;
+}
+
+/* Modal Styling */
+.OrgResour-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.OrgResour-modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.OrgResour-close-modal {
+    margin-top: 10px;
+    background-color: #007bff;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    font-weight: bold;
+}
+
+.OrgResour-close-modal:hover {
+    background-color: #0056b3;
+}
