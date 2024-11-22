@@ -125,27 +125,18 @@
   }
   
 
-
-
-
-
-
-
-
-
-
-
-.OrgResour-layout {
+  .OrgResour-layout {
     display: flex;
+    align-items: center;
     gap: 20px;
 }
+
 
 /* Breadcrumbs */
 .OrgResour-breadcrumbs {
     display: flex;
     align-items: center;
-    gap: 5px;
-    margin-bottom: 20px;
+    gap: 2px;
     font-size: 14px;
     color: #555;
     border-radius: 2px;
@@ -174,10 +165,11 @@
 
 /* Toolbar Upload Section */
 .OrgResour-toolbar-upload {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end; /* Align items to the right */
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 /* Actions Section */
@@ -190,15 +182,17 @@
 }
 
 .OrgResour-toolbar-left {
+    flex: 1; /* Allows the left section to take up available space */
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 10px; /* Add spacing between elements */
 }
 
 .OrgResour-toolbar-right {
     display: flex;
     align-items: center;
     gap: 10px;
+    
 }
 
 /* General Button Styling */
@@ -262,24 +256,41 @@ button:hover {
 
 /* Search Bar */
 .OrgResour-input-search {
-    padding: 8px;
-    font-size: 14px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    width: 100%;
-    max-width: 300px;
+  width: 100px; /* Full width for responsiveness */
+  max-width: 400px;
+  padding: 10px; /* Padding for better usability */
+  font-size: 16px; /* Set a readable font size */
+  color: #333; /* Text color */
+  background-color: #fff; /* White background for contrast */
+  border: 1px solid #ccc; /* Border style */
+  border-radius: 4px; /* Rounded corners */
+  outline: none; /* Remove default outline */
+  transition: border-color 0.3s, box-shadow 0.3s; /* Smooth transitions */
+  height: 11px;
+  margin-top: 18px;
+}
+
+.OrgResour-input-search::placeholder {
+  color: #aaa; /* Placeholder text color */
+  font-style: italic; /* Style for placeholder */
 }
 
 .OrgResour-input-search:focus {
-    border-color: #007bff;
-    outline: none;
-    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+  border-color: #007BFF; /* Highlight border on focus */
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* Add shadow effect on focus */
+}
+
+.OrgResour-input-search:disabled {
+  background-color: #e9ecef; /* Light background for disabled state */
+  color: #6c757d; /* Muted text color for disabled input */
+  cursor: not-allowed; /* Indicate non-interactivity */
 }
 
 /* Scrollable Container */
 .OrgResour-scrollable-container {
-    max-height: 385px;
+    max-height: 475px;
     overflow-y: auto;
+    min-height: 475px;
 }
 
 .OrgResour-scrollable-container::-webkit-scrollbar {
@@ -330,4 +341,109 @@ button:hover {
 
 .OrgResour-close-modal:hover {
     background-color: #0056b3;
+}
+.OrgResour-input-select {
+  width: 180px; /* Set a fixed width */
+  max-width: 100%; /* Prevent it from exceeding its container */
+  padding: 8px; /* Slightly increased padding for better usability */
+  font-size: 15px; /* Maintain a readable font size */
+  color: #333; /* Text color */
+  background-color: #f9f9f9; /* Light background color */
+  border: 1px solid #ccc; /* Border style */
+  border-radius: 2px; /* Rounded corners */
+  outline: none; /* Remove default outline */
+  transition: border-color 0.3s, box-shadow 0.3s; /* Smooth transition effects */
+  height:  35px;
+  margin-top: 18px;
+}
+
+.OrgResour-input-select:focus {
+  border-color: #007BFF; /* Highlight border on focus */
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* Add shadow effect on focus */
+}
+
+.OrgResour-input-select:disabled {
+  background-color: #e9ecef; /* Different background for disabled state */
+  color: #6c757d; /* Muted text color */
+  cursor: not-allowed; /* Change cursor to indicate non-interactivity */
+}
+
+
+
+/* Drag-and-Drop Container */
+.OrgResour-resources-table {
+  position: relative;
+
+  background-color: #fff;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+  overflow: hidden; /* Prevent content from spilling out */
+}
+
+/* Highlight Table Area on Drag Over */
+.OrgResour-resources-table.drag-over {
+  background-color: rgba(4, 94, 71, 0.5); /* Light blue background */
+  border-color: #031324; /* Blue border */
+}
+
+/* Drag-and-Drop Overlay Text */
+.OrgResour-drag-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent dark overlay */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: bold;
+  color: #fff; /* White text */
+  pointer-events: none; /* Prevent interaction with the overlay */
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* Show Overlay When Dragging */
+.OrgResour-resources-table.drag-over .OrgResour-drag-overlay {
+  opacity: 1; /* Make the overlay visible */
+}
+
+/* Dragging Cursor */
+.OrgResour-resources-table * {
+  cursor: pointer;
+}
+/* Spinner overlay */
+.spinner-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Spinner circle */
+.spinner {
+  border: 8px solid rgba(255, 255, 255, 0.3);
+  border-top: 8px solid #ffffff;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+}
+
+/* Spinner animation */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }

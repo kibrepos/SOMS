@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { firestore, storage, auth } from '../../services/firebaseConfig';
 import '../../styles/OrganizationResources.css';
-import { ref, listAll, uploadBytes, deleteObject, getDownloadURL, getMetadata, StorageReference,} from 'firebase/storage';
+import { ref, listAll, uploadBytes, deleteObject, getDownloadURL, getMetadata, StorageReference,uploadBytesResumable} from 'firebase/storage';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft ,faFileAlt,faImage,faVideo,faFilePdf,faFileWord,faFilePowerpoint,faFileExcel,faFolder,} from '@fortawesome/free-solid-svg-icons';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import Header from '../../components/Header';
 import StudentPresidentSidebar from './StudentPresidentSidebar';
+
+
 
 interface UploadedFile {
   name: string;
@@ -30,7 +32,6 @@ const OrganizationResources: React.FC = () => {
   const [role, setRole] = useState<string>(''); // User's role: 'president', 'officer', 'member', 'guest'
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [folderType, setFolderType] = useState<'public' | 'private'>('public');
-  const [file, setFile] = useState<File | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set()); // Track selected files for deletion
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc'); // Track sorting order
@@ -43,6 +44,10 @@ const OrganizationResources: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<string | null>(null); 
   const [detailsContent, setDetailsContent] = useState<{name: string; type?: string;url?: string;size?: string;uploadedBy?: string;dateUploaded?: string;} | null>(null);
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isUploading, setIsUploading] = useState(false); // Spinner state
+
+
 
 
 
@@ -63,10 +68,6 @@ const OrganizationResources: React.FC = () => {
         return faFileAlt; // Default icon for other file types
     }
 };
-
-
-
-
   useEffect(() => {
     if (organizationName) {
       fetchUserRole();
@@ -168,84 +169,76 @@ const OrganizationResources: React.FC = () => {
       alert('Error creating folder.');
     }
   };
+  const formatFileSize = (sizeInBytes: number): string => {
+    if (sizeInBytes >= 1024 * 1024) {
+      // Convert to MB
+      return `${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
+    } else {
+      // Convert to KB
+      return `${(sizeInBytes / 1024).toFixed(2)} KB`;
+    }
+  };
   
+
+
+
   const fetchFilesAndFolders = async () => {
     try {
-        const basePath = `organizations/${organizationName}/ORG_files/${folderType}`;
-        const fullPath = currentPath ? `${basePath}/${currentPath}` : basePath;
-        const storageRef = ref(storage, fullPath);
-
-        const listResult = await listAll(storageRef);
-
-        const filePromises = listResult.items.map(async (item: StorageReference) => {
-            const url = await getDownloadURL(item);
-            const metadata = await getMetadata(item); // Fetch file metadata
-            return {
-                name: item.name,
-                url,
-                type: metadata.contentType || 'Unknown',
-                size: `${(metadata.size / 1024).toFixed(2)} KB`, // Convert bytes to KB
-                uploadedBy: metadata.customMetadata?.uploadedBy || 'Unknown',
-                dateUploaded: metadata.timeCreated || 'Unknown',
-            };
-        });
-
-        const folderPromises = listResult.prefixes.map(async (prefix) => {
-            const placeholderRef = ref(storage, `${prefix.fullPath}/placeholder.txt`);
-            try {
-                const metadata = await getMetadata(placeholderRef);
-                return {
-                    name: prefix.name,
-                    uploadedBy: metadata.customMetadata?.uploadedBy || 'Unknown',
-                    dateUploaded: metadata.customMetadata?.dateUploaded || 'Unknown',
-                };
-            } catch {
-                return {
-                    name: prefix.name,
-                    uploadedBy: 'Unknown',
-                    dateUploaded: 'Unknown',
-                };
-            }
-        });
-
-        const resolvedFiles = (await Promise.all(filePromises)).filter(
-          (file) => file.name !== 'placeholder.txt' // Exclude placeholder.txt
-        );
-        const resolvedFolders = await Promise.all(folderPromises);
-
-        setFolders(resolvedFolders); // Update folders state
-        setFiles(resolvedFiles); // Update files state
+      const basePath = `organizations/${organizationName}/ORG_files/${folderType}`;
+      const fullPath = currentPath ? `${basePath}/${currentPath}` : basePath;
+      const storageRef = ref(storage, fullPath);
+  
+      const listResult = await listAll(storageRef);
+  
+      const filePromises = listResult.items.map(async (item: StorageReference) => {
+        const url = await getDownloadURL(item);
+        const metadata = await getMetadata(item); // Fetch file metadata
+        return {
+          name: item.name,
+          url,
+          type: metadata.contentType || 'Unknown',
+          size: formatFileSize(metadata.size), // Format size dynamically
+          uploadedBy: metadata.customMetadata?.uploadedBy || 'Unknown',
+          dateUploaded: metadata.timeCreated || 'Unknown',
+        };
+      });
+  
+      const folderPromises = listResult.prefixes.map(async (prefix) => {
+        const placeholderRef = ref(storage, `${prefix.fullPath}/placeholder.txt`);
+        try {
+          const metadata = await getMetadata(placeholderRef);
+          return {
+            name: prefix.name,
+            uploadedBy: metadata.customMetadata?.uploadedBy || 'Unknown',
+            dateUploaded: metadata.customMetadata?.dateUploaded || 'Unknown',
+          };
+        } catch {
+          return {
+            name: prefix.name,
+            uploadedBy: 'Unknown',
+            dateUploaded: 'Unknown',
+          };
+        }
+      });
+  
+      const resolvedFiles = (await Promise.all(filePromises)).filter(
+        (file) => file.name !== 'placeholder.txt' // Exclude placeholder.txt
+      );
+      const resolvedFolders = await Promise.all(folderPromises);
+  
+      setFolders(resolvedFolders); // Update folders state
+      setFiles(resolvedFiles); // Update files state
     } catch (error) {
-        console.error('Error fetching files and folders:', error);
+      console.error('Error fetching files and folders:', error);
     }
-};
-
+  };
   
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   };
-  
-  const fetchFileMetadata = async (filePath: string) => {
-    try {
-      const fileRef = ref(storage, filePath);
-      const metadata = await getMetadata(fileRef);
-  
-      setDetailsContent({
-        name: metadata.name,
-        type: metadata.contentType || 'Unknown',
-        size: `${(metadata.size / 1024).toFixed(2)} KB`, // Convert size to KB
-        uploadedBy: metadata.customMetadata?.uploadedBy || 'Unknown',
-        dateUploaded: metadata.timeCreated ? formatDate(metadata.timeCreated) : 'Unknown',
-        url: await getDownloadURL(fileRef),
-      });
-      setIsModalOpen(true);
-    } catch (error) {
-      console.error('Error fetching file metadata:', error);
-    }
-  };
-  
+   
   const fetchUserFullName = async (): Promise<string> => {
     const user = auth.currentUser;
     if (!user) return 'Unknown';
@@ -272,23 +265,6 @@ const OrganizationResources: React.FC = () => {
     }
   
     return 'Unknown';
-  };
-  
-  
-
-
-  const handleViewDetails = async (itemName: string, isFolder: boolean) => {
-    if (isFolder) {
-      const folderPath = `organizations/${organizationName}/ORG_files/${folderType}${
-        currentPath ? `/${currentPath}` : ''
-      }/${itemName}`;
-      await fetchFolderMetadata(folderPath);
-    } else {
-      const filePath = `organizations/${organizationName}/ORG_files/${folderType}${
-        currentPath ? `/${currentPath}` : ''
-      }/${itemName}`;
-      await fetchFileMetadata(filePath);
-    }
   };
   
 
@@ -328,95 +304,100 @@ const openFolder = (folderName: string) => {
 };
 const navigateUp = () => {
   setCurrentPath((prevPath) => {
-    const parts = prevPath.split('/').filter(Boolean); // Split and remove empty strings
-    parts.pop(); // Remove the last part of the path
+    const parts = prevPath.split('/').filter(Boolean); 
+    parts.pop(); 
     return parts.join('/');
   });
 };
 
 
-const handleUpload = async () => {
-  if (!file) {
-      alert('Please select a file.');
-      return;
-  }
+const handleMultipleFileUpload = async (files: FileList | null) => {
+  if (!files) return;
 
   try {
-      const userName = await fetchUserFullName(); // Get uploader's name
+    const userName = await fetchUserFullName(); // Get uploader's name
+    const uploadedFiles: UploadedFile[] = [];
+    setIsUploading(true); // Show spinner during upload
 
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const filePath = `organizations/${organizationName}/ORG_files/${folderType}${
-          currentPath ? `/${currentPath}` : ''
+        currentPath ? `/${currentPath}` : ''
       }/${file.name}`;
+
+      const fileExists = await checkFileExists(filePath); // Check if file exists
+
+      if (fileExists) {
+        const confirmOverwrite = window.confirm(`A file named '${file.name}' already exists. Do you want to overwrite it?`);
+        if (!confirmOverwrite) {
+          alert(`Skipping upload of ${file.name}.`);
+          continue; // Skip this file if user doesn't want to overwrite
+        }
+      }
+
       const storageRef = ref(storage, filePath);
 
       // Add custom metadata
       const metadata = {
-          customMetadata: {
-              uploadedBy: userName,
+        customMetadata: {
+          uploadedBy: userName,
+        },
+      };
+
+      // Use uploadBytesResumable to upload the file
+      const uploadTask = uploadBytesResumable(storageRef, file, metadata);
+
+      // Await the upload to complete
+      await new Promise((resolve, reject) => {
+        uploadTask.on(
+          'state_changed',
+          null,
+          (error) => {
+            console.error('Error uploading file:', error);
+            alert(`Error uploading ${file.name}`);
+            reject(error);
           },
-      };
+          async () => {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            const fetchedMetadata = await getMetadata(uploadTask.snapshot.ref);
 
-      const snapshot = await uploadBytes(storageRef, file, metadata);
+            const uploadedFile: UploadedFile = {
+              name: file.name,
+              url: downloadURL,
+              type: fetchedMetadata.contentType || 'Unknown',
+              size: formatFileSize(fetchedMetadata.size),
+              uploadedBy: fetchedMetadata.customMetadata?.uploadedBy || 'Unknown',
+              dateUploaded: fetchedMetadata.timeCreated || 'Unknown',
+            };
 
-      // Ensure `getDownloadURL` and metadata fetching are working correctly
-      const downloadURL = await getDownloadURL(snapshot.ref);
-      const fetchedMetadata = await getMetadata(snapshot.ref);
-
-      const uploadedFile: UploadedFile = {
-          name: file.name,
-          url: downloadURL,
-          type: fetchedMetadata.contentType || 'Unknown',
-          size: `${(fetchedMetadata.size / 1024).toFixed(2)} KB`, // Convert size to KB
-          uploadedBy: fetchedMetadata.customMetadata?.uploadedBy || 'Unknown',
-          dateUploaded: fetchedMetadata.timeCreated || 'Unknown',
-      };
-
-      setFiles((prevFiles) => [...prevFiles, uploadedFile]);
-      alert(`File uploaded successfully by ${userName}`);
-  } catch (error) {
-      console.error('Error uploading file:', error);
-      alert('File upload failed.');
-  }
-};
-
-
-
-
-const fetchFolderMetadata = async (folderPath: string) => {
-  try {
-    const folderRef = ref(storage, folderPath);
-    const folderList = await listAll(folderRef);
-
-    // Look for the placeholder file
-    const placeholderFile = folderList.items.find((item) => item.name === 'placeholder.txt');
-    if (placeholderFile) {
-      const metadata = await getMetadata(placeholderFile);
-      const uploadedBy = metadata.customMetadata?.uploadedBy || 'Unknown';
-      const dateUploaded = metadata.customMetadata?.dateUploaded
-        ? formatDate(metadata.customMetadata.dateUploaded)
-        : 'Unknown';
-
-      setDetailsContent({
-        name: folderPath.split('/').pop() || 'Unknown',
-        type: 'Folder',
-        size: '-',
-        uploadedBy,
-        dateUploaded,
-      });
-    } else {
-      setDetailsContent({
-        name: folderPath.split('/').pop() || 'Unknown',
-        type: 'Folder',
-        size: '-',
-        uploadedBy: 'Unknown',
-        dateUploaded: 'Unknown',
+            uploadedFiles.push(uploadedFile);
+            resolve(null);
+          }
+        );
       });
     }
-    setIsModalOpen(true);
+
+    setFiles((prevFiles) => [...prevFiles, ...uploadedFiles]);
+    alert(`Successfully uploaded ${uploadedFiles.length} file(s).`);
   } catch (error) {
-    console.error('Error fetching folder metadata:', error);
+    console.error('Error uploading files:', error);
+    alert('Some files could not be uploaded.');
+  } finally {
+    setIsUploading(false); // Hide spinner after upload is complete
   }
 };
+
+// Helper function to check if a file exists
+const checkFileExists = async (filePath: string) => {
+  try {
+    const fileRef = ref(storage, filePath);
+    const fileMetadata = await getMetadata(fileRef);
+    return !!fileMetadata; // If metadata exists, the file exists
+  } catch (error) {
+    return false; // File does not exist
+  }
+};
+
 
 
 
@@ -488,9 +469,6 @@ const deleteFolderRecursively = async (folderPath: string) => {
     }
   };
   
-  const handleMenuClick = (itemName: string) => {
-    setSelectedItem((prev) => (prev === itemName ? null : itemName));
-  };
 
   const toggleFileSelection = (fileName: string) => {
     setSelectedFiles((prevSelected) => {
@@ -503,6 +481,7 @@ const deleteFolderRecursively = async (folderPath: string) => {
       return updatedSelected;
     });
   };
+  
   
   const toggleFolderSelection = (folderName: string) => {
     setSelectedFolders((prevSelected) => {
@@ -521,17 +500,23 @@ const deleteFolderRecursively = async (folderPath: string) => {
   const toggleSortOrder = () => {
     const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
     setSortOrder(newOrder);
-
-    setFiles((prevFiles) =>
-      [...prevFiles].sort((a, b) =>
-        newOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
-      )
+  
+    // Ensure the sorting is applied only after files are properly loaded
+    const sortedFiles = [...files].sort((a, b) =>
+      newOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
     );
+  
+    setFiles(sortedFiles);
   };
+  
 
-  const filteredFiles = files.filter((file) =>
+  const filteredFolders = folders.filter((folder) =>
+    folder.name.toLowerCase().includes(searchQuery.toLowerCase())
+);
+
+const filteredFiles = files.filter((file) =>
     file.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+);
 
 
   if (!role) {
@@ -558,22 +543,33 @@ const deleteFolderRecursively = async (folderPath: string) => {
   };
   
   return (
+    
     <div className="OrgResour-organization-resources">
+      {isUploading && (
+  <div className="spinner-overlay">
+    <div className="spinner"></div>
+  </div>
+)}
   <Header />
   <div className="OrgResour-layout">
+    
     <StudentPresidentSidebar />
     <main className="main-content">
-      <h2>{organizationName}, All files</h2>
-
-
+  
       <div className="OrgResour-toolbar-upload">
-  <input
-    type="file"
-    onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
-  />
-  <button onClick={handleUpload} className="OrgResour-button-upload">
-    Upload
+      <button
+    className="OrgResour-button-upload"
+    onClick={() => document.getElementById('fileInput')?.click()}
+  >
+    Upload Files
   </button>
+  <input
+    id="fileInput"
+    type="file"
+    multiple
+    style={{ display: 'none' }}
+    onChange={(e) => handleMultipleFileUpload(e.target.files)}
+  />
   <button onClick={() => setIsCreateFolderModalOpen(true)} className="create-folder-button">
     Create Folder
   </button>
@@ -586,7 +582,7 @@ const deleteFolderRecursively = async (folderPath: string) => {
             key={index}
             onClick={() => setCurrentPath(arr.slice(0, index + 1).join('/'))}
           >
-            {` / ${part}`}
+            {`  ${part}`}
           </span>
         ))}
       </div>
@@ -596,6 +592,7 @@ const deleteFolderRecursively = async (folderPath: string) => {
             <FontAwesomeIcon icon={faArrowLeft} />
         </button>
         <select
+            className="OrgResour-input-select"
             value={folderType}
             onChange={(e) => setFolderType(e.target.value as 'public' | 'private')}
             disabled={role === 'member' && folderType === 'private'}
@@ -612,6 +609,7 @@ const deleteFolderRecursively = async (folderPath: string) => {
         />
     </div>
      <div className="OrgResour-toolbar-right">
+    
         <button
             onClick={handleDelete}
             disabled={selectedFiles.size === 0 && selectedFolders.size === 0}
@@ -620,12 +618,27 @@ const deleteFolderRecursively = async (folderPath: string) => {
             Delete Selected
         </button>
         <button onClick={toggleSortOrder} className="OrgResour-button-sort">
-            Sort {sortOrder === 'asc' ? 'Descending' : 'Ascending'}
+            Sort {sortOrder === 'asc' ? 'A-Z' : 'Z-A'}
         </button>
     </div>
 </div>
 
-          <div className="OrgResour-resources-table">
+<div
+  className={`OrgResour-resources-table ${isDragOver ? 'drag-over' : ''}`}
+  onDragOver={(e) => {
+    e.preventDefault();
+    setIsDragOver(true); // Highlight the table area
+  }}
+  onDragLeave={() => setIsDragOver(false)} // Remove highlight when dragging leaves
+  onDrop={(e) => {
+    e.preventDefault();
+    setIsDragOver(false); // Remove highlight
+    if (e.dataTransfer.files) {
+      handleMultipleFileUpload(e.dataTransfer.files); // Handle dropped files
+    }
+  }}
+>
+
   <div className="OrgResour-scrollable-container">
     <table className="OrgResour-table">
       <thead>
@@ -639,70 +652,94 @@ const deleteFolderRecursively = async (folderPath: string) => {
         </tr>
       </thead>
       <tbody>
-      {folders.length === 0 && files.length === 0 ? (
-    <tr>
-      <td>
-        There's no file or folder.
-      </td>
-    </tr>
-  ) : (
-    <>
-        {folders.map((folder) => (
-          <tr key={folder.name} onClick={() => openFolder(folder.name)} style={{ cursor: 'pointer' }}>
-            <td onClick={(e) => e.stopPropagation()}>
-              <input
-                type="checkbox"
-                checked={selectedFolders.has(folder.name)}
-                onChange={() => toggleFolderSelection(folder.name)}
-              />
+        {filteredFolders.length === 0 && filteredFiles.length === 0 ? (
+          <tr>
+            <td colSpan={6} style={{ textAlign: 'center', padding: '10px' }}>
+              There's no file or folder matching your search.
             </td>
-            <td>
-              <FontAwesomeIcon icon={faFolder} className="OrgResour-icon folder" />
-              {folder.name}
-            </td>
-            <td>—</td>
-            <td>Folder</td>
-            <td>{folder.uploadedBy}</td>
-            <td>{folder.dateUploaded !== 'Unknown' ? formatDate(folder.dateUploaded) : 'Unknown'}</td>
           </tr>
-        ))}
-
-        {files.map((file) => {
-          const fileClass =
-            file.type.includes('image') ? 'image' :
-            file.type.includes('video') ? 'video' :
-            file.type.includes('pdf') ? 'pdf' :
-            file.type.includes('word') ? 'word' :
-            file.type.includes('presentation') ? 'powerpoint' :
-            file.type.includes('spreadsheet') ? 'excel' :
-            'default';
-
-          return (
-            <tr key={file.name} onClick={() => handleFileClick(file)} style={{ cursor: 'pointer' }}>
-              <td onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="checkbox"
-                  checked={selectedFiles.has(file.name)}
-                  onChange={() => toggleFileSelection(file.name)}
-                />
-              </td>
-              <td>
-                <FontAwesomeIcon icon={getFileIcon(file.name)} className={`OrgResour-icon ${fileClass}`} />
-                {file.name.replace(/\.[^/.]+$/, '') /* Remove file extension */}
-              </td>
-              <td>{file.size || '—'}</td>
-              <td>{file.type || 'Unknown'}</td>
-              <td>{file.uploadedBy || 'Unknown'}</td>
-              <td>{file.dateUploaded ? formatDate(file.dateUploaded) : 'Unknown'}</td>
+        ) : (
+          <>
+            {filteredFolders.map((folder) => (
+              <tr
+                key={folder.name}
+                onClick={() => openFolder(folder.name)}
+                style={{ cursor: 'pointer' }}
+              >
+                <td onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selectedFolders.has(folder.name)}
+                    onChange={() => toggleFolderSelection(folder.name)}
+                  />
+                </td>
+                <td>
+                  <FontAwesomeIcon icon={faFolder} className="OrgResour-icon folder" />
+                  {folder.name}
+                </td>
+                <td>—</td>
+                <td>Folder</td>
+                <td>{folder.uploadedBy}</td>
+                <td>
+                  {folder.dateUploaded !== 'Unknown'
+                    ? formatDate(folder.dateUploaded)
+                    : 'Unknown'}
+                </td>
               </tr>
-        );
-      })}
-    </>
-  )}
-</tbody>
+            ))}
+
+            {filteredFiles.map((file) => {
+              const fileClass =
+                file.type.includes('image')
+                  ? 'image'
+                  : file.type.includes('video')
+                  ? 'video'
+                  : file.type.includes('pdf')
+                  ? 'pdf'
+                  : file.type.includes('word')
+                  ? 'word'
+                  : file.type.includes('presentation')
+                  ? 'powerpoint'
+                  : file.type.includes('spreadsheet')
+                  ? 'excel'
+                  : 'default';
+
+              return (
+                <tr
+                  key={file.name}
+                  onClick={() => handleFileClick(file)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedFiles.has(file.name)}
+                      onChange={() => toggleFileSelection(file.name)}
+                    />
+                  </td>
+                  <td>
+                    <FontAwesomeIcon
+                      icon={getFileIcon(file.name)}
+                      className={`OrgResour-icon ${fileClass}`}
+                    />
+                    {file.name.replace(/\.[^/.]+$/, '') /* Remove file extension */}
+                  </td>
+                  <td>{file.size || '—'}</td>
+                  <td>{file.type || 'Unknown'}</td>
+                  <td>{file.uploadedBy || 'Unknown'}</td>
+                  <td>
+                    {file.dateUploaded ? formatDate(file.dateUploaded) : 'Unknown'}
+                  </td>
+                </tr>
+              );
+            })}
+          </>
+        )}
+      </tbody>
     </table>
   </div>
 </div>
+
 
 {isCreateFolderModalOpen && (
   <div className="modal-overlay">
@@ -736,9 +773,6 @@ const deleteFolderRecursively = async (folderPath: string) => {
       </div>
     </div>
   );
-  
-  
-
   
 };
 
