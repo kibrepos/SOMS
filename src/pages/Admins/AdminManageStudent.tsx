@@ -35,6 +35,8 @@ const AdminManageStudent: React.FC = () => {
       const querySnapshot = await getDocs(collection(firestore, "students"));
       const studentsList = querySnapshot.docs.map((doc) => ({
         id: doc.id,
+        userId: doc.data().userId, // Ensure userId is included
+        uid: doc.data().userId,    // Optionally map it to uid for consistency
         ...doc.data()
       }));
       setStudents(studentsList);
@@ -226,6 +228,7 @@ const AdminManageStudent: React.FC = () => {
                   </button>
                   <button
                     onClick={() => {
+                      console.log("Selected student for deletion:", student); // Log the student object
                       setSelectedStudent(student);
                       setShowDeleteModal(true);
                     }}
@@ -412,8 +415,9 @@ const AdminManageStudent: React.FC = () => {
     <div className="modal-content">
       <h3>Delete Student Account</h3>
       <StudentAccountDeletion
-        student={selectedStudent}
-        onClose={() => setShowDeleteModal(false)}
+      student={selectedStudent} // Ensure this contains the correct student object
+      onClose={() => setShowDeleteModal(false)}
+      
       />
     </div>
   </div>

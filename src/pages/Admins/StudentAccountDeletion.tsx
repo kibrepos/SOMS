@@ -9,41 +9,51 @@ interface StudentAccountDeletionProps {
   student: {
     id: string; // Firestore document ID
     uid: string; // Firebase Authentication UID
+    userId?: string; // Optional: Include userId if it exists in Firestore
     firstname: string;
     lastname: string;
   };
   onClose: () => void; // Function to close the dialog/modal
 }
 
+
 const StudentAccountDeletion: React.FC<StudentAccountDeletionProps> = ({ student, onClose }) => {
   const handleDelete = async () => {
     try {
-      // Ensure the student UID is provided
-      if (!student.uid) {
+      // Use uid or fallback to userId if uid is undefined
+      const uid = student.uid || student.userId;
+      if (!uid) {
         alert("Invalid student UID. Cannot proceed with deletion.");
+        console.error("Error: Student UID is missing:", student); // Log the invalid student object
         return;
       }
-
+  
+      console.log("Attempting to delete student with UID:", uid); // Log the UID being used for deletion
+  
       // Call Firebase Admin Cloud Function to delete the student account
       const deleteStudentAccount = httpsCallable(functions, "deleteStudentAccount");
-      await deleteStudentAccount({ uid: student.uid });
-
+      const response = await deleteStudentAccount({ uid }); // Pass the UID to the function
+      console.log("Cloud Function response:", response); // Log the response from the Cloud Function
+  
       // Remove the student record from Firestore
+      console.log("Deleting Firestore document for student ID:", student.id); // Log Firestore deletion
       await deleteDoc(doc(firestore, "students", student.id));
-
+  
       alert(`Student ${student.firstname} ${student.lastname} deleted successfully.`);
+      console.log(`Successfully deleted student: ${student.firstname} ${student.lastname}`); // Log success
       onClose(); // Close the modal or dialog
     } catch (error) {
+      console.error("Error during student deletion:", error); // Log detailed error for debugging
       if (error instanceof FirebaseError) {
         alert(`Firebase error: ${error.message}`);
       } else if (error instanceof Error) {
         alert(`Unexpected error: ${error.message}`);
       } else {
-        console.error("Unknown error occurred:", error);
         alert("An unknown error occurred. Please try again.");
       }
     }
   };
+  
 
   return (
     <div>
