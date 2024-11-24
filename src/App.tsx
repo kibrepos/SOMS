@@ -10,6 +10,7 @@ import OrganizationActivityLogs from './pages/Students/OrganizationActivityLogs'
 import ManageMembers from './pages/Students/ManageMembers';
 import ManageCommittees from './pages/Students/ManageCommittees';
 import TaskManagement from './pages/Students/TaskManagement';
+import MyTasks from './pages/Students/MyTasks';
 import StudentProfile from './pages/Students/StudentProfile';
 import FacultyDashboard from './pages/Faculty/FacultyDashboard';
 import AdminDashboard from './pages/Admins/AdminDashboard';
@@ -59,6 +60,7 @@ const App: React.FC = () => {
             <Route element={<ProtectedOrgRoute />}>
             <Route path="/Organization/:organizationName/dashboard" element={<OrganizationDashboard />} />
             <Route path="/Organization/:organizationName/resources" element={<OrganizationResources />} />
+            <Route path="/Organization/:organizationName/mytasks" element={<MyTasks />} />
           </Route>
          {/* President Routes */}
           <Route element={<ProtectedOrgRoute requiredRole="president" />}>

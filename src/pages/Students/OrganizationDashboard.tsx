@@ -26,7 +26,6 @@ const OrganizationDashboard: React.FC = () => {
           const userDoc = await getDoc(userDocRef);
 
           if (userDoc.exists()) {
-            const userData = userDoc.data();
 
             // Get the organization data
             const orgDocRef = doc(firestore, 'organizations', organizationName || '');

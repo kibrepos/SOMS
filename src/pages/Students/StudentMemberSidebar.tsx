@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {faChartLine, faUsers, faObjectGroup, faTasks,faCalendarAlt,faBullhorn,faChartBar,faClipboardList,faCog,faFolderOpen,faTools ,} from '@fortawesome/free-solid-svg-icons';
+import {faChartLine, faUsers, faTasks,faCalendarAlt,faBullhorn,faChartBar,faClipboardList,faCog,faFolderOpen,faTools ,} from '@fortawesome/free-solid-svg-icons';
 import { NavLink } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { getDownloadURL, ref } from 'firebase/storage';
@@ -73,7 +73,7 @@ const StudentMemberSidebar: React.FC = () => {
         <NavLink to={`/president/manage-members/${organizationName}`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
           <FontAwesomeIcon icon={faUsers} /> Members
         </NavLink>
-        <NavLink to={`/president/task-management/${organizationName}`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
+        <NavLink to={`/Organization/${organizationName}/mytasks`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
           <FontAwesomeIcon icon={faTasks} /> My Tasks
         </NavLink>
         <NavLink to={`/president/event-management/${organizationName}`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
@@ -82,7 +82,11 @@ const StudentMemberSidebar: React.FC = () => {
         <NavLink to={`/president/announcements/${organizationName}`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
           <FontAwesomeIcon icon={faBullhorn} /> Announcements
         </NavLink>     
-        <NavLink to={`/president/resources/${organizationName}`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
+        <NavLink
+          to={`/Organization/${organizationName}/resources`}
+          className={({ isActive }) => 
+            `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}
+        >
           <FontAwesomeIcon icon={faFolderOpen} /> Resources
         </NavLink>
        

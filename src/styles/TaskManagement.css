@@ -315,16 +315,18 @@
   .status-badge.started {
     background-color: #ffcc00; /* Yellow */
   }
-  
   .status-badge.in-progress {
     background-color: #007bff; /* Blue */
+    color: #fff;
   }
   
-  .status-badge.done {
-    background-color: #28a745; /* Green */
+  .status-badge.completed {
+    background-color: #28a745; /* Green for Completed */
+    color: #fff; /* White text for readability */
   }
   
-  .status-badge.dropped {
-    background-color: #dc3545; /* Red */
+  .status-badge.overdue {
+    background-color: #dc3545; /* Red for Overdue */
+    color: #fff; /* White text for readability */
   }
-    
+  

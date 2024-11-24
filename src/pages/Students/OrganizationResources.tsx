@@ -7,8 +7,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft ,faFileAlt,faImage,faVideo,faFilePdf,faFileWord,faFilePowerpoint,faFileExcel,faFolder,} from '@fortawesome/free-solid-svg-icons';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import Header from '../../components/Header';
-import StudentPresidentSidebar from './StudentPresidentSidebar';
-
+import StudentPresidentSidebar from './StudentPresidentSidebar'; 
+import StudentOfficerSidebar from './StudentOfficerSidebar'; 
+import StudentMemberSidebar from './StudentMemberSidebar'; 
 
 
 interface UploadedFile {
@@ -509,7 +510,19 @@ const deleteFolderRecursively = async (folderPath: string) => {
     setFiles(sortedFiles);
   };
   
-
+  const renderSidebar = () => {
+    switch (role) {
+      case 'president':
+        return <StudentPresidentSidebar />;
+      case 'officer':
+        return <StudentOfficerSidebar />;
+      case 'member':
+        return <StudentMemberSidebar />;
+      default:
+        return; 
+    }
+  };
+  
   const filteredFolders = folders.filter((folder) =>
     folder.name.toLowerCase().includes(searchQuery.toLowerCase())
 );
@@ -553,7 +566,7 @@ const filteredFiles = files.filter((file) =>
   <Header />
   <div className="OrgResour-layout">
     
-    <StudentPresidentSidebar />
+  {renderSidebar()}
     <main className="main-content">
   
       <div className="OrgResour-toolbar-upload">

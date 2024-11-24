@@ -1,5 +1,5 @@
 import React, { useEffect, useState, ChangeEvent, FormEvent } from 'react';
-import { doc, getDoc, updateDoc, arrayRemove, arrayUnion } from 'firebase/firestore';
+import { doc, getDocs, updateDoc, collection,deleteDoc, setDoc,getDoc} from 'firebase/firestore';
 import { firestore } from '../../services/firebaseConfig';
 import Header from '../../components/Header';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -15,6 +15,7 @@ interface Task {
     title: string;
     description: string;
     assignedTo: string[];
+    assignedToNames: string[];
     startDate: string;
     dueDate: string;
     taskStatus: string;
@@ -22,7 +23,6 @@ interface Task {
     attachments?: string[];
     
   }
-  
 
 interface Member {
   id: string;
@@ -44,7 +44,6 @@ interface Submission {
   submissions?: Submission[];
 }
 const TaskManagement: React.FC = () => {
-  const { orgName } = useParams();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -67,6 +66,12 @@ const [taskToView, setTaskToView] = useState<Task | null>(null);
 const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
 const storage = getStorage(); // Initialize Firebase Storage
+const [error, setError] = useState<string | null>(null);
+const { organizationName } = useParams<{ organizationName: string }>();
+const [isSubmissionsModalOpen, setIsSubmissionsModalOpen] = useState(false);
+const [submissionsTask, setSubmissionsTask] = useState<Task | null>(null);
+
+
 const openEditModal = (task: Task) => {
   setTaskToEdit(task);
   setIsEditModalOpen(true);
@@ -76,50 +81,73 @@ const closeEditModal = () => {
   setTaskToEdit(null);
   setIsEditModalOpen(false);
 };
+const openSubmissionsModal = (task: Task) => {
+  setSubmissionsTask(task);
+  setIsSubmissionsModalOpen(true);
+};
+
+const closeSubmissionsModal = () => {
+  setSubmissionsTask(null);
+  setIsSubmissionsModalOpen(false);
+};
 
 const handleEditTask = async (e: FormEvent) => {
   e.preventDefault();
-  if (!taskToEdit || !orgName) return;
+
+  if (!taskToEdit || !organizationName) {
+      alert("Missing task to edit or organization name.");
+      return;
+  }
+
+  // Validate that the due date is not earlier than the start date
+  if (new Date(newTaskDueDate || taskToEdit.dueDate) < new Date(newTaskStartDate || taskToEdit.startDate)) {
+      alert("Due date cannot be earlier than the start date.");
+      return;
+  }
 
   try {
-    const attachmentURLs = await Promise.all(
-      attachments.map(async (file) => {
-        const storageRef = ref(storage, `tasks/${Date.now()}-${file.name}`);
-        await uploadBytes(storageRef, file);
-        return await getDownloadURL(storageRef);
-      })
-    );
-
-    const updatedTask: Task = {
-      ...taskToEdit,
-      title: newTaskTitle || taskToEdit.title,
-      description: newTaskDescription || taskToEdit.description,
-      assignedTo: assignedTo.length > 0 ? assignedTo : taskToEdit.assignedTo,
-      startDate: newTaskStartDate || taskToEdit.startDate,
-      dueDate: newTaskDueDate || taskToEdit.dueDate,
-      attachments: [...(taskToEdit.attachments || []), ...attachmentURLs],
-    };
-
-    const orgDocRef = doc(firestore, 'organizations', orgName);
-    const orgDoc = await getDoc(orgDocRef);
-
-    if (orgDoc.exists()) {
-      const updatedTasks = (orgDoc.data()?.tasks || []).map((task: Task) =>
-        task.id === taskToEdit.id ? updatedTask : task
+      // Upload attachments if any
+      const attachmentURLs = await Promise.all(
+          attachments.map(async (file) => {
+              const storageRef = ref(storage, `tasks/${Date.now()}-${file.name}`);
+              await uploadBytes(storageRef, file);
+              return await getDownloadURL(storageRef);
+          })
       );
 
+      // Update only the necessary fields
+      const updatedFields = {
+          title: newTaskTitle.trim() || taskToEdit.title,
+          description: newTaskDescription.trim() || taskToEdit.description,
+          assignedTo: assignedTo.length > 0 ? assignedTo : taskToEdit.assignedTo,
+          startDate: newTaskStartDate || taskToEdit.startDate,
+          dueDate: newTaskDueDate || taskToEdit.dueDate,
+          attachments: [...(taskToEdit.attachments || []), ...attachmentURLs],
+      };
 
-      await updateDoc(orgDocRef, { tasks: updatedTasks });
-      setTasks(updatedTasks);
+      // Reference the correct document path
+      const taskDocRef = doc(
+          firestore,
+          `tasks/${organizationName}/AllTasks/${taskToEdit.id}`
+      );
+
+      // Update the document with the specified fields
+      await updateDoc(taskDocRef, updatedFields);
+
+      // Update local state
+      setTasks((prev) =>
+          prev.map((task) =>
+              task.id === taskToEdit.id ? { ...task, ...updatedFields } : task
+          )
+      );
+
       closeEditModal();
-      alert('Task updated successfully!');
-    }
+      alert("Task updated successfully!");
   } catch (error) {
-    console.error('Error updating task:', error);
-    alert('Failed to update the task. Please try again.');
+      console.error("Error updating task:", error);
+      alert("Failed to update the task. Please try again.");
   }
 };
-
 
 
 
@@ -143,28 +171,32 @@ const openDeleteModal = (task: Task) => {
   };
   
   const handleDeleteTask = async () => {
-    if (!taskToDelete || !orgName) return;
-  
-    try {
-      const orgDocRef = doc(firestore, 'organizations', orgName);
-      const orgDoc = await getDoc(orgDocRef);
-  
-      if (orgDoc.exists()) {
-        const updatedTasks = (orgDoc.data()?.tasks || []).filter(
-          (task: Task) => task.id !== taskToDelete.id
-        );
-  
-        await updateDoc(orgDocRef, { tasks: updatedTasks });
-        setTasks(updatedTasks);
-        closeDeleteModal();
-        alert('Task deleted successfully!');
-      }
-    } catch (error) {
-      console.error('Error deleting task:', error);
-      alert('Failed to delete the task. Please try again.');
+    if (!taskToDelete || !organizationName) {
+        alert("Missing task to delete or organization name.");
+        return;
     }
-  };
-  
+
+    try {
+        // Reference the task document in the new structure
+        const taskDocRef = doc(
+            firestore,
+            `tasks/${organizationName}/AllTasks/${taskToDelete.id}`
+        );
+
+        // Delete the task document from Firestore
+        await deleteDoc(taskDocRef);
+
+        // Update local state to remove the deleted task
+        setTasks((prev) => prev.filter((task) => task.id !== taskToDelete.id));
+
+        closeDeleteModal();
+        alert("Task deleted successfully!");
+    } catch (error) {
+        console.error("Error deleting task:", error);
+        alert("Failed to delete the task. Please try again.");
+    }
+};
+
   
   
   useEffect(() => {
@@ -178,62 +210,91 @@ const openDeleteModal = (task: Task) => {
   
     return () => unsubscribe(); // Cleanup on unmount
   }, []);
-  useEffect(() => {
-    const fetchOrganizationData = async () => {
-      if (!orgName) return;
-  
-      try {
-        const orgDocRef = doc(firestore, 'organizations', orgName);
-        const orgDoc = await getDoc(orgDocRef);
-  
-        if (orgDoc.exists()) {
-          const data = orgDoc.data();
-          setTasks(data.tasks || []);
-          setAvailableMembers([...(data.members || []), ...(data.officers || [])]);
-          setAvailableCommittees(data.committees || []);
-        }
-      } catch (error) {
-        console.error('Error fetching organization data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-  
-    fetchOrganizationData();
-  }, [orgName]);
-  
-  
-  useEffect(() => {
-    const fetchTasksForOrganization = async () => {
-      try {
-        const orgDocRef = orgName
-  ? doc(firestore, 'organizations', orgName)
-  : null;
 
-if (!orgDocRef) {
-  console.error('Invalid organization name');
-  return;
-}
-
-        const orgDoc = await getDoc(orgDocRef);
+  const fetchOrganizationData = async () => {
+    try {
+      // Ensure the organization name is decoded and trimmed
+      const decodedOrganizationName = decodeURIComponent(organizationName || '').trim();
   
-        if (orgDoc.exists()) {
-          const data = orgDoc.data();
-          const organizationTasks: Task[] = data.tasks || [];
-  
-          // Load all tasks without filtering, as this view is for higher-ups
-          setTasks(organizationTasks);
-        }
-      } catch (error) {
-        console.error('Error fetching tasks:', error);
-      } finally {
-        setLoading(false);
+      if (!decodedOrganizationName) {
+        console.error("Invalid organization name.");
+        setError("Invalid organization name.");
+        return;
       }
-    };
   
-    fetchTasksForOrganization();
-  }, []);
+      // Reference the Firestore document
+      const orgDocRef = doc(firestore, 'organizations', decodedOrganizationName);
+      const orgDoc = await getDoc(orgDocRef);
   
+      if (orgDoc.exists()) {
+        const data = orgDoc.data();
+        console.log("Fetched Organization Data:", data);
+  
+        // Set state with fallback defaults
+        setTasks(data?.tasks || []);
+        setAvailableMembers([...(data?.members || []), ...(data?.officers || [])]);
+        setAvailableCommittees(data?.committees || []);
+        setError(null); // Clear previous errors
+      } else {
+        console.error("Organization document does not exist.");
+        setError("Organization not found.");
+      }
+    } catch (err) {
+      console.error("Error fetching organization data:", err);
+      setError("Failed to fetch organization data. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+
+  
+  
+  useEffect(() => {
+    if (organizationName) {
+      fetchOrganizationData(); // Fetch data when organizationName is available
+    } else {
+      console.error("Organization name is missing or invalid.");
+      setError("Organization name is missing or invalid.");
+    }
+  }, [organizationName]); // Add organizationName as a dependency
+  
+
+  
+  const fetchTasks = async () => {
+    try {
+      const taskCollectionRef = collection(
+        firestore,
+        `tasks/${organizationName}/AllTasks`
+      );
+  
+      const querySnapshot = await getDocs(taskCollectionRef);
+  
+      const fetchedTasks: Task[] = querySnapshot.docs.map((doc) => ({
+        ...doc.data(),
+        id: doc.id,
+        submissions: doc.data().submissions || [], // Ensure submissions field is included
+      })) as Task[];
+  
+      setTasks(fetchedTasks);
+      setError(null); // Clear previous errors
+    } catch (err) {
+      console.error("Error fetching tasks:", err);
+      setError("Failed to fetch tasks. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  
+  useEffect(() => {
+    if (organizationName) {
+      fetchTasks(); // Fetch data when organizationName is available
+    } else {
+      console.error("Organization name is missing or invalid.");
+      setError("Organization name is missing or invalid.");
+    }
+  }, [organizationName]);
   
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -248,47 +309,79 @@ if (!orgDocRef) {
   
   const handleCreateTask = async (e: FormEvent) => {
     e.preventDefault();
-    if (!orgName || !currentUser) return;
-  
-    try {
-      const userDoc = await getDoc(doc(firestore, 'students', currentUser.uid));
-      const givenBy = userDoc.exists()
-        ? `${userDoc.data()?.firstname} ${userDoc.data()?.lastname}`
-        : 'Unknown User';
-  
-      const attachmentURLs = await Promise.all(
-        attachments.map(async (file) => {
-          const storageRef = ref(storage, `tasks/${Date.now()}-${file.name}`);
-          await uploadBytes(storageRef, file);
-          return await getDownloadURL(storageRef);
-        })
-      );
-  
-      const newTask: Task = {
-        id: Date.now().toString(),
-        title: newTaskTitle,
-        description: newTaskDescription,
-        assignedTo,
-        startDate: newTaskStartDate,
-        dueDate: newTaskDueDate,
-        taskStatus: 'Started',
-        givenBy,
-        attachments: attachmentURLs,
-      };
-  
-      const orgDocRef = doc(firestore, 'organizations', orgName);
-      await updateDoc(orgDocRef, { tasks: arrayUnion(newTask) });
-  
-      setTasks((prev) => [...prev, newTask]);
-      closeNewTaskModal();
-      alert('Task created successfully!');
-    } catch (error) {
-      console.error('Error creating task:', error);
-      alert('Failed to create the task. Please try again.');
+
+    if (!organizationName || !currentUser) {
+        alert("Missing organization name or user.");
+        return;
     }
-  };
-  
-  
+
+    // Validate that the due date is not earlier than the start date
+    if (new Date(newTaskDueDate) < new Date(newTaskStartDate)) {
+        alert("Due date cannot be earlier than the start date.");
+        return;
+    }
+
+    try {
+        // Get the current user's name
+        const userDoc = await getDoc(doc(firestore, "students", currentUser.uid));
+        const givenBy = userDoc.exists()
+            ? `${userDoc.data()?.firstname} ${userDoc.data()?.lastname}`
+            : "Unknown User";
+
+        // Process attachments
+        const attachmentURLs = await Promise.all(
+            attachments.map(async (file) => {
+                const storageRef = ref(storage, `tasks/${Date.now()}-${file.name}`);
+                await uploadBytes(storageRef, file);
+                return await getDownloadURL(storageRef);
+            })
+        );
+
+        // Prepare assignedTo and assignedToNames arrays
+        const assignedToWithNames = assignedTo.map((id) => {
+            const member = availableMembers.find((m) => m.id === id);
+            const committee = availableCommittees.find((c) => c.id === id);
+            return {
+                id,
+                name: member?.name || committee?.name || "Unknown", // Get name or fallback to "Unknown"
+            };
+        });
+
+        // Construct the new task object
+        const newTask: Task = {
+          id: Date.now().toString(),
+          title: newTaskTitle,
+          description: newTaskDescription,
+          assignedTo: assignedToWithNames.map((entry) => entry.id), // Save only IDs
+          assignedToNames: assignedToWithNames.map((entry) => entry.name), // Save only names
+          startDate: newTaskStartDate,
+          dueDate: newTaskDueDate,
+          event: "General Task",
+          taskStatus: "Started",
+          givenBy,
+          attachments: attachmentURLs,
+        };
+        
+        
+
+        // Save the new task to Firestore
+        const taskDocRef = doc(
+            firestore,
+            `tasks/${organizationName}/AllTasks/${newTask.id}` // Use the new "AllTasks" structure
+        );
+
+        await setDoc(taskDocRef, newTask);
+
+        // Update local state
+        setTasks((prev) => [...prev, newTask]);
+        closeNewTaskModal();
+        alert("Task created successfully!");
+    } catch (error) {
+        console.error("Error creating task:", error);
+        alert("Failed to create the task. Please try again.");
+    }
+};
+
   
   
   if (loading) return <div>Loading tasks...</div>;
@@ -413,32 +506,14 @@ if (!orgDocRef) {
           </p>
         </div>
         <p><strong>Status:</strong> 
-          <span className={`status-badge ${taskToView.taskStatus.toLowerCase()}`}>
+          <span className={`status-badge ${taskToView.taskStatus.replace(' ', '-').toLowerCase()}`}>
             {taskToView.taskStatus}
           </span>
         </p>
         
-        <h4>Submissions:</h4>
-        {taskToView.submissions && taskToView.submissions.length > 0 ? (
-          <ul>
+        
          
-            {taskToView.submissions.map((submission, index) => (
-              <li key={index}>
-                <p><strong>Submitted by:</strong> {submission.memberName}</p>
-                <p><strong>Date:</strong> {new Date(submission.date).toLocaleString()}</p>
-                {submission.contentType === 'file' ? (
-                  <a href={submission.content} target="_blank" rel="noopener noreferrer">
-                    View File Submission
-                  </a>
-                ) : (
-                  <p>Text Submission: {submission.content}</p>
-                )}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No submissions yet.</p>
-        )}
+       
 <ul>
 <p><strong>File Attachments:</strong></p>
   {taskToView?.attachments && taskToView.attachments.length > 0 ? (
@@ -552,6 +627,36 @@ if (!orgDocRef) {
     </div>
   </div>
 )}
+{isSubmissionsModalOpen && submissionsTask && (
+  <div className="modal-overlay">
+    <div className="modal-content">
+      <h3>Submissions for Task: {submissionsTask.title}</h3>
+      {submissionsTask.submissions && submissionsTask.submissions.length > 0 ? (
+        <ul>
+          {submissionsTask.submissions.map((submission, index) => (
+            <li key={index}>
+              <p><strong>Submitted by:</strong> {submission.memberName}</p>
+              <p><strong>Type:</strong> {submission.contentType}</p>
+              <p><strong>Date:</strong> {new Date(submission.date).toLocaleString()}</p>
+              {submission.contentType === 'file' ? (
+                <a href={submission.content} target="_blank" rel="noopener noreferrer">
+                  View File
+                </a>
+              ) : (
+                <p>{submission.content}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No submissions found for this task.</p>
+      )}
+      <div className="modal-actions">
+        <button onClick={closeSubmissionsModal}>Close</button>
+      </div>
+    </div>
+  </div>
+)}
 
 
 {isDeleteModalOpen && taskToDelete && (
@@ -616,17 +721,20 @@ if (!orgDocRef) {
         })}
       </td>
       <td>
-  <span className={`status-badge ${task.taskStatus.toLowerCase()}`}>
+  <span className={`status-badge ${task.taskStatus.replace(' ', '-').toLowerCase()}`}>
     {task.taskStatus}
   </span>
 </td>
+
 
 <td>
 <div className="task-dropdown">
   <button className="action-btn">Action</button>
   <div className="task-dropdown-content">
   <button onClick={() => openViewModal(task)}>View</button>
-    <button onClick={() => openDeleteModal(task)}>Delete</button>
+      <button onClick={() => openEditModal(task)}>Edit</button>
+      <button onClick={() => openSubmissionsModal(task)}>Submissions</button>
+      <button onClick={() => openDeleteModal(task)}>Delete</button>
   </div>
 </div>
 </td>
