@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { auth, firestore, storage } from "../../services/firebaseConfig";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { updateProfile, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
+import { updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import AdminSidebar from './AdminSidebar';
 import '../../styles/AdminSettings.css';
@@ -10,104 +10,157 @@ const AdminSettings: React.FC = () => {
   const [adminData, setAdminData] = useState({
     displayName: "",
     email: "",
-    profilePicture: "",
+    profilePicture: "", 
   });
+
   const [formData, setFormData] = useState({
     displayName: "",
     email: "",
     profilePicture: "",
   });
+
   const [newPassword, setNewPassword] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [passwordStrength, setPasswordStrength] = useState("");
-  const [newProfilePic, setNewProfilePic] = useState<File | null>(null);
-  const [previewProfilePicUrl, setPreviewProfilePicUrl] = useState<string>("https://via.placeholder.com/150");
+  const [previewProfilePicUrl, setPreviewProfilePicUrl] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [newProfilePic, setNewProfilePic] = useState<File | null>(null);
+  
+
+
 
   useEffect(() => {
     const fetchAdminInfo = async () => {
-      const adminDoc = await getDoc(doc(firestore, "admin", auth.currentUser?.uid || ""));
-      if (adminDoc.exists()) {
-        const data = adminDoc.data();
-        setAdminData({
-          displayName: data.firstname + " " + data.lastname,
-          email: data.email,
-          profilePicture: data.profilePicture || "https://via.placeholder.com/150",
-        });
-        setFormData({
-          displayName: data.firstname + " " + data.lastname,
-          email: data.email,
-          profilePicture: data.profilePicture || "https://via.placeholder.com/150",
-        });
-        setPreviewProfilePicUrl(data.profilePicture || "https://via.placeholder.com/150");
+      const user = auth.currentUser;
+      if (user) {
+        const adminDoc = await getDoc(doc(firestore, "admin", user.uid));
+        
+        if (adminDoc.exists()) {
+          const data = adminDoc.data();
+          const profilePic = data.profilePicture ;  // Default placeholder if no profile picture
+          
+          setAdminData({
+            displayName: `${data.firstname} ${data.lastname}`,
+            email: data.email,
+            profilePicture: profilePic,  // Ensure this URL is correct
+          });
+  
+          setFormData({
+            displayName: `${data.firstname} ${data.lastname}`,
+            email: data.email,
+            profilePicture: profilePic,
+          });
+  
+          setPreviewProfilePicUrl(profilePic);  // Preview for form
+        }
       }
     };
-
+  
     fetchAdminInfo();
   }, []);
+  
 
-  const handleProfilePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const validTypes = ['image/jpeg', 'image/png'];
+    
 
-      if (validTypes.includes(file.type)) {
-        setNewProfilePic(file);
-        setPreviewProfilePicUrl(URL.createObjectURL(file));
-      } else {
-        alert('Please select a JPG or PNG file.');
-      }
+ // Handle profile picture change
+ const handleProfilePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  if (e.target.files && e.target.files[0]) {
+    const file = e.target.files[0];
+    const validTypes = ['image/jpeg', 'image/png'];
+
+    if (validTypes.includes(file.type)) {
+      setNewProfilePic(file);
+      setPreviewProfilePicUrl(URL.createObjectURL(file)); // Show preview
+    } else {
+      alert('Please select a JPG or PNG file.');
     }
-  };
+  }
+};
 
-  const handleProfilePicUpload = async () => {
-    if (newProfilePic && auth.currentUser) {
-      const profilePicRef = ref(storage, `profilePics/${auth.currentUser.uid}/profile-picture.jpg`);
-      try {
-        await uploadBytes(profilePicRef, newProfilePic);
-        const url = await getDownloadURL(profilePicRef);
+// Handle profile picture upload
+const handleProfilePicUpload = async () => {
+  if (newProfilePic && auth.currentUser) {
+    const adminId = auth.currentUser.uid; // Admin's user ID
+    const profilePicRef = ref(storage, `profilePics/${adminId}/profile-picture.jpg`); // Firebase Storage path
+
+    try {
+      setLoading(true);
+
+      // Upload the new profile picture to Firebase Storage
+      await uploadBytes(profilePicRef, newProfilePic);
+
+      // Get the new download URL for the uploaded image
+      const newProfilePicUrl = await getDownloadURL(profilePicRef);
+      console.log("Download URL for profile picture:", newProfilePicUrl); // Log the URL to check
+
+      // Ensure we are updating the profilePicture field with a valid URL
+      if (newProfilePicUrl) {
+        // Update the admin's profile picture in Firestore
+        const adminDocRef = doc(firestore, 'admin', adminId);
+        
+        await updateDoc(adminDocRef, {
+          profilePicture: newProfilePicUrl, // Update the Firestore document with the correct URL
+        });
+
+        console.log("Firestore updated with the new profile picture URL");
+
+        // Update the form state with the new profile picture URL
+        setPreviewProfilePicUrl(newProfilePicUrl);  // Update the preview for the form
         setFormData((prevState) => ({
           ...prevState,
-          profilePicture: url,
+          profilePicture: newProfilePicUrl, // Update local state for form data
         }));
-      } catch (err) {
-        console.error('Error uploading profile picture:', err);
-        alert('Error uploading profile picture.');
+
+        alert('Profile picture updated successfully!');
+      } else {
+        console.error('Error: The new profile picture URL is undefined or invalid.');
+  
       }
+    } catch (err) {
+      console.error('Error uploading profile picture:', err);
+ 
+    } finally {
+      setLoading(false);
     }
-  };
+  } else {
+    console.error('No new profile picture selected or user not authenticated.');
+  
+  }
+};
+
+  
+  
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
+  
     try {
       const user = auth.currentUser;
 
       if (user) {
-        await handleProfilePicUpload();
+        if (newProfilePic) {
+          await handleProfilePicUpload(); // Ensure profile picture gets uploaded
+        }
 
+        // Update Firebase Authentication profile
         await updateProfile(user, {
           displayName: formData.displayName,
-          photoURL: formData.profilePicture,
+          photoURL: formData.profilePicture, // Use the updated profile picture URL
         });
 
+        // Update Firestore with the new display name and profile picture
         const adminDocRef = doc(firestore, "admin", user.uid);
         await updateDoc(adminDocRef, {
           firstname: formData.displayName.split(" ")[0],
           lastname: formData.displayName.split(" ")[1] || "",
-          profilePicture: formData.profilePicture,
+          profilePicture: formData.profilePicture, // Update the profile picture in Firestore
         });
 
-        if (user.email !== formData.email) {
-          await updateEmail(user, formData.email);
-        }
-
-        // Update the main state with new data after saving
         setAdminData(formData);
         setSuccessMessage("Profile updated successfully!");
         setIsProfileModalOpen(false);
@@ -119,6 +172,8 @@ const AdminSettings: React.FC = () => {
       setLoading(false);
     }
   };
+
+  
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,13 +234,14 @@ const AdminSettings: React.FC = () => {
       <div className="admin-dashboard-content">
         <div className="admin-settings">
           <div className="admin-profile">
-            <div className="profile-picture-wrapper">
-              <img
-                src={adminData.profilePicture}
-                alt="Admin Profile"
-                className="profile-picture"
-              />
-            </div>
+          <div className="profile-picture-wrapper">
+  <img
+    src={adminData.profilePicture}  // Should be correctly updated with the Firebase URL
+    alt="Admin Profile"
+    className="profile-picture"
+  />
+</div>
+
 
             <div className="admin-details">
               <h2>{adminData.displayName}</h2>
@@ -209,11 +265,12 @@ const AdminSettings: React.FC = () => {
                   <div className="form-group">
                     <label>Profile Picture</label>
                     <div className="profile-picture-container">
-                      <img
-                        src={previewProfilePicUrl}
-                        alt="Profile Preview"
-                        className="profile-preview"
-                      />
+                    <img
+  src={previewProfilePicUrl}
+  alt="Profile Preview"
+  className="profile-preview"
+/>
+
                       <label className="file-input-label" htmlFor="profilePic">Choose File</label>
                       <input
                         type="file"

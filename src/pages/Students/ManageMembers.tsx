@@ -212,7 +212,6 @@ const inviteStudent = async (studentId: string) => {
     });
 
     setInvitedStudents((prev) => [...prev, studentId]);
-    alert(`${studentId} has been invited.`);
   } catch (error) {
     console.error('Error inviting student:', error);
     alert('Failed to send the invite. Please try again.');
@@ -422,7 +421,6 @@ const handleKick = async () => {
 
     // Update local state and close the modal
     setOrganizationData(updatedData);
-    alert(`${selectedUser.name} has been kicked successfully.`);
     closeKickModal();
 
    
