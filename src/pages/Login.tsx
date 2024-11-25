@@ -89,6 +89,7 @@ const Login: React.FC = () => {
           <h1><span className="green">GREEN</span><span className="pulse">PULSE</span></h1>
         </div>
         <div className="login-section">
+        {error && <div className="errors">{error}</div>}
           <h2>LOGIN</h2>
           <form onSubmit={handleLogin}>
             <div className="input-group">
@@ -127,7 +128,6 @@ const Login: React.FC = () => {
               />
               <label htmlFor="stay-logged-in">Stay logged in</label>
             </div>
-            {error && <div className="errors">{error}</div>} {/* Error message display */}
             <button type="submit" className="login-btn">LOGIN</button>
             <div className="extra-links">
               <a href="#" onClick={() => openPopup("create-account-popup")}>Create Account</a>

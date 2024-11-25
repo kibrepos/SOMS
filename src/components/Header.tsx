@@ -67,6 +67,7 @@ const Header: React.FC = () => {
   const notificationRef = useRef<HTMLDivElement>(null);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 const [selectedNotification, setSelectedNotification] = useState<any>(null);
+const [userName, setUserName] = useState<string>('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -80,13 +81,24 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
           console.error('Error fetching profile picture URL:', err);
           setProfilePicUrl('/default-profile.png');
         }
+
+        // Fetch the user's name from Firestore
+        const studentDocRef = doc(firestore, 'students', user.uid);
+        const studentDoc = await getDoc(studentDocRef);
+        if (studentDoc.exists()) {
+          const studentData = studentDoc.data();
+          const fullName = `${studentData.firstname} ${studentData.lastname}`;
+          setUserName(fullName);
+        }
       } else {
         setProfilePicUrl('/default-profile.png');
+        setUserName('');
       }
     });
 
     return () => unsubscribe();
   }, []);
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -388,9 +400,7 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
     navigate('/messages');
   };
 
-  const handleVisitChatApp = () => {
-    navigate('/ChatApp');
-  };
+
 
   const markAllAsRead = async () => {
     try {
@@ -459,6 +469,9 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
         </div>
       </div>
       <div className="header-right">
+      <div className="icon" onClick={handleNavigateToMessages}>
+          <FontAwesomeIcon icon={faEnvelope} />
+        </div>
       <div className="icon notification-icon" onClick={toggleNotifications}>
   <FontAwesomeIcon icon={faBell} />
   {unreadCount > 0 && (
@@ -654,18 +667,16 @@ const [selectedNotification, setSelectedNotification] = useState<any>(null);
           </div>
         )}
 
-        <div className="icon" onClick={handleNavigateToMessages}>
-          <FontAwesomeIcon icon={faEnvelope} />
-        </div>
-        <div className="icon" onClick={handleVisitChatApp}>
-          CHATAPP
-        </div>
+
+        <span className="profile-name">{userName}</span> 
         <div className="profile" onClick={toggleDropdown}>
           <img
             src={profilePicUrl || '/default-profile.png'}
             alt="Profile"
             className="profile-icon"
           />
+     
+          
            {isLogoutModalOpen && (
   <div className="modal-overlaysadmin">
     <div className="modal-contentsadmin">

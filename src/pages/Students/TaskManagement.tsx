@@ -6,7 +6,9 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getAuth } from 'firebase/auth'; 
 import { onAuthStateChanged, User } from 'firebase/auth';
 import StudentPresidentSidebar from './StudentPresidentSidebar';
-import { useParams } from 'react-router-dom';
+import { useParams,useNavigate  } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTrash,faSync } from '@fortawesome/free-solid-svg-icons';
 import '../../styles/TaskManagement.css';
 
 interface Task {
@@ -70,7 +72,13 @@ const [error, setError] = useState<string | null>(null);
 const { organizationName } = useParams<{ organizationName: string }>();
 const [isSubmissionsModalOpen, setIsSubmissionsModalOpen] = useState(false);
 const [submissionsTask, setSubmissionsTask] = useState<Task | null>(null);
-
+const navigate = useNavigate(); // For navigation
+const [filterByEvent, setFilterByEvent] = useState("All"); // Event filter
+const [filterByStatus, setFilterByStatus] = useState("All"); // Status filter
+const [searchQuery, setSearchQuery] = useState(""); // For search functionality
+const [sortOrder, setSortOrder] = useState("asc"); // For sorting (asc or desc) 
+const [selectedDate, setSelectedDate] = useState(""); // For date filter
+const [filterDate, setFilterDate] = useState("");
 
 const openEditModal = (task: Task) => {
   setTaskToEdit(task);
@@ -90,6 +98,36 @@ const closeSubmissionsModal = () => {
   setSubmissionsTask(null);
   setIsSubmissionsModalOpen(false);
 };
+const filteredTasks = tasks
+  .filter((task) => {
+    // Filter by event
+    if (filterByEvent === "All") return true;
+    return task.event === filterByEvent;
+  })
+  .filter((task) => {
+    // Filter by status
+    if (filterByStatus === "All") return true;
+    return task.taskStatus === filterByStatus;
+  })
+  .filter((task) => {
+    // Filter by search query
+    if (!searchQuery) return true;
+    return (
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.description.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+  })
+  .filter((task) => {
+    if (!selectedDate) return true;
+    return task.dueDate === selectedDate || task.startDate === selectedDate;
+  })
+  .sort((a, b) => {
+    // Sort by due date
+    const dateA = new Date(a.dueDate).getTime();
+    const dateB = new Date(b.dueDate).getTime();
+    return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+  });
 
 const handleEditTask = async (e: FormEvent) => {
   e.preventDefault();
@@ -160,10 +198,7 @@ const closeViewModal = () => {
   setTaskToView(null);
   setIsViewModalOpen(false);
 };
-const openDeleteModal = (task: Task) => {
-    setTaskToDelete(task);
-    setIsDeleteModalOpen(true);
-  };
+
   
   const closeDeleteModal = () => {
     setTaskToDelete(null);
@@ -171,32 +206,50 @@ const openDeleteModal = (task: Task) => {
   };
   
   const handleDeleteTask = async () => {
-    if (!taskToDelete || !organizationName) {
-        alert("Missing task to delete or organization name.");
-        return;
+    // Determine if it's a bulk delete or single delete
+    const tasksToDelete = taskToDelete ? [taskToDelete.id] : assignedTo;
+  
+    if (tasksToDelete.length === 0 || !organizationName) {
+      alert("No tasks selected for deletion or organization name is missing.");
+      return;
     }
-
+  
     try {
-        // Reference the task document in the new structure
-        const taskDocRef = doc(
+      // Delete each task document from Firestore
+      await Promise.all(
+        tasksToDelete.map(async (taskId) => {
+          const taskDocRef = doc(
             firestore,
-            `tasks/${organizationName}/AllTasks/${taskToDelete.id}`
-        );
-
-        // Delete the task document from Firestore
-        await deleteDoc(taskDocRef);
-
-        // Update local state to remove the deleted task
-        setTasks((prev) => prev.filter((task) => task.id !== taskToDelete.id));
-
-        closeDeleteModal();
-        alert("Task deleted successfully!");
+            `tasks/${organizationName}/AllTasks/${taskId}`
+          );
+          await deleteDoc(taskDocRef);
+        })
+      );
+  
+      // Update local state to remove the deleted tasks
+      setTasks((prev) => prev.filter((task) => !tasksToDelete.includes(task.id)));
+  
+      // Clear selected tasks for bulk delete
+      if (!taskToDelete) {
+        setAssignedTo([]);
+      }
+  
+      // Close the delete modal
+      closeDeleteModal();
     } catch (error) {
-        console.error("Error deleting task:", error);
-        alert("Failed to delete the task. Please try again.");
+      console.error("Error deleting task(s):", error);
+      alert("Failed to delete task(s). Please try again.");
+    } finally {
+      // Ensure the modal is closed even if an error occurs
+      closeDeleteModal();
     }
-};
+  };
 
+  const openDeleteModalForBulk = () => {
+    // If bulk delete (trash button), ensure we clear taskToDelete
+    setTaskToDelete(null);
+    setIsDeleteModalOpen(true);
+  };
   
   
   useEffect(() => {
@@ -277,7 +330,8 @@ const openDeleteModal = (task: Task) => {
       })) as Task[];
   
       setTasks(fetchedTasks);
-      setError(null); // Clear previous errors
+   
+
     } catch (err) {
       console.error("Error fetching tasks:", err);
       setError("Failed to fetch tasks. Please try again.");
@@ -395,11 +449,96 @@ const openDeleteModal = (task: Task) => {
         </div>
         <div className="task-content">
           <div className="header-actions">
-            <h2>Task List</h2>
-            <button className="new-task-btn" onClick={openNewTaskModal}>
-              + New Task
-            </button>
+          <h2>All Tasks List</h2>
+          <button
+      className="my-tasks-btn"
+      onClick={() => navigate(`/Organization/${organizationName}/mytasks`)}
+    >
+      View My Tasks
+    </button>
           </div>
+          <div className="tksks-filters">
+    <select
+              value={filterByEvent}
+              onChange={(e) => setFilterByEvent(e.target.value)}
+              className="tksks-event-dropdown"
+            >
+    <option value="All">All Events</option>
+   
+
+    {tasks
+      .map((task) => task.event)
+      .filter((event, index, self) => event && self.indexOf(event) === index) // Unique events
+      .map((event) => (
+        <option key={event} value={event}>
+          {event}
+        </option>
+      ))}
+  </select>
+
+  <select
+    value={filterByStatus}
+    onChange={(e) => setFilterByStatus(e.target.value)}
+    className="tksks-status-dropdown"
+  >
+    <option value="All">All Statuses</option>
+    <option value="Started">Started</option>
+    <option value="In Progress">In Progress</option>
+    <option value="Completed">Completed</option>
+    <option value="Overdue">Overdue</option>
+  </select>
+  <input
+  type="date"
+  className="tksks-date-dropdown"
+  value={selectedDate} // Bind to selectedDate
+  onChange={(e) => setSelectedDate(e.target.value)} // Update selectedDate state
+  placeholder="Filter by Date"
+/>
+  <select
+    value={sortOrder}
+    onChange={(e) => setSortOrder(e.target.value)}
+    className="tksks-sort-dropdown"
+  >
+    <option value="asc">ASC</option>
+    <option value="desc">DESC</option>
+  </select>
+
+  <input
+    type="text"
+    placeholder="Search..."
+    value={searchQuery}
+    onChange={(e) => setSearchQuery(e.target.value)}
+    className="tksks-search-input"
+  />
+
+  <button
+    className="tksks-reset-btn"
+    onClick={() => {
+      setFilterByEvent("All");
+      setFilterByStatus("All");
+      setSearchQuery("");
+      setSortOrder("asc");
+      setSelectedDate(""); // Reset selected date
+      setFilterDate(""); // Reset filter date
+    }}
+  >
+    <FontAwesomeIcon icon={faSync} />
+    Reset 
+    
+  </button>
+  <button
+  className={`tksks-trash-btn ${assignedTo.length > 0 ? 'enabled' : 'disabled'}`}
+  onClick={() => {
+    if (assignedTo.length > 0) {
+      openDeleteModalForBulk(); // Open bulk delete modal
+    }
+  }}
+  disabled={assignedTo.length === 0} // Disable if no tasks are selected
+>
+  <FontAwesomeIcon icon={faTrash} />
+</button>
+
+</div>
 
           {isNewTaskModalOpen && (
             <div className="task-modal-overlay">
@@ -659,11 +798,20 @@ const openDeleteModal = (task: Task) => {
 )}
 
 
-{isDeleteModalOpen && taskToDelete && (
+{isDeleteModalOpen && (
   <div className="modal-overlay">
     <div className="modal-content">
-      <h3>Are you sure you want to delete this task?</h3>
-      <p>Task: {taskToDelete.title}</p>
+      {taskToDelete ? (
+        <>
+          <h3>Are you sure you want to delete this task?</h3>
+          <p>Task: {taskToDelete.title}</p>
+        </>
+      ) : (
+        <>
+          <h3>Are you sure you want to delete the selected tasks?</h3>
+          <p>Total tasks selected: {assignedTo.length}</p>
+        </>
+      )}
       <div className="modal-actions">
         <button onClick={handleDeleteTask}>Yes, Delete</button>
         <button onClick={closeDeleteModal}>Cancel</button>
@@ -673,10 +821,26 @@ const openDeleteModal = (task: Task) => {
 )}
 
 
+            <button className="new-task-btn" onClick={openNewTaskModal}>
+              + New Task
+            </button>
+
           <table className="task-table">
             <thead>
               <tr>
-                <th>#</th>
+              <th>
+        <input
+          type="checkbox"
+          onChange={(e) => {
+            const isChecked = e.target.checked;
+            if (isChecked) {
+              setAssignedTo(tasks.map((task) => task.id)); // Select all tasks
+            } else {
+              setAssignedTo([]); // Deselect all tasks
+            }
+          }}
+        />
+      </th>
                 <th>Event</th>
                 <th>Tasks</th>
                 <th>Given by</th>
@@ -688,9 +852,15 @@ const openDeleteModal = (task: Task) => {
               </tr>
             </thead>
             <tbody>
-  {tasks.map((task, index) => (
+            {filteredTasks.map((task) => (
     <tr key={task.id}>
-      <td>{index + 1}</td>
+     <td>
+          <input
+            type="checkbox"
+            checked={assignedTo.includes(task.id)}
+            onChange={() => handleCheckboxChange(task.id)}
+          />
+        </td>
       <td>{task.event || 'General Task'}</td>
       <td>
         <strong>{task.title}</strong>
@@ -734,7 +904,6 @@ const openDeleteModal = (task: Task) => {
   <button onClick={() => openViewModal(task)}>View</button>
       <button onClick={() => openEditModal(task)}>Edit</button>
       <button onClick={() => openSubmissionsModal(task)}>Submissions</button>
-      <button onClick={() => openDeleteModal(task)}>Delete</button>
   </div>
 </div>
 </td>

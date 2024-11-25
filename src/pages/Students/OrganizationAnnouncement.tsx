@@ -4,7 +4,7 @@ import {  doc, getDoc, collection, setDoc, Timestamp,getDocs, deleteDoc } from "
 import { auth, firestore, storage } from "../../services/firebaseConfig";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSync,faTrash,faFileAlt, faFilePdf, faFileWord, faFilePowerpoint, faFileExcel, faFile   } from '@fortawesome/free-solid-svg-icons';
+import { faSync,faTrash,faFileAlt, faFilePdf, faFileWord, faFilePowerpoint, faFileExcel   } from '@fortawesome/free-solid-svg-icons';
 import Header from '../../components/Header';
 import StudentPresidentSidebar from './StudentPresidentSidebar';
 import '../../styles/OrganizationAnnouncement.css';

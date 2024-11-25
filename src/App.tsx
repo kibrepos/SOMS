@@ -27,7 +27,6 @@ import Login from './pages/Login';
 import SignupStudent from './components/SignupStudent';
 import SignupFaculty from './components/SignupFaculty';
 import Messenger from './components/Messenger';
-import ChatApp from './components/chat/ChatApp';
 import OrganizationResources from './pages/Students/OrganizationResources';
 import OrganizationAnnouncement from './pages/Students/OrganizationAnnouncement';
 
@@ -51,7 +50,7 @@ const App: React.FC = () => {
           <Route path="/Student/dashboard" element={<StudentDashboard />} />
           <Route path="/Student/myprofile" element={<StudentProfile />} />
           <Route path="/messages" element={<Messenger />} />
-          <Route path="/ChatApp" element={<ChatApp />} />
+         
 
 
 

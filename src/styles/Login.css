@@ -214,15 +214,10 @@ html,body {
     padding: 10px;
     border-radius: 4px;
     font-size: 14px;
-    position: absolute; /* Position the error message absolutely */
-    top: 0; /* Position it at the top of the form */
-    left: 50%; /* Center it horizontally */
-    transform: translateX(-50%); /* Adjust for width */
-    width: 30%; /* Ensure it spans the width of the form */
-    margin-top: 120px; /* Space below the top */
-    box-sizing: border-box; 
-    margin-left: 350px;
-}
+    box-sizing: border-box; /* Ensures padding is included in the element's width and height */
+    text-align: left; /* Centers the text inside the error box */
+    margin-bottom: -30px;
+  }
 
 
 
