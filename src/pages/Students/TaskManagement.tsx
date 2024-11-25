@@ -1,4 +1,4 @@
-import React, { useEffect, useState, ChangeEvent, FormEvent } from 'react';
+import React, { useEffect, useState, ChangeEvent, FormEvent,useRef } from 'react';
 import { doc, getDocs, updateDoc, collection,deleteDoc, setDoc,getDoc} from 'firebase/firestore';
 import { firestore } from '../../services/firebaseConfig';
 import Header from '../../components/Header';
@@ -10,6 +10,7 @@ import { useParams,useNavigate  } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash,faSync } from '@fortawesome/free-solid-svg-icons';
 import '../../styles/TaskManagement.css';
+import { showToast } from '../../components/toast';
 
 interface Task {
     id: string;
@@ -79,11 +80,36 @@ const [searchQuery, setSearchQuery] = useState(""); // For search functionality
 const [sortOrder, setSortOrder] = useState("asc"); // For sorting (asc or desc) 
 const [selectedDate, setSelectedDate] = useState(""); // For date filter
 const [filterDate, setFilterDate] = useState("");
+const [showMemberDropdown, setShowMemberDropdown] = useState(false);
+const [selectedMembers, setSelectedMembers] = useState<string[]>([]); // Selected members
+const [selectedCommittees, setSelectedCommittees] = useState<string[]>([]); // Selected committees
+const fileInputRef = useRef<HTMLInputElement | null>(null);
+const [memberSearch, setMemberSearch] = useState(""); // To filter dropdown
+const [attachmentURLs, setAttachmentURLs] = useState<string[]>([]); // For URLs
+
 
 const openEditModal = (task: Task) => {
   setTaskToEdit(task);
+
+  // Populate selectedMembers and selectedCommittees based on assignedTo
+  const taskAssignedMembers = task.assignedTo.filter((id) =>
+    availableMembers.some((member) => member.id === id)
+  );
+  const taskAssignedCommittees = task.assignedTo.filter((id) =>
+    availableCommittees.some((committee) => committee.id === id)
+  );
+
+  setSelectedMembers(taskAssignedMembers);
+  setSelectedCommittees(taskAssignedCommittees);
+
+  // Set URLs directly for display
+  setAttachmentURLs(task.attachments || []);
+  setAttachments([]); // Clear new attachments for editing
+
   setIsEditModalOpen(true);
 };
+
+
 
 const closeEditModal = () => {
   setTaskToEdit(null);
@@ -98,6 +124,8 @@ const closeSubmissionsModal = () => {
   setSubmissionsTask(null);
   setIsSubmissionsModalOpen(false);
 };
+
+
 const filteredTasks = tasks
   .filter((task) => {
     // Filter by event
@@ -129,65 +157,80 @@ const filteredTasks = tasks
     return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
   });
 
-const handleEditTask = async (e: FormEvent) => {
-  e.preventDefault();
-
-  if (!taskToEdit || !organizationName) {
+  const handleEditTask = async (e: FormEvent) => {
+    e.preventDefault();
+  
+    if (!taskToEdit || !organizationName) {
       alert("Missing task to edit or organization name.");
       return;
-  }
-
-  // Validate that the due date is not earlier than the start date
-  if (new Date(newTaskDueDate || taskToEdit.dueDate) < new Date(newTaskStartDate || taskToEdit.startDate)) {
+    }
+  
+    // Validate dates
+    if (new Date(newTaskDueDate || taskToEdit.dueDate) < new Date(newTaskStartDate || taskToEdit.startDate)) {
       alert("Due date cannot be earlier than the start date.");
       return;
-  }
-
-  try {
-      // Upload attachments if any
-      const attachmentURLs = await Promise.all(
-          attachments.map(async (file) => {
-              const storageRef = ref(storage, `tasks/${Date.now()}-${file.name}`);
-              await uploadBytes(storageRef, file);
-              return await getDownloadURL(storageRef);
+    }
+  
+    try {
+      // Upload new files
+      const newAttachmentURLs = await Promise.all(
+        attachments
+          .filter((file) => file instanceof File) // Only upload new files
+          .map(async (file) => {
+            const storageRef = ref(storage, `tasks/${Date.now()}-${file.name}`);
+            await uploadBytes(storageRef, file);
+            return await getDownloadURL(storageRef);
           })
       );
-
-      // Update only the necessary fields
+  
+      // Merge existing and new attachments
+      const updatedAttachments = [
+        ...(taskToEdit.attachments || []), // Existing attachments
+        ...newAttachmentURLs, // Newly uploaded attachments
+      ];
+  
       const updatedFields = {
-          title: newTaskTitle.trim() || taskToEdit.title,
-          description: newTaskDescription.trim() || taskToEdit.description,
-          assignedTo: assignedTo.length > 0 ? assignedTo : taskToEdit.assignedTo,
-          startDate: newTaskStartDate || taskToEdit.startDate,
-          dueDate: newTaskDueDate || taskToEdit.dueDate,
-          attachments: [...(taskToEdit.attachments || []), ...attachmentURLs],
+        title: newTaskTitle.trim() || taskToEdit.title,
+        description: newTaskDescription.trim() || taskToEdit.description,
+        assignedTo: [...selectedMembers, ...selectedCommittees],
+        startDate: newTaskStartDate || taskToEdit.startDate,
+        dueDate: newTaskDueDate || taskToEdit.dueDate,
+        attachments: updatedAttachments,
       };
-
-      // Reference the correct document path
-      const taskDocRef = doc(
-          firestore,
-          `tasks/${organizationName}/AllTasks/${taskToEdit.id}`
-      );
-
-      // Update the document with the specified fields
+  
+      // Update Firestore
+      const taskDocRef = doc(firestore, `tasks/${organizationName}/AllTasks/${taskToEdit.id}`);
       await updateDoc(taskDocRef, updatedFields);
-
-      // Update local state
+  
+      // Update state
       setTasks((prev) =>
-          prev.map((task) =>
-              task.id === taskToEdit.id ? { ...task, ...updatedFields } : task
-          )
+        prev.map((task) =>
+          task.id === taskToEdit.id ? { ...task, ...updatedFields } : task
+        )
       );
+  
 
+      if (taskToView?.id === taskToEdit.id) {
+        setTaskToView((prev) => (prev ? { ...prev, ...updatedFields } : null));
+      }
+  
+      // Reset modal
+      setNewTaskTitle("");
+      setNewTaskDescription("");
+      setNewTaskStartDate("");
+      setNewTaskDueDate("");
+      setSelectedMembers([]);
+      setSelectedCommittees([]);
+      setAttachments([]);
       closeEditModal();
-      alert("Task updated successfully!");
-  } catch (error) {
+  
+      showToast("Task updated successfully!","success");
+    } catch (error) {
       console.error("Error updating task:", error);
-      alert("Failed to update the task. Please try again.");
-  }
-};
-
-
+      showToast("Failed to update the task. Please try again.","error");
+    }
+  };
+  
 
 const openViewModal = (task: Task) => {
   setTaskToView(task);
@@ -198,8 +241,25 @@ const closeViewModal = () => {
   setTaskToView(null);
   setIsViewModalOpen(false);
 };
+const handleMemberSelection = (id: string) => {
+  setAssignedTo((prev) =>
+    prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+  );
+};
 
-  
+const handleMemberSelect = (memberId: string) => {
+  if (!selectedMembers.includes(memberId)) {
+    setSelectedMembers((prev) => [...prev, memberId]); // Add member to the selected list
+  }
+  setMemberSearch(""); // Reset the search term
+  setShowMemberDropdown(false); // Close the dropdown after selection
+};
+
+
+const handleMemberRemove = (memberId: string) => {
+  setAssignedTo((prev) => prev.filter((id) => id !== memberId));
+};
+
   const closeDeleteModal = () => {
     setTaskToDelete(null);
     setIsDeleteModalOpen(false);
@@ -249,6 +309,18 @@ const closeViewModal = () => {
     // If bulk delete (trash button), ensure we clear taskToDelete
     setTaskToDelete(null);
     setIsDeleteModalOpen(true);
+  };
+  
+  const handleRemoveFile = (indexToRemove: number): void => {
+    setAttachments((prevFiles) => prevFiles.filter((_, index) => index !== indexToRemove));
+  };
+  
+  const handleCommitteeSelect = (committeeId: string) => {
+    setSelectedCommittees((prev) =>
+      prev.includes(committeeId)
+        ? prev.filter((id) => id !== committeeId) // Remove if already selected
+        : [...prev, committeeId] // Add if not selected
+    );
   };
   
   
@@ -352,9 +424,26 @@ const closeViewModal = () => {
   
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setAttachments(Array.from(e.target.files)); // Store multiple files in state
+      const newFiles = Array.from(e.target.files);
+      setAttachments((prevAttachments) => {
+        const uniqueFiles = newFiles.filter(
+          (newFile) =>
+            !prevAttachments.some(
+              (existingFile) =>
+                existingFile.name === newFile.name && existingFile.size === newFile.size
+            )
+        );
+        return [...prevAttachments, ...uniqueFiles];
+      });
     }
   };
+  const extractFileName = (url: string): string => {
+    const fileNameWithPath = decodeURIComponent(url.split('/').pop()?.split('?')[0] || 'Attachment');
+    const fileName = fileNameWithPath.split('/').pop() || fileNameWithPath; // Remove folder structure like "tasks/"
+    return fileName.replace(/^\d+-/, ''); // Remove leading numbers followed by a dash
+  };
+  
+  
   const handleCheckboxChange = (id: string) => {
     setAssignedTo((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
@@ -363,78 +452,93 @@ const closeViewModal = () => {
   
   const handleCreateTask = async (e: FormEvent) => {
     e.preventDefault();
-
+  
     if (!organizationName || !currentUser) {
-        alert("Missing organization name or user.");
-        return;
+      alert("Missing organization name or user.");
+      return;
     }
-
+  
     // Validate that the due date is not earlier than the start date
     if (new Date(newTaskDueDate) < new Date(newTaskStartDate)) {
-        alert("Due date cannot be earlier than the start date.");
-        return;
+      alert("Due date cannot be earlier than the start date.");
+      return;
     }
-
+  
+    if (selectedMembers.length === 0 && selectedCommittees.length === 0) {
+      const proceedWithoutAssigning = window.confirm(
+        "No members or committees assigned to this task. Do you want to proceed?"
+      );
+      if (!proceedWithoutAssigning) return;
+    }
+  
     try {
-        // Get the current user's name
-        const userDoc = await getDoc(doc(firestore, "students", currentUser.uid));
-        const givenBy = userDoc.exists()
-            ? `${userDoc.data()?.firstname} ${userDoc.data()?.lastname}`
-            : "Unknown User";
-
-        // Process attachments
-        const attachmentURLs = await Promise.all(
-            attachments.map(async (file) => {
-                const storageRef = ref(storage, `tasks/${Date.now()}-${file.name}`);
-                await uploadBytes(storageRef, file);
-                return await getDownloadURL(storageRef);
-            })
-        );
-
-        // Prepare assignedTo and assignedToNames arrays
-        const assignedToWithNames = assignedTo.map((id) => {
-            const member = availableMembers.find((m) => m.id === id);
-            const committee = availableCommittees.find((c) => c.id === id);
-            return {
-                id,
-                name: member?.name || committee?.name || "Unknown", // Get name or fallback to "Unknown"
-            };
-        });
-
-        // Construct the new task object
-        const newTask: Task = {
-          id: Date.now().toString(),
-          title: newTaskTitle,
-          description: newTaskDescription,
-          assignedTo: assignedToWithNames.map((entry) => entry.id), // Save only IDs
-          assignedToNames: assignedToWithNames.map((entry) => entry.name), // Save only names
-          startDate: newTaskStartDate,
-          dueDate: newTaskDueDate,
-          event: "General Task",
-          taskStatus: "Started",
-          givenBy,
-          attachments: attachmentURLs,
+      // Get the current user's name
+      const userDoc = await getDoc(doc(firestore, "students", currentUser.uid));
+      const givenBy = userDoc.exists()
+        ? `${userDoc.data()?.firstname} ${userDoc.data()?.lastname}`
+        : "Unknown User";
+  
+      // Process attachments
+      const attachmentURLs = await Promise.all(
+        attachments.map(async (file) => {
+          const storageRef = ref(storage, `tasks/${Date.now()}-${file.name}`);
+          await uploadBytes(storageRef, file);
+          return await getDownloadURL(storageRef);
+        })
+      );
+  
+      // Prepare `assignedTo` and `assignedToNames`
+      const allAssigned = [...selectedMembers, ...selectedCommittees];
+      const assignedToWithNames = allAssigned.map((id) => {
+        const member = availableMembers.find((m) => m.id === id);
+        const committee = availableCommittees.find((c) => c.id === id);
+        return {
+          id,
+          name: member?.name || committee?.name || "Unknown",
         };
-        
-        
-
-        // Save the new task to Firestore
-        const taskDocRef = doc(
-            firestore,
-            `tasks/${organizationName}/AllTasks/${newTask.id}` // Use the new "AllTasks" structure
-        );
-
-        await setDoc(taskDocRef, newTask);
-
-        // Update local state
-        setTasks((prev) => [...prev, newTask]);
-        closeNewTaskModal();
-        alert("Task created successfully!");
+      });
+  
+      const newTask: Task = {
+        id: Date.now().toString(),
+        title: newTaskTitle,
+        description: newTaskDescription,
+        assignedTo: assignedToWithNames.map((entry) => entry.id), // IDs only
+        assignedToNames: assignedToWithNames.map((entry) => entry.name), // Names only
+        startDate: newTaskStartDate,
+        dueDate: newTaskDueDate,
+        event: "General Task",
+        taskStatus: "Started",
+        givenBy,
+        attachments: attachmentURLs,
+      };
+  
+      // Save the new task to Firestore
+      const taskDocRef = doc(
+        firestore,
+        `tasks/${organizationName}/AllTasks/${newTask.id}`
+      );
+      await setDoc(taskDocRef, newTask);
+  
+      // Update local state
+      setTasks((prev) => [...prev, newTask]);
+  
+      // Reset form state
+      setNewTaskTitle("");
+      setNewTaskDescription("");
+      setNewTaskStartDate("");
+      setNewTaskDueDate("");
+      setSelectedMembers([]);
+      setSelectedCommittees([]);
+      setAttachments([]);
+  
+      closeNewTaskModal();
+      alert("Task created successfully!");
     } catch (error) {
-        console.error("Error creating task:", error);
-        alert("Failed to create the task. Please try again.");
+      console.error("Error creating task:", error);
+      alert("Failed to create the task. Please try again.");
     }
-};
+  };
+  
 
   
   
@@ -540,95 +644,259 @@ const closeViewModal = () => {
 
 </div>
 
-          {isNewTaskModalOpen && (
-            <div className="task-modal-overlay">
-              <div className="task-modal-content">
-                <h3>Create New Task</h3>
-                <form onSubmit={handleCreateTask}>
-                  <input
-                    type="text"
-                    placeholder="Task Title"
-                    value={newTaskTitle}
-                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                    required
-                  />
-                  <textarea
-                    placeholder="Task Description"
-                    value={newTaskDescription}
-                    onChange={(e) => setNewTaskDescription(e.target.value)}
-                    required
-                  />
-                  <h4>Assign to Members and Officers:</h4>
-                  <ul>
-                    {availableMembers.map((member) => (
-                      <li key={member.id}>
-                        <input
-                          type="checkbox"
-                          onChange={() => handleCheckboxChange(member.id)}
-                        />
-                        {member.name}
-                      </li>
-                    ))}
-                  </ul>
-                  <h4>Assign to Committees:</h4>
-                  <ul>
-                    {availableCommittees.map((committee) => (
-                      <li key={committee.id}>
-                        <input
-                          type="checkbox"
-                          onChange={() => handleCheckboxChange(committee.id)}
-                        />
-                        {committee.name}
-                      </li>
-                    ))}
-                  </ul>
-                  <label>Start Date</label>
-                  <input
-                    type="date"
-                    value={newTaskStartDate}
-                    onChange={(e) => setNewTaskStartDate(e.target.value)}
-                    required
-                  />
-                  <label>Due Date</label>
-                  <input
-                    type="date"
-                    value={newTaskDueDate}
-                    onChange={(e) => setNewTaskDueDate(e.target.value)}
-                    required
-                  />
-                 <label>File Attachment</label>
-<input type="file" multiple onChange={handleFileChange} />
-<div className="task-modal-actions">
-  <button type="submit">Create Task</button>
-  <button type="button" onClick={closeNewTaskModal}>
-    Cancel
+{isNewTaskModalOpen && (
+  <div className="altask-modal-overlay">
+    <div className="altask-modal-content">
+      <h3>Create new task</h3>
+      <form onSubmit={handleCreateTask}>
+        <div className="altask-form">
+          {/* Left Column */}
+          <div className="altask-left-column">
+            <label className="altask-label">Task Title</label>
+            <input
+              type="text"
+              placeholder="Task Title"
+              value={newTaskTitle}
+              onChange={(e) => setNewTaskTitle(e.target.value)}
+              required
+              className="altask-input"
+            />
+
+            <label className="altask-label">Task description</label>
+            <textarea
+              placeholder="Task description"
+              value={newTaskDescription}
+              onChange={(e) => setNewTaskDescription(e.target.value)}
+              required
+              className="altask-textarea"
+            ></textarea>
+
+<label className="altask-label">File attachments</label>
+<div className="altask-file-section">
+              <button
+                type="button"
+                className="altask-file-btn"
+                onClick={() => fileInputRef.current?.click()} 
+              >
+                + add file
+              </button>
+              <input
+  ref={fileInputRef}
+  type="file"
+  multiple
+  onChange={handleFileChange}
+  style={{ display: 'none' }}
+/>
+<ul className="altask-file-list">
+  {/* Existing URLs */}
+  {taskToEdit?.attachments?.map((url, index) => {
+  const fileName = extractFileName(url);
+  return (
+    <li key={`existing-${index}`} className="altask-file-item">
+      <span>
+        <a href={url} target="_blank" rel="noopener noreferrer">
+          {fileName}
+        </a>
+      </span>
+      <button
+        type="button"
+        className="altask-file-remove-btn"
+        onClick={() => {
+          setTaskToEdit((prev) =>
+            prev
+              ? { ...prev, attachments: prev.attachments?.filter((_, i) => i !== index) }
+              : null
+          );
+        }}
+      >
+        ×
+      </button>
+    </li>
+  );
+})}
+
+
+
+  {/* New files */}
+  {attachments.map((file, index) => (
+    <li key={`new-${index}`} className="altask-file-item">
+      <span>{file.name}</span>
+      <button
+        type="button"
+        className="altask-file-remove-btn"
+        onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== index))}
+      >
+        ×
+      </button>
+    </li>
+  ))}
+</ul>
+
+
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="altask-right-column">
+            <label className="altask-label">Start Date</label>
+            <input
+              type="date"
+              value={newTaskStartDate}
+              onChange={(e) => setNewTaskStartDate(e.target.value)}
+              required
+              className="altask-date-input"
+            />
+
+            <label className="altask-label">Due Date</label>
+            <input
+              type="date"
+              value={newTaskDueDate}
+              onChange={(e) => setNewTaskDueDate(e.target.value)}
+              required
+              className="altask-date-input"
+            />
+
+            <label className="altask-label">Assign to:</label>
+            <div className="altask-assign-to-section">
+              <div className="altask-chips">
+                {selectedMembers.map((memberId) => {
+                  const member = availableMembers.find(
+                    (m) => m.id === memberId
+                  );
+                  return (
+                    <div key={memberId} className="altask-chip">
+                      {member?.name}
+                      <button
+                        className="altask-chip-remove"
+                        onClick={() =>
+                          setSelectedMembers((prev) =>
+                            prev.filter((id) => id !== memberId)
+                          )
+                        }
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+                <div className="altask-dropdown-container">
+                <button
+    type="button"
+    className="altask-add-btn"
+    onClick={() => setShowMemberDropdown(!showMemberDropdown)}
+  >
+    +
   </button>
+                
+                {showMemberDropdown && (
+  <div className="altask-dropdown">
+    {/* Search Bar */}
+    <input
+      type="text"
+      className="altask-dropdown-search"
+      placeholder="Search..."
+      value={memberSearch}
+      onChange={(e) => setMemberSearch(e.target.value)}
+    />
+    {/* Filtered List */}
+    <ul>
+      {availableMembers
+        .filter(
+          (member) =>
+            !selectedMembers.includes(member.id) && // Exclude already selected members
+            member.name.toLowerCase().includes(memberSearch.toLowerCase()) // Match search term
+        )
+        .map((member) => (
+          <li
+            key={member.id}
+            className="altask-dropdown-item"
+            onClick={() => handleMemberSelect(member.id)}
+          >
+            {member.name}
+          </li>
+        ))}
+    </ul>
+  </div>
+)}
 </div>
-                </form>
+
               </div>
             </div>
-          )}
-          {isViewModalOpen && taskToView && (
-  <div className="modal-overlay">
-    <div className="modal-content view-task-modal">
+
+            <label className="altask-label">Assign to committee:</label>
+            <div className="altask-assign-committees">
+              {availableCommittees.map((committee) => (
+                <div
+                  key={committee.id}
+                  className={`altask-chip ${
+                    selectedCommittees.includes(committee.id)
+                      ? "altask-chip-selected"
+                      : ""
+                  }`}
+                  onClick={() => handleCommitteeSelect(committee.id)}
+                >
+                  {committee.name}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="altask-modal-actions">
+          <button type="submit" className="altask-submit-btn">
+            Create Task
+          </button>
+          <button
+            type="button"
+            onClick={closeNewTaskModal}
+            className="altask-cancel-btn"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
+{isViewModalOpen && taskToView && (
+  <div className="task-details-modal-overlay">
+    <div className="task-details-modal-content">
       <h3>Task Details</h3>
-      <div className="modal-task-info">
-        <div className="modal-row">
+      <div className="task-details-info">
+        <div className="task-details-row">
           <p><strong>Event:</strong> {taskToView.event || 'General Task'}</p>
+        </div>
+        <div className="task-details-row">
           <p><strong>Title:</strong> {taskToView.title}</p>
+        </div>
+        <div className="task-details-row">
           <p><strong>Description:</strong> {taskToView.description}</p>
         </div>
-        <div className="modal-row">
+        <div className="task-details-row">
           <p><strong>Given by:</strong> {taskToView.givenBy}</p>
-          <p><strong>Assigned to:</strong> 
-            {taskToView.assignedTo.map((id) => {
-              const member = availableMembers.find((m) => m.id === id);
-              const committee = availableCommittees.find((c) => c.id === id);
-              return member?.name || committee?.name || id;
-            }).join(', ')}
-          </p>
+          <div>
+            <strong>Assigned to:</strong>
+            <ul>
+              {/* Committees first */}
+              {taskToView.assignedTo
+                .map((id) => availableCommittees.find((c) => c.id === id))
+                .filter(Boolean)
+                .map((committee, index) => (
+                  <li key={`committee-${index}`}>{committee?.name}</li>
+                ))}
+
+              {/* Members next */}
+              {taskToView.assignedTo
+                .map((id) => availableMembers.find((m) => m.id === id))
+                .filter(Boolean)
+                .map((member, index) => (
+                  <li key={`member-${index}`}>{member?.name}</li>
+                ))}
+            </ul>
+          </div>
         </div>
-        <div className="modal-row">
+        <div className="task-details-row">
           <p><strong>Start Date:</strong> 
             {new Date(taskToView.startDate).toLocaleDateString('en-US', {
               year: 'numeric',
@@ -644,121 +912,247 @@ const closeViewModal = () => {
             })}
           </p>
         </div>
-        <p><strong>Status:</strong> 
-          <span className={`status-badge ${taskToView.taskStatus.replace(' ', '-').toLowerCase()}`}>
-            {taskToView.taskStatus}
-          </span>
-        </p>
-        
-        
-         
-       
-<ul>
-<p><strong>File Attachments:</strong></p>
-  {taskToView?.attachments && taskToView.attachments.length > 0 ? (
-    taskToView.attachments.map((url, index) => (
-      <li key={index}>
-        <a href={url} target="_blank" rel="noopener noreferrer">
-          View Attachment {index + 1}
-        </a>
-      </li>
-    ))
-  ) : (
-    <p>No attachments</p>
-  )}
-</ul>
-
-
-
+        <div className="task-details-row">
+          <p><strong>Status:</strong> 
+            <span className={`status-badge ${taskToView.taskStatus.replace(' ', '-').toLowerCase()}`}>
+              {taskToView.taskStatus}
+            </span>
+          </p>
+        </div>
+        <div className="task-details-row">
+          <ul>
+          <p><strong>File Attachments:</strong></p>
+          {taskToView?.attachments && taskToView.attachments.length > 0 ? (
+            taskToView.attachments.map((url, index) => {
+              const fileName = decodeURIComponent(url.split('/').pop()?.split('?')[0] || `Attachment ${index + 1}`);
+              return (
+                <li key={index}>
+                  <a href={url} target="_blank" rel="noopener noreferrer">
+                    {fileName}
+                  </a>
+                </li>
+              );
+            })
+          ) : (
+            <p>No attachments</p>
+          )}
+        </ul>
+        </div>
       </div>
-      <div className="modal-actions">
+      <div className="task-details-modal-actions">
         <button onClick={() => openEditModal(taskToView)}>Edit</button>
         <button onClick={closeViewModal}>Close</button>
       </div>
     </div>
   </div>
 )}
+
+
+
+
 {isEditModalOpen && taskToEdit && (
-  <div className="modal-overlay">
-    <div className="modal-content edit-task-modal">
+  <div className="altask-modal-overlay">
+    <div className="altask-modal-content">
       <h3>Edit Task</h3>
       <form onSubmit={handleEditTask}>
-        <label>Task Title</label>
-        <input
-          type="text"
-          value={newTaskTitle || taskToEdit.title}
-          onChange={(e) => setNewTaskTitle(e.target.value)}
-          required
-        />
+        <div className="altask-form">
+          {/* Left Column */}
+          <div className="altask-left-column">
+            <label className="altask-label">Task Title</label>
+            <input
+              type="text"
+              value={newTaskTitle || taskToEdit.title}
+              onChange={(e) => setNewTaskTitle(e.target.value)}
+              required
+              className="altask-input"
+            />
 
-        <label>Task Description</label>
-        <textarea
-          value={newTaskDescription || taskToEdit.description}
-          onChange={(e) => setNewTaskDescription(e.target.value)}
-          required
-        />
+            <label className="altask-label">Task Description</label>
+            <textarea
+              value={newTaskDescription || taskToEdit.description}
+              onChange={(e) => setNewTaskDescription(e.target.value)}
+              required
+              className="altask-textarea"
+            ></textarea>
 
-        <h4>Assign to Members and Officers:</h4>
-        <ul>
-          {availableMembers.map((member) => (
-            <li key={member.id}>
+            <label className="altask-label">File Attachments</label>
+            <div className="altask-file-section">
+              <button
+                type="button"
+                className="altask-file-btn"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                + add file
+              </button>
               <input
-                type="checkbox"
-                checked={assignedTo.includes(member.id)}
-                onChange={() => handleCheckboxChange(member.id)}
+                ref={fileInputRef}
+                type="file"
+                multiple
+                onChange={handleFileChange}
+                style={{ display: "none" }}
               />
-              {member.name}
-            </li>
-          ))}
-        </ul>
+              <ul className="altask-file-list">
+                {/* Existing attachments */}
+                {taskToEdit?.attachments?.map((url, index) => (
+                  <li key={`existing-${index}`} className="altask-file-item">
+                    <span>
+                      {/* Use the extractFileName function to display the filename */}
+                      <a 
+  className="altask-file-link" 
+  href={url} 
+  target="_blank" 
+  rel="noopener noreferrer"
+>
+  {extractFileName(url)}
+</a>
 
-        <h4>Assign to Committees:</h4>
-        <ul>
-          {availableCommittees.map((committee) => (
-            <li key={committee.id}>
-              <input
-                type="checkbox"
-                checked={assignedTo.includes(committee.id)}
-                onChange={() => handleCheckboxChange(committee.id)}
-              />
-              {committee.name}
-            </li>
-          ))}
-        </ul>
+                    </span>
+                    <button
+                      type="button"
+                      className="altask-file-remove-btn"
+                      onClick={() => {
+                        // Remove the attachment URL from the task
+                        setTaskToEdit((prev) =>
+                          prev
+                            ? { ...prev, attachments: prev.attachments?.filter((_, i) => i !== index) }
+                            : null
+                        );
+                      }}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
 
-        <label>Start Date</label>
-        <input
-          type="date"
-          value={newTaskStartDate || taskToEdit.startDate}
-          onChange={(e) => setNewTaskStartDate(e.target.value)}
-          required
-        />
+                {/* Newly added attachments */}
+                {attachments.map((file, index) => (
+                  <li key={`new-${index}`} className="altask-file-item">
+                    <span>{file.name}</span>
+                    <button
+                      type="button"
+                      className="altask-file-remove-btn"
+                      onClick={() => handleRemoveFile(index)}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
 
-        <label>Due Date</label>
-        <input
-          type="date"
-          value={newTaskDueDate || taskToEdit.dueDate}
-          onChange={(e) => setNewTaskDueDate(e.target.value)}
-          required
-        />
+          {/* Right Column */}
+          <div className="altask-right-column">
+            <label className="altask-label">Start Date</label>
+            <input
+              type="date"
+              value={newTaskStartDate || taskToEdit.startDate}
+              onChange={(e) => setNewTaskStartDate(e.target.value)}
+              required
+              className="altask-date-input"
+            />
 
-        <label>File Attachments</label>
-        <input type="file" multiple onChange={handleFileChange} />
+            <label className="altask-label">Due Date</label>
+            <input
+              type="date"
+              value={newTaskDueDate || taskToEdit.dueDate}
+              onChange={(e) => setNewTaskDueDate(e.target.value)}
+              required
+              className="altask-date-input"
+            />
 
-        <p><strong>Current Attachments:</strong></p>
-        <ul>
-          {taskToEdit.attachments?.map((url, index) => (
-            <li key={index}>
-              <a href={url} target="_blank" rel="noopener noreferrer">
-                {`Attachment ${index + 1}`}
-              </a>
-            </li>
-          ))}
-        </ul>
+            <label className="altask-label">Assign to:</label>
+            <div className="altask-assign-to-section">
+              <div className="altask-chips">
+                {selectedMembers.map((memberId) => {
+                  const member = availableMembers.find((m) => m.id === memberId);
+                  return (
+                    <div key={memberId} className="altask-chip">
+                      {member?.name}
+                      <button
+                        className="altask-chip-remove"
+                        onClick={() =>
+                          setSelectedMembers((prev) =>
+                            prev.filter((id) => id !== memberId)
+                          )
+                        }
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+                <div className="altask-dropdown-container">
+                  <button
+                    type="button"
+                    className="altask-add-btn"
+                    onClick={() => setShowMemberDropdown(!showMemberDropdown)}
+                  >
+                    +
+                  </button>
 
-        <div className="modal-actions">
-          <button type="submit">Save Changes</button>
-          <button type="button" onClick={closeEditModal}>
+                  {showMemberDropdown && (
+                    <div className="altask-dropdown">
+                      <input
+                        type="text"
+                        className="altask-dropdown-search"
+                        placeholder="Search..."
+                        value={memberSearch}
+                        onChange={(e) => setMemberSearch(e.target.value)}
+                      />
+                      <ul>
+                        {availableMembers
+                          .filter(
+                            (member) =>
+                              !selectedMembers.includes(member.id) &&
+                              member.name
+                                .toLowerCase()
+                                .includes(memberSearch.toLowerCase())
+                          )
+                          .map((member) => (
+                            <li
+                              key={member.id}
+                              className="altask-dropdown-item"
+                              onClick={() => handleMemberSelect(member.id)}
+                            >
+                              {member.name}
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <label className="altask-label">Assign to committee:</label>
+            <div className="altask-assign-committees">
+              {availableCommittees.map((committee) => (
+                <div
+                  key={committee.id}
+                  className={`altask-chip ${
+                    selectedCommittees.includes(committee.id)
+                      ? "altask-chip-selected"
+                      : ""
+                  }`}
+                  onClick={() => handleCommitteeSelect(committee.id)}
+                >
+                  {committee.name}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="altask-modal-actions">
+          <button type="submit" className="altask-submit-btn">
+            Save Changes
+          </button>
+          <button
+            type="button"
+            onClick={closeEditModal}
+            className="altask-cancel-btn"
+          >
             Cancel
           </button>
         </div>
@@ -766,6 +1160,7 @@ const closeViewModal = () => {
     </div>
   </div>
 )}
+
 {isSubmissionsModalOpen && submissionsTask && (
   <div className="modal-overlay">
     <div className="modal-content">
@@ -825,96 +1220,108 @@ const closeViewModal = () => {
               + New Task
             </button>
 
-          <table className="task-table">
-            <thead>
-              <tr>
-              <th>
-        <input
-          type="checkbox"
-          onChange={(e) => {
-            const isChecked = e.target.checked;
-            if (isChecked) {
-              setAssignedTo(tasks.map((task) => task.id)); // Select all tasks
-            } else {
-              setAssignedTo([]); // Deselect all tasks
-            }
-          }}
-        />
-      </th>
-                <th>Event</th>
-                <th>Tasks</th>
-                <th>Given by</th>
-                <th>Assigned to</th>
-                <th>Start Date</th>
-                <th>Due Date</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-            {filteredTasks.map((task) => (
-    <tr key={task.id}>
-     <td>
+            <div className="table-container">
+  <table className="task-table">
+    <thead className="task-table-header">
+      <tr>
+        <th>
           <input
             type="checkbox"
-            checked={assignedTo.includes(task.id)}
-            onChange={() => handleCheckboxChange(task.id)}
+            onChange={(e) => {
+              const isChecked = e.target.checked;
+              if (isChecked) {
+                setAssignedTo(tasks.map((task) => task.id)); // Select all tasks
+              } else {
+                setAssignedTo([]); // Deselect all tasks
+              }
+            }}
           />
-        </td>
-      <td>{task.event || 'General Task'}</td>
-      <td>
-        <strong>{task.title}</strong>
-        <p>{task.description}</p> {/* Description under title */}
-      </td>
-      <td>{task.givenBy}</td> {/* Display full name */}
-      <td>
-        {task.assignedTo
-          .map((id) => {
-            const member = availableMembers.find((m) => m.id === id);
-            const committee = availableCommittees.find((c) => c.id === id);
-            return member?.name || committee?.name || id;
-          })
-          .join(', ')}
-      </td>
-      <td>
-        {new Date(task.startDate).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        })}
-      </td>
-      <td>
-        {new Date(task.dueDate).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        })}
-      </td>
-      <td>
-  <span className={`status-badge ${task.taskStatus.replace(' ', '-').toLowerCase()}`}>
-    {task.taskStatus}
-  </span>
+        </th>
+        <th>Event</th>
+        <th>Tasks</th>
+        <th>Given by</th>
+        <th>Assigned to</th>
+        <th>Start Date</th>
+        <th>Due Date</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody className="task-table-body">
+      {filteredTasks.map((task) => (
+        <tr key={task.id} className="task-row">
+          <td>
+            <input
+              type="checkbox"
+              checked={assignedTo.includes(task.id)}
+              onChange={() => handleCheckboxChange(task.id)}
+            />
+          </td>
+          <td>{task.event || "General Task"}</td>
+          <td>
+            <strong>{task.title}</strong>
+            <p>{task.description}</p>
+          </td>
+          <td>{task.givenBy}</td>
+          <td>
+  {(() => {
+    const names = task.assignedTo
+      .map((id) => {
+        const member = availableMembers.find((m) => m.id === id);
+        const committee = availableCommittees.find((c) => c.id === id);
+        return member?.name || committee?.name || "Unknown";
+      });
+
+    if (names.length <= 3) {
+      return names.join(", ");
+    } else {
+      const visibleNames = names.slice(0, 3);
+      const hiddenCount = names.length - 3;
+      return `${visibleNames.join(", ")}, +${hiddenCount}`;
+    }
+  })()}
 </td>
 
-
-<td>
-<div className="task-dropdown">
+          <td>
+            {new Date(task.startDate).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </td>
+          <td>
+            {new Date(task.dueDate).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </td>
+          <td>
+            <span
+              className={`status-badge ${task.taskStatus
+                .replace(" ", "-")
+                .toLowerCase()}`}
+            >
+              {task.taskStatus}
+            </span>
+          </td>
+          <td>
+          <div className="task-dropdown">
   <button className="action-btn">Action</button>
   <div className="task-dropdown-content">
-  <button onClick={() => openViewModal(task)}>View</button>
-      <button onClick={() => openEditModal(task)}>Edit</button>
-      <button onClick={() => openSubmissionsModal(task)}>Submissions</button>
+    <button onClick={() => openViewModal(task)}>View</button>
+    <button onClick={() => openSubmissionsModal(task)}>Submissions</button>
   </div>
 </div>
-</td>
-    </tr>
-  ))}
-</tbody>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
 
-          </table>
-        </div>
       </div>
-    </div>
+    </div></div>
   );
 };
 

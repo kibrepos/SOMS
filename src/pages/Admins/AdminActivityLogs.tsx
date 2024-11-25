@@ -202,13 +202,17 @@ const ActivityLogs: React.FC = () => {
 
        
         {lastVisible ? (
-  <button onClick={fetchMoreLogs} disabled={loadingMore}>
-    {loadingMore ? "Loading..." : "Load More Logs"}
-  </button>
+ <button
+ className="adminactivitylogs-load-more-btn"
+ onClick={fetchMoreLogs}
+ disabled={loadingMore}
+>
+ {loadingMore ? "Loading..." : "Load More Logs"}
+</button>
 ) : (
-  <button disabled>
-    All logs loaded
-  </button>
+  <button className="adminactivitylogs-all-logs-btn" disabled>
+  All logs loaded
+</button>
 )}
       </div>
     </div>

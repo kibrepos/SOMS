@@ -100,99 +100,100 @@ const AdminSidebar: React.FC = () => {
         <FontAwesomeIcon icon={faBars} className="toggle-button" onClick={toggleCollapse} />
       </div>
 
-      <ul>
-        <li>
-          <NavLink 
-            to="/Admin/dashboard" 
-            className={({ isActive }) => (isActive ? 'active' : '')} 
-          >
-            <FontAwesomeIcon icon={faThLarge} />
-            <span> Dashboard Overview</span>
-          </NavLink>
-        </li>
-        <li>
-          <NavLink 
-            to="/Admin/Manage-Students" 
-            className={({ isActive }) => (isActive ? 'active' : '')}
-          >
-            <FontAwesomeIcon icon={faUser} />
-            <span> Manage Students</span>
-          </NavLink>
-        </li>
-        <li>
-  <NavLink 
-    to="/Admin/ManageOrganizations" 
-    className={isManageOrganizationsActive() ? 'active' : ''}
-  >
-    <FontAwesomeIcon icon={faBuilding} />
-    <span> Manage Organizations</span>
-  </NavLink>
-</li>
+      <ul className="nav-list">
+  <li className="nav-item">
+    <NavLink 
+      to="/Admin/dashboard" 
+      className={({ isActive }) => (isActive ? 'active nav-link' : 'nav-link')}
+    >
+      <FontAwesomeIcon icon={faThLarge} />
+      <span> Dashboard Overview</span>
+    </NavLink>
+  </li>
+  <li className="nav-item">
+    <NavLink 
+      to="/Admin/Manage-Students" 
+      className={({ isActive }) => (isActive ? 'active nav-link' : 'nav-link')}
+    >
+      <FontAwesomeIcon icon={faUser} />
+      <span> Manage Students</span>
+    </NavLink>
+  </li>
+  <li className="nav-item">
+    <NavLink 
+      to="/Admin/ManageOrganizations" 
+      className={isManageOrganizationsActive() ? 'active nav-link' : 'nav-link'}
+    >
+      <FontAwesomeIcon icon={faBuilding} />
+      <span> Manage Organizations</span>
+    </NavLink>
+  </li>
+  <li className="nav-item">
+    <NavLink 
+      to="/events-management" 
+      className={({ isActive }) => (isActive ? 'active nav-link' : 'nav-link')}
+    >
+      <FontAwesomeIcon icon={faCalendar} />
+      <span> Events Management</span>
+    </NavLink>
+  </li>
+  <li className="nav-item">
+    <NavLink 
+      to="/user-management" 
+      className={({ isActive }) => (isActive ? 'active nav-link' : 'nav-link')}
+    >
+      <FontAwesomeIcon icon={faUsers} />
+      <span> User Management</span>
+    </NavLink>
+  </li>
+  <li className="nav-item">
+    <NavLink 
+      to="/Admin/Announcements" 
+      className={({ isActive }) => (isActive ? 'active nav-link' : 'nav-link')}
+    >
+      <FontAwesomeIcon icon={faComments} />
+      <span> Announcements</span>
+    </NavLink>
+  </li>
+  <li className="nav-item">
+    <NavLink 
+      to="/reporting-analytics" 
+      className={({ isActive }) => (isActive ? 'active nav-link' : 'nav-link')}
+    >
+      <FontAwesomeIcon icon={faChartPie} />
+      <span> Reporting & Analytics</span>
+    </NavLink>
+  </li>
+  <li className="nav-item">
+    <NavLink 
+      to="/Admin/Activity-Logs" 
+      className={({ isActive }) => (isActive ? 'active nav-link' : 'nav-link')}
+    >
+      <FontAwesomeIcon icon={faClipboardList} />
+      <span> Activity Logs</span>
+    </NavLink>
+  </li>
+  <li className="nav-item">
+    <NavLink 
+      to="/Admin/feedback-support" 
+      className={({ isActive }) => (isActive ? 'active nav-link' : 'nav-link')}
+    >
+      <FontAwesomeIcon icon={faStar} />
+      <span> Feedback & Support</span>
+    </NavLink>
+  </li>
+  <li className="nav-item">
+    <NavLink 
+      to="/Admin/Account-settings" 
+      className={({ isActive }) => (isActive ? 'active nav-link' : 'nav-link')}
+    >
+      <FontAwesomeIcon icon={faCog} />
+      <span> Settings</span>
+    </NavLink>
+  </li>
+</ul>
 
-        <li>
-          <NavLink 
-            to="/events-management" 
-            className={({ isActive }) => (isActive ? 'active' : '')}
-          >
-            <FontAwesomeIcon icon={faCalendar} />
-            <span> Events Management</span>
-          </NavLink>
-        </li>
-        <li>
-          <NavLink 
-            to="/user-management" 
-            className={({ isActive }) => (isActive ? 'active' : '')}
-          >
-            <FontAwesomeIcon icon={faUsers} />
-            <span> User Management</span>
-          </NavLink>
-        </li>
-        <li>
-          <NavLink 
-            to="/Admin/Announcements" 
-            className={({ isActive }) => (isActive ? 'active' : '')}
-          >
-            <FontAwesomeIcon icon={faComments} />
-            <span> Announcements</span>
-          </NavLink>
-        </li>
-        <li>
-          <NavLink 
-            to="/reporting-analytics" 
-            className={({ isActive }) => (isActive ? 'active' : '')}
-          >
-            <FontAwesomeIcon icon={faChartPie} />
-            <span> Reporting & Analytics</span>
-          </NavLink>
-        </li>
-        <li>
-          <NavLink 
-            to="/Admin/Activity-Logs" 
-            className={({ isActive }) => (isActive ? 'active' : '')}
-          >
-            <FontAwesomeIcon icon={faClipboardList} />
-            <span> Activity Logs</span>
-          </NavLink>
-        </li>
-        <li>
-          <NavLink 
-            to="/Admin/feedback-support" 
-            className={({ isActive }) => (isActive ? 'active' : '')}
-          >
-            <FontAwesomeIcon icon={faStar} />
-            <span> Feedback & Support</span>
-          </NavLink>
-        </li>
-        <li>
-          <NavLink 
-            to="/Admin/Account-settings" 
-            className={({ isActive }) => (isActive ? 'active' : '')}
-          >
-            <FontAwesomeIcon icon={faCog} />
-            <span> Settings</span>
-          </NavLink>
-        </li>
-      </ul>
+
 
       <div className="user-profile">
         <img src={profilePicUrl} alt="User profile" />

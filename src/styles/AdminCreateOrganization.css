@@ -18,22 +18,6 @@
     width: 48%;
   }
   
-  label {
-    font-weight: bold;
-    margin-bottom: 10px;
-    display: block;
-  }
-  
-  input[type="text"], .CNO-input-box {
-    width: 90%;
-    padding: 12px;
-    border: 2px solid #ccc;
-    border-radius: 8px;
-    font-size: 1em;
-    background-color: #f9f9f9;
-    transition: border-color 0.3s ease, background-color 0.3s ease; /* Adjusted transition */
-}
-  
   input[type="text"]:focus, .CNO-input-box:focus {
     border-color: #007bff;
     outline: none;

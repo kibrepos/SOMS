@@ -61,19 +61,28 @@
     display: block; /* Ensure the toggle button stays visible when collapsed */
 }
 
+
+
+.sidebar ul li a.active {
+    background-color: #ffffff; /* Change background color for active link */
+    color: #000000; /* Change text color for active link */
+    font-weight: bold; /* Make text bold */
+    pointer-events: none; /* Disable hover effect */
+}
+
 /* Menu List */
-ul {
+.nav-list {
     list-style: none;
     padding: 0;
     flex-grow: 1; /* Allow the menu to take available space */
     margin-bottom: 80px; /* Add margin at the bottom to prevent overlap with user profile */
 }
 
-ul li {
+.nav-list .nav-item {
     margin: 10px 0;
 }
 
-ul li a {
+.nav-list .nav-link {
     text-decoration: none;
     color: #e0f2f1; /* Light green for menu items */
     font-size: 16px;
@@ -84,35 +93,26 @@ ul li a {
     transition: background-color 0.3s ease;
 }
 
-ul li a:hover {
+.nav-list .nav-link:hover {
     background-color: #0ea87a; /* Lighter green when hovering */
 }
 
-ul li a .svg-inline--fa {
-    margin-right: 10px; 
+.nav-list .nav-link .svg-inline--fa {
+    margin-right: 10px;
     transition: margin 0.3s ease;
 }
 
-.sidebar.collapsed ul li a .svg-inline--fa {
-    margin-right: 0; 
+.sidebar.collapsed .nav-list .nav-link .svg-inline--fa {
+    margin-right: 0;
 }
 
-.sidebar.collapsed ul li a {
+.sidebar.collapsed .nav-list .nav-link {
     justify-content: center; /* Center the icon when collapsed */
 }
 
-.sidebar.collapsed ul li a span {
+.sidebar.collapsed .nav-list .nav-link span {
     display: none; /* Hide the text in collapsed mode */
 }
-/* AdminSidebar.css */
-
-
-.sidebar ul li a.active {
-    background-color: #ffffff; /* Change background color for active link */
-    color: #000000; /* Change text color for active link */
-    font-weight: bold; /* Make text bold */
-}
-
 
 /* User profile section */
 .user-profile {

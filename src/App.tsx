@@ -33,6 +33,8 @@ import OrganizationAnnouncement from './pages/Students/OrganizationAnnouncement'
 
 const App: React.FC = () => {
   return (
+    <>
+      <div id="toast-container" className="toast-container"></div>
     <Router>
       <Routes>
         {/* Redirect root path to /login */}
@@ -103,10 +105,13 @@ const App: React.FC = () => {
           <Route path="/Admin/Organizations/:organizationName" element={<AdminViewOrganization />} /> 
           <Route path="/Admin/EditOrganization/:organizationName" element={<AdminEditOrganization />} />
           <Route path="/Admin/feedback-support" element={<AdminFeedback/>} />
+         
           </Route>
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </>
   );
 };
+
 
 export default App;

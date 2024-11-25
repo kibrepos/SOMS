@@ -103,7 +103,7 @@
 }
 
 /* Load more button */
-button {
+.adminactivitylogs-load-more-btn {
   padding: 10px 20px;
   background-color: #4CAF50;
   color: white;
@@ -113,7 +113,7 @@ button {
   margin-top: 20px;
 }
 
-button[disabled] {
+.adminactivitylogs-load-more-btn[disabled] {
   background-color: #ccc;
   cursor: not-allowed;
 }

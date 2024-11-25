@@ -16,12 +16,7 @@
     padding: 20px;
   }
   
-  .header-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-  }
+ 
   
   .new-task-btn {
     background-color: #28a745;
@@ -37,74 +32,7 @@
     background-color: #218838;
   }
   
-  /* Table Styling */
-  .task-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-  }
   
-  .task-table th, 
-  .task-table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-  }
-  
-  .task-table th {
-    background-color: #f8f9fa;
-    font-weight: bold;
-  }
-
-  
-  /* Dropdown Responsive */
-  @media (max-width: 768px) {
-    .task-dropdown-content {
-      min-width: 100px;
-    }
-  }
-
-  /* Date Inputs in a Row */
-  .date-container {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 20px;
-  }
-  
-  .date-container div {
-    flex: 1;
-  }
-  
-.status-badge {
-    display: inline-block;
-    padding: 5px 10px;
-    border-radius: 15px;
-    font-size: 0.9rem;
-    font-weight: bold;
-    color: white;
-    text-align: center;
-    min-width: 80px;
-  }
-  
-  /* Status Colors */
-  .status-badge.started {
-    background-color: #ffcc00; /* Yellow */
-  }
-  .status-badge.in-progress {
-    background-color: #007bff; /* Blue */
-    color: #fff;
-  }
-  
-  .status-badge.completed {
-    background-color: #28a745; /* Green for Completed */
-    color: #fff; /* White text for readability */
-  }
-  
-  .status-badge.overdue {
-    background-color: #dc3545; /* Red for Overdue */
-    color: #fff; /* White text for readability */
-  }
   .tksks-filters {
     display: flex;
     align-items: center;
@@ -115,8 +43,8 @@
   .tksks-event-dropdown,
   .tksks-status-dropdown,
   .tksks-date-dropdown,
-  .tksks-sort-dropdown,
-  .tksks-search-input {
+  .tksks-sort-dropdown
+ {
     padding: 8px 10px;
     border: 1px solid #ccc;
     border-radius: 5px;
@@ -124,6 +52,35 @@
     outline: none;
     transition: border-color 0.2s;
   }
+  .tksks-search-input{
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  .my-tasks-btn {
+    background-color: #0ea87a; /* White background */
+    color: #ffffff; /* Green text */
+    border: 2px solid #0ea87a; /* Green border for a clean look */
+    border-radius: 20px; /* Rounded edges */
+    font-size: 14px; /* Slightly smaller text */
+    font-weight: bold; /* Emphasize the button text */
+    padding: 8px 20px; /* Adjust padding for a sleek design */
+    text-transform: uppercase; /* Make text uppercase */
+    cursor: pointer; /* Pointer on hover */
+    transition: all 0.3s ease; /* Smooth transition for hover effect */
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+  }
+  
+  .my-tasks-btn:hover {
+    background-color: #0ea87a; /* Green background on hover */
+    color: #ffffff; /* White text on hover */
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Enhanced shadow on hover */
+  }
+  
   
  /* Apply styles to the Reset button */
 .tksks-reset-btn {
@@ -158,3 +115,732 @@
 .tksks-trash-btn:disabled {background-color: transparent;
   color: #888;
   cursor: not-allowed;}
+
+
+
+
+
+
+  
+ /* Modal Overlay */
+.altask-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Modal Content */
+.altask-modal-content {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 900px;
+  width: 100%;
+  max-height: 80%;
+  min-height: 70%;
+  overflow-y: auto; 
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Form Layout */
+.altask-form {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+/* Left and Right Columns */
+.altask-left-column,
+.altask-right-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* Labels */
+.altask-label {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+/* Inputs and Textareas */
+.altask-input,
+.altask-textarea,
+.altask-date-input {
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 10px;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.altask-input:focus,
+.altask-textarea:focus,
+.altask-date-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0px 0px 4px rgba(0, 123, 255, 0.5);
+}
+
+/* Textarea Styling */
+.altask-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* File Attachments Section */
+.altask-file-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.altask-file-btn {
+  display: inline-block;
+  padding: 10px 20px;
+  background: #f1f1f1;
+  border: 1px dashed #ccc;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  position: relative;
+}
+
+.altask-file-btn:hover {
+  background: #e1e1e1;
+}
+
+
+.altask-file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+
+.altask-file-item {
+  display: flex;
+  align-items: center; /* Vertically centers content */
+  justify-content: space-between; /* Ensures file name and X button are spaced */
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 5px 10px; /* Smaller padding */
+  margin-top: 5px;
+  font-size: 13px; /* Slightly smaller font size */
+  color: #333;
+  height: 30px; /* Adjust height */
+  line-height: 30px; /* Aligns text vertically */
+}
+
+.altask-file-item span {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.altask-file-item a {
+
+  background: #f9f9f9;
+  color: #333;
+ 
+}
+.altask-file-remove-btn {
+  background: none;
+  color: #ff4d4d;
+  border: none;
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+ margin-top: 0px;
+  display: flex;
+  align-items: center; /* Centers X vertically */
+  justify-content: center; /* Centers X horizontally */
+  transition: background-color 0.3s ease;
+}
+.altask-file-link {
+  font-size: 14px;
+  color: #007bff;
+  text-decoration: none;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis; /* Ensures long filenames are truncated */
+  flex: 1; /* Ensures the link takes up available space */
+  background: none; /* Removes any inherited background */
+  background-color: transparent; /* Ensures no background color */
+}
+
+
+.altask-file-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+  background-color: transparent;
+}
+
+
+
+/* Assign to Members and Committees */
+.altask-assign-to-section,
+.altask-assign-committees {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Chips Container */
+.altask-chips {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap; /* Ensure chips wrap to the next line */
+}
+
+/* Individual Chip */
+.altask-chip {
+  background: #045730; /* Adjusted color for consistency */
+  padding: 8px 15px; /* Increased padding for better appearance */
+  border-radius: 20px; /* Rounded corners */
+  font-size: 14px; /* Adjusted font size */
+  color: #fff; /* Text color */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1); /* Optional shadow for depth */
+}
+.altask-assign-committees .altask-chip {
+  background: #a0a0a0; /* Default gray for committee chips */
+}
+
+/* Selected Committees Chips */
+.altask-assign-committees .altask-chip-selected {
+  background: #005741; 
+  color: #fff;
+}
+
+.altask-chip-remove {
+  background: transparent; /* Green background for 'X' button */
+  color: #ffffff; /* White 'X' text */
+  border: none;
+  border-radius: 50%;
+  font-size: 20px; /* Adjusted size */
+  width: 10px;
+  height: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+/* Plus Button Styling */
+.altask-add-btn {
+  background: #e0e0e0;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-size: 18px;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.altask-add-btn:hover {
+  background: #bdbdbd;
+}
+
+
+.altask-dropdown {
+  position: absolute;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  padding: 10px;
+}
+
+.altask-dropdown-search {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.altask-dropdown-item {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.altask-dropdown-item:hover {
+  background-color: #f1f1f1;
+}
+
+/* Modal Actions */
+.altask-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.altask-submit-btn {
+  background: #28a745;
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.altask-submit-btn:hover {
+  background: #218838;
+}
+
+.altask-cancel-btn {
+  background: #dc3545;
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.altask-cancel-btn:hover {
+  background: #c82333;
+}
+
+
+/* Date Inputs in a Row */
+.date-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.date-container div {
+  flex: 1;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: white;
+  text-align: center;
+  min-width: 80px;
+}
+
+/* Status Colors */
+.status-badge.started {
+  background-color: #ffcc00; /* Yellow */
+}
+.status-badge.in-progress {
+  background-color: #007bff; /* Blue */
+  color: #fff;
+}
+
+.status-badge.completed {
+  background-color: #28a745; /* Green for Completed */
+  color: #fff; /* White text for readability */
+}
+
+.status-badge.overdue {
+  background-color: #dc3545; /* Red for Overdue */
+  color: #fff; /* White text for readability */
+}
+
+
+/* Scrollbar Styling */
+.altask-modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.altask-modal-content::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+.altask-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+.status-badge {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+  text-align: center;
+}
+
+.action-btn {
+  background-color: #007bff;
+  border: 1px solid #ccc;
+  padding: 5px 10px;
+  font-size: 14px; /* Increase button text size */
+  padding: 8px 12px; /* Add more padding for larger buttons */
+  cursor: pointer;
+  color: #fff;
+  transition: background-color 0.3s ease;
+}
+
+
+.action-btn:hover {
+  background-color: #0056b3; /* Darker blue on hover */
+  transform: scale(1.05); /* Slightly enlarge on hover */
+}
+
+/* Table container to make it scrollable */
+.table-container {
+  max-height: 455px; /* Adjust the height to suit your needs */
+  overflow-y: auto; /* Add vertical scroll when needed */
+}
+
+/* General table styling */
+.task-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  
+}
+
+.task-table th,
+.task-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+ 
+}
+
+.task-table th {
+  background-color: #f8f9fa;
+  font-weight: bold;
+  position: sticky; /* Keeps the header fixed */
+  top: 0; /* Ensures the header stays at the top */
+  z-index: 1;
+  font-size: 15px
+}
+
+/* Adjust column widths */
+.task-table td:nth-child(3),
+.task-table th:nth-child(3) {
+  width: 25%; /* Make the "Tasks" column wider */
+  max-width: 300px; /* Optional max width */
+  
+}
+
+/* Ensure ellipsis for long descriptions */
+.task-table td:nth-child(3) p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap; /* Prevent line wrapping */
+  margin: 0; /* Remove extra spacing around the description */
+}
+
+/* Optional styling for the title inside the Tasks column */
+.task-table td:nth-child(3) strong {
+  display: block; /* Place the title on its own line */
+  font-size: 15px;
+  margin-bottom: 5px; /* Space between title and description */
+}
+
+
+
+
+/* Dropdown Container */
+.task-dropdown-content {
+  display: none;
+  position: absolute;
+  background: white;
+  right: 30px; 
+  border: 1px solid #ddd;
+  border-radius: 10px; /* Rounded corners for a modern look */
+  padding: 10px 0; /* Space between buttons */
+  z-index: 100;
+  box-shadow: 0px 6px 16px rgba(0, 0, 0, 0.2); /* Softer shadow for a clean effect */
+  min-width: 150px; /* Ensure consistent width */
+  max-height: 150px; /* Limit height for overflow */
+  overflow-y: auto; /* Add vertical scroll when content overflows */
+  font-size: 14px; /* Slightly larger font for readability */
+  transform: translateY(-10px); /* Subtle upward transition */
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  opacity: 0; /* Initially hidden */
+  pointer-events: none; /* Prevent interactions when hidden */
+}
+
+/* Show Dropdown on Hover */
+.task-dropdown:hover .task-dropdown-content {
+  display: block;
+  opacity: 1; /* Make visible */
+  pointer-events: auto; /* Enable interactions */
+  transform: translateY(0); /* Slide into position */
+}
+
+/* Dropdown Buttons */
+.task-dropdown-content button {
+  background: none;
+  border: none;
+  padding: 12px 16px; /* Add more padding for better usability */
+  width: 100%; /* Full width of the dropdown */
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px; /* Uniform font size */
+  color: #333; /* Neutral text color */
+  transition: background-color 0.3s, color 0.3s; /* Smooth hover transitions */
+}
+
+/* Button Hover Effect */
+.task-dropdown-content button:hover {
+  background-color: #f0f4ff; /* Soft blue background on hover */
+  color: #1a73e8; /* Blue for hover text color */
+  border-radius: 5px; /* Slightly rounded hover effect */
+}
+
+/* Dropdown Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar styling for dropdown */
+.table-container::-webkit-scrollbar {
+  width: 8px; /* Width of the scrollbar */
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: #f1f1f1; /* Background of the scrollbar track */
+  border-radius: 10px; /* Rounded edges for track */
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background-color: #888; /* Color of the scrollbar thumb */
+  border-radius: 10px; /* Rounded edges for thumb */
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background-color: #555; /* Darker color on hover */
+}
+
+
+
+
+
+
+/* Modal Overlay */
+.task-details-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Modal Content */
+.task-details-modal-content {
+  background: #fff;
+  border-radius: 8px;
+  padding: 25px;
+  max-width: 600px;
+  width: 90%;
+  word-wrap: break-word; /* Break long words */
+  word-break: break-word; /* Ensure proper text wrapping */
+  overflow-wrap: break-word; /* Compatible property for text wrapping */
+  overflow-y: auto; /* Enable scrolling if content exceeds modal height */
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.3s ease-in-out;
+  font-family: 'Arial', sans-serif;
+  line-height: 1.6;
+  font-size: 14px;
+  color: #333;
+}
+
+/* Task Details Header */
+.task-details-modal-content h3 {
+  font-size: 22px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 20px;
+  text-align: center;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 10px;
+}
+
+/* Task Details Section */
+.task-details-section {
+  margin-bottom: 15px;
+}
+
+/* Row Styling */
+.task-details-row {
+  margin-bottom: 12px; /* Space between rows */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Labels and Data */
+.task-details-modal-content p {
+  margin: 0;
+  padding: 0;
+}
+
+.task-details-modal-content strong {
+  font-weight: 600;
+  color: #000;
+  margin-right: 5px;
+  display: inline-block;
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: bold;
+  color: white;
+  text-align: center;
+  margin-top: 5px;
+}
+
+/* Status Colors */
+.status-badge.started {
+  background-color: #ffcc00; /* Yellow */
+}
+
+.status-badge.in-progress {
+  background-color: #007bff; /* Blue */
+  color: #fff;
+}
+
+.status-badge.completed {
+  background-color: #28a745; /* Green for Completed */
+  color: #fff; /* White text for readability */
+}
+
+.status-badge.overdue {
+  background-color: #dc3545; /* Red for Overdue */
+  color: #fff; /* White text for readability */
+}
+
+/* File Attachments List */
+.task-details-modal-content ul {
+  margin: 10px 0 0 20px; /* Add spacing for bullets */
+  padding: 0;
+  list-style: none; /* Disable default bullet styling */
+  color: #333; /* Ensure good contrast */
+}
+
+.task-details-modal-content ul li {
+  margin-bottom: 8px; /* Add spacing between items */
+  font-size: 14px;
+  display: flex;
+  align-items: center; /* Vertically center bullet and text */
+}
+
+.task-details-modal-content ul li::before {
+  content: "•"; /* Add bullet */
+  color: #333; /* Bullet color */
+  font-size: 18px; /* Bullet size */
+  margin-right: 10px; /* Space between bullet and text */
+}
+
+.task-details-modal-content ul li a {
+  text-decoration: none;
+  color: #1a73e8;
+  font-size: 14px;
+}
+
+.task-details-modal-content ul li a:hover {
+  text-decoration: underline;
+  color: #0056b3; /* Darker blue on hover */
+}
+
+/* Modal Actions */
+.task-details-modal-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.task-details-modal-actions button {
+  padding: 10px 25px;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.3s ease;
+}
+
+/* Edit Button */
+.task-details-modal-actions button:first-of-type {
+  background-color: #28a745; /* Green */
+  color: white;
+}
+
+.task-details-modal-actions button:first-of-type:hover {
+  background-color: #218838;
+}
+
+/* Close Button */
+.task-details-modal-actions button:last-of-type {
+  background-color: #dc3545; /* Red */
+  color: white;
+}
+
+.task-details-modal-actions button:last-of-type:hover {
+  background-color: #c82333;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
