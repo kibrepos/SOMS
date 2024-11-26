@@ -1,5 +1,5 @@
 import React, { useEffect, useState, ChangeEvent, FormEvent,useRef } from 'react';
-import { doc, getDocs, updateDoc, collection,deleteDoc, setDoc,getDoc} from 'firebase/firestore';
+import { doc, updateDoc, collection,deleteDoc, setDoc,getDoc,onSnapshot } from 'firebase/firestore';
 import { firestore } from '../../services/firebaseConfig';
 import Header from '../../components/Header';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -21,10 +21,9 @@ interface Task {
     assignedToNames: string[];
     startDate: string;
     dueDate: string;
-    taskStatus: string;
+    taskStatus: 'In-Progress' | 'Started' | 'Completed' | 'Overdue';
     givenBy: string; 
     attachments?: string[];
-    
   }
 
 interface Member {
@@ -39,11 +38,11 @@ interface Committee {
 interface Submission {
   memberId: string;
   memberName: string; // The member's full name
-  contentType: 'text' | 'file';
-  content: string; // Stores either the text or the file URL
+  textContent?: string; // Optional field for text content
+  fileAttachments?: string[]; // Array of file URLs for attachments
   date: string;
-}interface Task {
-  // Add this line to the Task interface:
+}
+interface Task {
   submissions?: Submission[];
 }
 const TaskManagement: React.FC = () => {
@@ -86,6 +85,112 @@ const [selectedCommittees, setSelectedCommittees] = useState<string[]>([]); // S
 const fileInputRef = useRef<HTMLInputElement | null>(null);
 const [memberSearch, setMemberSearch] = useState(""); // To filter dropdown
 const [attachmentURLs, setAttachmentURLs] = useState<string[]>([]); // For URLs
+const [activeTab, setActiveTab] = useState(1); // Active tab state (default: 1)
+const [comments, setComments] = useState<{ text: string; user: any; timestamp: number }[][]>([]);
+const [commentText, setCommentText] = useState("");
+
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    if (user) {
+      setCurrentUser(user);
+      fetchTasks()
+    } else {
+      setCurrentUser(null);
+    }
+  });
+
+  return () => unsubscribe(); // Cleanup on unmount
+}, []);
+
+useEffect(() => {
+  if (organizationName) {
+    fetchTasks(); // Fetch tasks when the organization name is available
+    fetchOrganizationData(); // Fetch any additional organization-specific data
+  } else {
+    console.error("Organization name is missing or invalid.");
+    setError("Organization name is missing or invalid.");
+  }
+}, [organizationName]);
+
+
+const handleAddComment = async (submissionIndex: number) => {
+  if (!commentText.trim()) {
+    showToast("Comment cannot be empty!", "error");
+    return;
+  }
+
+  const user = auth.currentUser;
+  if (!user) {
+    showToast("You must be logged in to comment.", "error");
+    return;
+  }
+
+  // Fetch user data from Firestore
+  const userDoc = await getDoc(doc(firestore, "students", user.uid));
+  const userData = userDoc.exists() ? userDoc.data() : null;
+
+  if (!userData) {
+    showToast("User data not found.", "error");
+    return;
+  }
+
+  const newComment = {
+    text: commentText,
+    user: {
+      name: `${userData.firstname} ${userData.lastname}`,
+      profilePicUrl: userData.profilePicUrl,
+    },
+    timestamp: Date.now(),
+  };
+
+  try {
+    // Fetch the existing task
+    const taskDocRef = doc(firestore, `tasks/${organizationName}/AllTasks/${submissionsTask?.id}`);
+    const taskDoc = await getDoc(taskDocRef);
+
+    if (!taskDoc.exists()) {
+      throw new Error("Task document does not exist.");
+    }
+
+    const taskData = taskDoc.data();
+    const submissions = taskData.submissions || []; // Ensure submissions array exists
+
+    // Add the comment to the correct submission
+    if (!submissions[submissionIndex]) {
+      throw new Error(`Submission at index ${submissionIndex} does not exist.`);
+    }
+
+    if (!submissions[submissionIndex].comments) {
+      submissions[submissionIndex].comments = []; // Initialize comments array if not present
+    }
+
+    submissions[submissionIndex].comments.push(newComment); // Add the new comment
+
+    // Update Firestore with the modified submissions array
+    await updateDoc(taskDocRef, { submissions });
+
+    // Update local state
+    setComments((prev) => {
+      const updatedComments = [...prev];
+      if (!updatedComments[submissionIndex]) {
+        updatedComments[submissionIndex] = [];
+      }
+      updatedComments[submissionIndex].push(newComment);
+      return updatedComments;
+    });
+
+    setSubmissionsTask((prev) =>
+      prev ? { ...prev, submissions } : null
+    ); // Update the local submissionsTask
+
+    setCommentText("");
+    showToast("Comment added successfully!", "success");
+  } catch (error) {
+    console.error("Error saving comment:", error);
+    showToast("Failed to add the comment. Please try again.", "error");
+  }
+};
+
 
 
 const openEditModal = (task: Task) => {
@@ -115,10 +220,29 @@ const closeEditModal = () => {
   setTaskToEdit(null);
   setIsEditModalOpen(false);
 };
-const openSubmissionsModal = (task: Task) => {
+
+
+const openSubmissionsModal = async (task: Task) => {
   setSubmissionsTask(task);
   setIsSubmissionsModalOpen(true);
+
+  try {
+    // Fetch the task document from Firestore
+    const taskDocRef = doc(firestore, `tasks/${organizationName}/AllTasks/${task.id}`);
+    const taskDoc = await getDoc(taskDocRef);
+
+    if (taskDoc.exists()) {
+      const taskData = taskDoc.data();
+      const submissionsComments = taskData.submissions?.map((submission: any) => submission.comments || []);
+      setComments(submissionsComments || []); // Initialize comments
+    } else {
+      console.error("Task document does not exist.");
+    }
+  } catch (error) {
+    console.error("Error fetching comments:", error);
+  }
 };
+
 
 const closeSubmissionsModal = () => {
   setSubmissionsTask(null);
@@ -144,33 +268,60 @@ const filteredTasks = tasks
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.description.toLowerCase().includes(searchQuery.toLowerCase())
     );
-    
   })
   .filter((task) => {
     if (!selectedDate) return true;
     return task.dueDate === selectedDate || task.startDate === selectedDate;
   })
   .sort((a, b) => {
-    // Sort by due date
+    // Define the order of task statuses
+    const statusOrder = {
+      "In-Progress": 0,
+      "Started": 1,
+      "Completed": 2,
+      "Overdue": 3
+    };
+
+    // First, compare by task status
+    let statusComparison = statusOrder[a.taskStatus] - statusOrder[b.taskStatus];
+
+    // If we're sorting in descending order, reverse the status comparison
+    if (sortOrder === "desc") {
+      statusComparison = statusOrder[b.taskStatus] - statusOrder[a.taskStatus];
+    }
+
+    if (statusComparison !== 0) return statusComparison;
+
+    // If statuses are the same, sort by due date
     const dateA = new Date(a.dueDate).getTime();
     const dateB = new Date(b.dueDate).getTime();
+
+    // Sort by due date, either ascending or descending
     return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
   });
+
+
 
   const handleEditTask = async (e: FormEvent) => {
     e.preventDefault();
   
     if (!taskToEdit || !organizationName) {
-      alert("Missing task to edit or organization name.");
+
+      showToast("Missing task to edit or organization name.","error");
       return;
     }
   
     // Validate dates
     if (new Date(newTaskDueDate || taskToEdit.dueDate) < new Date(newTaskStartDate || taskToEdit.startDate)) {
-      alert("Due date cannot be earlier than the start date.");
+    
+      showToast("Due date cannot be earlier than the start date.","error");
       return;
     }
-  
+    if (selectedMembers.length === 0 && selectedCommittees.length === 0) {
+      showToast("You must assign the task to at least one member or committee.", "error");
+      return;
+    }
+
     try {
       // Upload new files
       const newAttachmentURLs = await Promise.all(
@@ -241,11 +392,6 @@ const closeViewModal = () => {
   setTaskToView(null);
   setIsViewModalOpen(false);
 };
-const handleMemberSelection = (id: string) => {
-  setAssignedTo((prev) =>
-    prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-  );
-};
 
 const handleMemberSelect = (memberId: string) => {
   if (!selectedMembers.includes(memberId)) {
@@ -255,10 +401,6 @@ const handleMemberSelect = (memberId: string) => {
   setShowMemberDropdown(false); // Close the dropdown after selection
 };
 
-
-const handleMemberRemove = (memberId: string) => {
-  setAssignedTo((prev) => prev.filter((id) => id !== memberId));
-};
 
   const closeDeleteModal = () => {
     setTaskToDelete(null);
@@ -270,7 +412,8 @@ const handleMemberRemove = (memberId: string) => {
     const tasksToDelete = taskToDelete ? [taskToDelete.id] : assignedTo;
   
     if (tasksToDelete.length === 0 || !organizationName) {
-      alert("No tasks selected for deletion or organization name is missing.");
+
+      showToast("No tasks selected for deletion or organization name is missing.","error");
       return;
     }
   
@@ -298,7 +441,7 @@ const handleMemberRemove = (memberId: string) => {
       closeDeleteModal();
     } catch (error) {
       console.error("Error deleting task(s):", error);
-      alert("Failed to delete task(s). Please try again.");
+      showToast("Failed to delete task(s). Please try again.","error");
     } finally {
       // Ensure the modal is closed even if an error occurs
       closeDeleteModal();
@@ -322,19 +465,7 @@ const handleMemberRemove = (memberId: string) => {
         : [...prev, committeeId] // Add if not selected
     );
   };
-  
-  
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setCurrentUser(user); // Set the current logged-in user
-      } else {
-        setCurrentUser(null);
-      }
-    });
-  
-    return () => unsubscribe(); // Cleanup on unmount
-  }, []);
+   
 
   const fetchOrganizationData = async () => {
     try {
@@ -372,55 +503,66 @@ const handleMemberRemove = (memberId: string) => {
     }
   };
   
-
-  
-  
-  useEffect(() => {
-    if (organizationName) {
-      fetchOrganizationData(); // Fetch data when organizationName is available
-    } else {
-      console.error("Organization name is missing or invalid.");
-      setError("Organization name is missing or invalid.");
-    }
-  }, [organizationName]); // Add organizationName as a dependency
-  
-
-  
-  const fetchTasks = async () => {
-    try {
-      const taskCollectionRef = collection(
-        firestore,
-        `tasks/${organizationName}/AllTasks`
-      );
-  
-      const querySnapshot = await getDocs(taskCollectionRef);
-  
-      const fetchedTasks: Task[] = querySnapshot.docs.map((doc) => ({
-        ...doc.data(),
-        id: doc.id,
-        submissions: doc.data().submissions || [], // Ensure submissions field is included
-      })) as Task[];
-  
-      setTasks(fetchedTasks);
    
 
-    } catch (err) {
-      console.error("Error fetching tasks:", err);
-      setError("Failed to fetch tasks. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+// nagdidissapear minsan pag live 
+// nagdidissapear minsan pag live 
+// nagdidissapear minsan pag live 
+// nagdidissapear minsan pag live 
+const fetchTasks = () => {
+  if (!organizationName) {
+    console.error("Organization name is missing or invalid.");
+    setError("Organization name is missing or invalid.");
+    return;
+  }
+
+  try {
+    const taskCollectionRef = collection(firestore, `tasks/${organizationName}/AllTasks`);
+
+    const unsubscribe = onSnapshot(
+      taskCollectionRef,
+      (querySnapshot) => {
+        if (!querySnapshot.empty) {
+          const fetchedTasks: Task[] = querySnapshot.docs.map((doc) => {
+            const data = doc.data();
+            // Debug fetched data
+            console.log("Fetched Task Data:", data);
+
+            return {
+              id: doc.id,
+              ...data, // Ensure this matches your `Task` interface
+            } as Task;
+          });
+
+          setTasks(fetchedTasks);
+        } else {
+          console.warn("No tasks found in Firestore.");
+          setTasks([]); // Clear tasks if none exist
+        }
+      },
+      (error) => {
+        console.error("Error fetching tasks:", error);
+        setError("Failed to fetch tasks. Please try again.");
+      }
+    );
+
+    return () => unsubscribe();
+  } catch (err) {
+    console.error("Error initializing task fetch:", err);
+    setError("Failed to fetch tasks. Please try again.");
+  }
+};
+
   
+
+
+useEffect(() => {
+  if (isSubmissionsModalOpen && submissionsTask) {
+    openSubmissionsModal(submissionsTask);
+  }
+}, [isSubmissionsModalOpen, submissionsTask]); 
+
   
-  useEffect(() => {
-    if (organizationName) {
-      fetchTasks(); // Fetch data when organizationName is available
-    } else {
-      console.error("Organization name is missing or invalid.");
-      setError("Organization name is missing or invalid.");
-    }
-  }, [organizationName]);
   
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -454,22 +596,22 @@ const handleMemberRemove = (memberId: string) => {
     e.preventDefault();
   
     if (!organizationName || !currentUser) {
-      alert("Missing organization name or user.");
+      showToast("Missing organization name or user.","error");
       return;
     }
   
     // Validate that the due date is not earlier than the start date
     if (new Date(newTaskDueDate) < new Date(newTaskStartDate)) {
-      alert("Due date cannot be earlier than the start date.");
+
+      showToast("Due date cannot be earlier than the start date.","error");
       return;
     }
   
     if (selectedMembers.length === 0 && selectedCommittees.length === 0) {
-      const proceedWithoutAssigning = window.confirm(
-        "No members or committees assigned to this task. Do you want to proceed?"
-      );
-      if (!proceedWithoutAssigning) return;
+      showToast("You must assign the task to at least one member or committee.", "error");
+      return;
     }
+
   
     try {
       // Get the current user's name
@@ -532,10 +674,10 @@ const handleMemberRemove = (memberId: string) => {
       setAttachments([]);
   
       closeNewTaskModal();
-      alert("Task created successfully!");
+      showToast("Task created successfully!","success");
     } catch (error) {
       console.error("Error creating task:", error);
-      alert("Failed to create the task. Please try again.");
+      showToast("Failed to create the task. Please try again.","error");
     }
   };
   
@@ -587,7 +729,7 @@ const handleMemberRemove = (memberId: string) => {
   >
     <option value="All">All Statuses</option>
     <option value="Started">Started</option>
-    <option value="In Progress">In Progress</option>
+    <option value="In-Progress">In Progress</option>
     <option value="Completed">Completed</option>
     <option value="Overdue">Overdue</option>
   </select>
@@ -618,12 +760,13 @@ const handleMemberRemove = (memberId: string) => {
   <button
     className="tksks-reset-btn"
     onClick={() => {
+      fetchTasks();
       setFilterByEvent("All");
       setFilterByStatus("All");
       setSearchQuery("");
       setSortOrder("asc");
       setSelectedDate(""); // Reset selected date
-      setFilterDate(""); // Reset filter date
+      setFilterDate(""); 
     }}
   >
     <FontAwesomeIcon icon={faSync} />
@@ -647,6 +790,13 @@ const handleMemberRemove = (memberId: string) => {
 {isNewTaskModalOpen && (
   <div className="altask-modal-overlay">
     <div className="altask-modal-content">
+    <button
+        className="modalers-close-btn"
+        onClick={closeNewTaskModal}
+        aria-label="Close"
+      >
+        &times;
+      </button>
       <h3>Create new task</h3>
       <form onSubmit={handleCreateTask}>
         <div className="altask-form">
@@ -675,7 +825,7 @@ const handleMemberRemove = (memberId: string) => {
 <div className="altask-file-section">
               <button
                 type="button"
-                className="altask-file-btn"
+                className="altask-file-btns"
                 onClick={() => fileInputRef.current?.click()} 
               >
                 + add file
@@ -846,13 +996,7 @@ const handleMemberRemove = (memberId: string) => {
           <button type="submit" className="altask-submit-btn">
             Create Task
           </button>
-          <button
-            type="button"
-            onClick={closeNewTaskModal}
-            className="altask-cancel-btn"
-          >
-            Cancel
-          </button>
+        
         </div>
       </form>
     </div>
@@ -862,6 +1006,13 @@ const handleMemberRemove = (memberId: string) => {
 {isViewModalOpen && taskToView && (
   <div className="task-details-modal-overlay">
     <div className="task-details-modal-content">
+    <button
+        className="modalers-close-btn"
+        onClick={closeViewModal}
+        aria-label="Close"
+      >
+        &times;
+      </button>
       <h3>Task Details</h3>
       <div className="task-details-info">
         <div className="task-details-row">
@@ -941,7 +1092,6 @@ const handleMemberRemove = (memberId: string) => {
       </div>
       <div className="task-details-modal-actions">
         <button onClick={() => openEditModal(taskToView)}>Edit</button>
-        <button onClick={closeViewModal}>Close</button>
       </div>
     </div>
   </div>
@@ -1161,36 +1311,197 @@ const handleMemberRemove = (memberId: string) => {
   </div>
 )}
 
+
+
+
 {isSubmissionsModalOpen && submissionsTask && (
-  <div className="modal-overlay">
-    <div className="modal-content">
-      <h3>Submissions for Task: {submissionsTask.title}</h3>
-      {submissionsTask.submissions && submissionsTask.submissions.length > 0 ? (
-        <ul>
-          {submissionsTask.submissions.map((submission, index) => (
-            <li key={index}>
-              <p><strong>Submitted by:</strong> {submission.memberName}</p>
-              <p><strong>Type:</strong> {submission.contentType}</p>
-              <p><strong>Date:</strong> {new Date(submission.date).toLocaleString()}</p>
-              {submission.contentType === 'file' ? (
-                <a href={submission.content} target="_blank" rel="noopener noreferrer">
-                  View File
-                </a>
+  <div className="submitmeninja-modal-overlay">
+    <div className="submitmeninja-modal-content">
+      {/* Modal Header */}
+      <div className="submitmeninja-modal-header">
+        <h3>Submissions for Task: {submissionsTask.title}</h3>
+        <button
+          className="submitmeninja-modal-close"
+          onClick={closeSubmissionsModal}
+        >
+          ×
+        </button>
+      </div>
+
+      {/* Tabs */}
+      {submissionsTask.submissions &&
+      Array.isArray(submissionsTask.submissions) &&
+      submissionsTask.submissions.length > 0 ? (
+        <>
+          <div className="submitmeninja-tabs">
+            {[1, 2, 3].map((tabIndex) => {
+              const isTabDisabled =
+                !(submissionsTask.submissions &&
+                  submissionsTask.submissions[tabIndex - 1]); // Check if submission exists for this tab
+              return (
+                <div
+                  key={tabIndex}
+                  className={`submitmeninja-tab ${
+                    activeTab === tabIndex ? "active" : ""
+                  } ${isTabDisabled ? "disabled" : ""}`}
+                  onClick={() => {
+                    if (isTabDisabled) {
+                      showToast(
+                        `No submission found for Submission ${tabIndex}.`,
+                        "error"
+                      );
+                    } else {
+                      setActiveTab(tabIndex);
+                    }
+                  }}
+                >
+                  Submission {tabIndex}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Tab Content */}
+          <div className="submitmeninja-tab-content">
+            {(() => {
+              const submission = submissionsTask.submissions?.[activeTab - 1];
+              return submission ? (
+                <div>
+                  <p>
+                    <strong>Submitted by:</strong> {submission.memberName}
+                  </p>
+                  <p className="submission-time">
+                    {(() => {
+                      const submissionDate = new Date(submission.date);
+                      const now = new Date();
+                      const diffMs = now.getTime() - submissionDate.getTime(); // Difference in ms
+                      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+                      const diffHours = Math.floor(diffMinutes / 60);
+
+                      if (diffMinutes < 60) {
+                        return `${diffMinutes} minutes ago`;
+                      } else if (diffHours < 24) {
+                        return `${diffHours} hours ago`;
+                      } else {
+                        return submissionDate.toLocaleString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "numeric",
+                          hour12: true,
+                        });
+                      }
+                    })()}
+                 </p>
+                  {/* Display text content */}
+        {submission.textContent && (
+          <div>
+            <p>
+    
+            </p>
+            <p>{submission.textContent}</p>
+          </div>
+        )}
+
+                  {/* Display file attachments */}
+        {submission.fileAttachments && submission.fileAttachments.length > 0 && (
+           <div className="file-attachmentsKOKO">
+            <p>
+              <strong>File Attachments:</strong>
+            </p>
+            <ul>
+              {submission.fileAttachments.map((fileUrl, index) => (
+                 <li className="altask-file-item">
+                  <span>
+                  <a
+                    href={fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="altask-file-link"
+                  >
+                    {extractFileName(fileUrl)}
+                  </a>
+                  </span>
+                </li>
+              ))}
+            </ul>
+                    </div>
+                  )}
+                </div>
               ) : (
-                <p>{submission.content}</p>
-              )}
-            </li>
-          ))}
-        </ul>
+                <p>No submission yet in Submission {activeTab}.</p>
+              );
+            })()}
+          </div>
+
+         {/* Comments Section */}
+         <div className="submitmeninja-comments-section">
+  <h4>Comments</h4>
+  <div className="submitmeninja-comments-list">
+    {comments[activeTab - 1]?.map((comment, index) => (
+      <div key={index} className="submitmeninja-comment">
+        <img
+          src={comment.user.profilePicUrl}
+          alt={`${comment.user.name}'s profile`}
+          className="submitmeninja-comment-avatar"
+        />
+        <div className="submitmeninja-comment-content">
+          <p className="submitmeninja-comment-author">
+            {comment.user.name}
+          </p>
+          <p className="submitmeninja-comment-time">
+            {(() => {
+               const commentDate = new Date(comment.timestamp); // Parse timestamp
+              const now = new Date();
+              const diffMs = now.getTime() - commentDate.getTime();
+              const diffMinutes = Math.floor(diffMs / (1000 * 60));
+              const diffHours = Math.floor(diffMinutes / 60);
+
+              if (diffMinutes < 60) {
+                return `${diffMinutes} minutes ago`;
+              } else if (diffHours < 24) {
+                return `${diffHours} hours ago`;
+              } else {
+                return commentDate.toLocaleString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "numeric",
+                  hour12: true,
+                });
+              }
+            })()}
+          </p>
+          <p className="we-can-go-to-4">{comment.text}</p>
+        </div>
+      </div>
+    ))}
+  </div>
+  <textarea
+    placeholder="Add a comment..."
+    value={commentText}
+    onChange={(e) => setCommentText(e.target.value)}
+    className="submitmeninja-comment-box"
+  ></textarea>
+  <button
+    className="submitmeninja-comment-submit"
+    onClick={() => handleAddComment(activeTab - 1)}
+  >
+    Submit Comment
+  </button>
+</div>
+
+        </>
       ) : (
         <p>No submissions found for this task.</p>
       )}
-      <div className="modal-actions">
-        <button onClick={closeSubmissionsModal}>Close</button>
-      </div>
     </div>
   </div>
 )}
+
+
 
 
 {isDeleteModalOpen && (

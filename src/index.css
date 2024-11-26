@@ -24,25 +24,13 @@ body {
 }
 
 /* Add any other global styles or reset styles here */
-/* Toast Container */
-.toast-container {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: center;
-  max-width: 90%;
-}
 
 /* Toast Notification */
 #toast-container {
   position: fixed;
   top: 10px;
-  right: 10px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 999999999;
   display: flex;
   flex-direction: column;
@@ -54,17 +42,21 @@ body {
   border-radius: 5px;
   font-size: 14px;
   font-weight: bold;
-  color: white;
   box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
   animation: fade-in 0.5s, fade-out 0.5s 2.5s;
+  border: 1px solid transparent;
 }
 
 .toast.success {
   background-color: #4caf50; /* Green */
+  color: white;
+  border-color: #3e8e41;
 }
 
 .toast.error {
   background-color: #f44336; /* Red */
+  color: white;
+  border-color: #d32f2f;
 }
 
 @keyframes fade-in {

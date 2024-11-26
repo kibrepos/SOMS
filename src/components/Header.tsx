@@ -668,7 +668,7 @@ const [userName, setUserName] = useState<string>('');
         )}
 
 
-        <span className="profile-name">{userName}</span> 
+        <span className="profile-nameko">{userName}</span> 
         <div className="profile" onClick={toggleDropdown}>
           <img
             src={profilePicUrl || '/default-profile.png'}
