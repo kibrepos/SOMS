@@ -42,13 +42,13 @@ const OrganizationResources: React.FC = () => {
   const [currentPath, setCurrentPath] = useState<string>(''); // Tracks the current folder path
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<{ type: string; url: string } | null>(null);
-  const [selectedItem, setSelectedItem] = useState<string | null>(null); 
   const [detailsContent, setDetailsContent] = useState<{name: string; type?: string;url?: string;size?: string;uploadedBy?: string;dateUploaded?: string;} | null>(null);
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [isUploading, setIsUploading] = useState(false); // Spinner state
-
-
+  const [sortColumn, setSortColumn] = useState<'name' | 'size' | 'type' | 'uploadedBy' | 'dateUploaded'>('name');
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  
 
 
 
@@ -235,6 +235,8 @@ const OrganizationResources: React.FC = () => {
   };
   
 
+;
+  
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -316,9 +318,10 @@ const handleMultipleFileUpload = async (files: FileList | null) => {
   if (!files) return;
 
   try {
+    setLoading(true); // Start loading spinner
     const userName = await fetchUserFullName(); // Get uploader's name
     const uploadedFiles: UploadedFile[] = [];
-    setIsUploading(true); // Show spinner during upload
+  
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -352,7 +355,10 @@ const handleMultipleFileUpload = async (files: FileList | null) => {
       await new Promise((resolve, reject) => {
         uploadTask.on(
           'state_changed',
-          null,
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(progress); // Update progress
+          },
           (error) => {
             console.error('Error uploading file:', error);
             alert(`Error uploading ${file.name}`);
@@ -384,7 +390,8 @@ const handleMultipleFileUpload = async (files: FileList | null) => {
     console.error('Error uploading files:', error);
     alert('Some files could not be uploaded.');
   } finally {
-    setIsUploading(false); // Hide spinner after upload is complete
+    setLoading(false); // Stop loading spinner
+
   }
 };
 
@@ -497,19 +504,56 @@ const deleteFolderRecursively = async (folderPath: string) => {
     });
   };
 
-
-  const toggleSortOrder = () => {
-    const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
-    setSortOrder(newOrder);
   
-    // Ensure the sorting is applied only after files are properly loaded
-    const sortedFiles = [...files].sort((a, b) =>
-      newOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
-    );
+  const toggleSortOrder = (column: typeof sortColumn) => {
+    if (sortColumn === column) {
+      setSortOrder((prevOrder) => (prevOrder === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColumn(column);
+      setSortOrder('asc'); // Reset to ascending when switching columns
+    }
+  
+    // Sorting logic for files
+    const sortedFiles = [...files].sort((a, b) => {
+      let comparison = 0;
+  
+      if (column === 'size') {
+        const sizeA = parseFloat(a.size?.replace(/[^\d.]/g, '') || '0');
+        const sizeB = parseFloat(b.size?.replace(/[^\d.]/g, '') || '0');
+        comparison = sizeA - sizeB;
+      } else if (column === 'dateUploaded') {
+        comparison = new Date(a.dateUploaded ?? '').getTime() - new Date(b.dateUploaded ?? '').getTime();
+      } else {
+        // Default case for string properties
+        const valueA = (a[column as keyof UploadedFile] ?? '') as string;
+        const valueB = (b[column as keyof UploadedFile] ?? '') as string;
+        comparison = valueA.localeCompare(valueB);
+      }
+  
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  
+    // Sorting logic for folders
+    const sortedFolders = [...folders].sort((a, b) => {
+      let comparison = 0;
+  
+      if (column === 'dateUploaded') {
+        comparison = new Date(a.dateUploaded ?? '').getTime() - new Date(b.dateUploaded ?? '').getTime();
+      } else if (column === 'name') {
+        // Sort folders by name
+        const valueA = a.name ?? '';
+        const valueB = b.name ?? '';
+        comparison = valueA.localeCompare(valueB);
+      }
+  
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
   
     setFiles(sortedFiles);
+    setFolders(sortedFolders);
   };
-  
+
+
   const renderSidebar = () => {
     switch (role) {
       case 'president':
@@ -523,13 +567,12 @@ const deleteFolderRecursively = async (folderPath: string) => {
     }
   };
   
-  const filteredFolders = folders.filter((folder) =>
-    folder.name.toLowerCase().includes(searchQuery.toLowerCase())
-);
+  const filteredFolders = [...folders]
+  .filter((folder) => folder.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-const filteredFiles = files.filter((file) =>
-    file.name.toLowerCase().includes(searchQuery.toLowerCase())
-);
+const filteredFiles = [...files]
+  .filter((file) => file.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
 
 
   if (!role) {
@@ -558,11 +601,6 @@ const filteredFiles = files.filter((file) =>
   return (
     
     <div className="OrgResour-organization-resources">
-      {isUploading && (
-  <div className="spinner-overlay">
-    <div className="spinner"></div>
-  </div>
-)}
   <Header />
   <div className="OrgResour-layout">
     
@@ -630,11 +668,20 @@ const filteredFiles = files.filter((file) =>
         >
             Delete Selected
         </button>
-        <button onClick={toggleSortOrder} className="OrgResour-button-sort">
-            Sort {sortOrder === 'asc' ? 'A-Z' : 'Z-A'}
-        </button>
+        
     </div>
 </div>
+{loading && (
+  <div className="loading">
+    <div className="spinner"></div>
+    <div className="progress-container">
+      <div className="progress-bar" style={{ width: `${uploadProgress}%` }}></div>
+    </div>
+    <div className="upload-text">
+      Uploading... {uploadProgress !== null && `${uploadProgress.toFixed(0)}%`}
+    </div>
+  </div>
+)}
 
 <div
   className={`OrgResour-resources-table ${isDragOver ? 'drag-over' : ''}`}
@@ -654,16 +701,26 @@ const filteredFiles = files.filter((file) =>
 
   <div className="OrgResour-scrollable-container">
     <table className="OrgResour-table">
-      <thead>
-        <tr>
-          <th>Select</th>
-          <th>Name</th>
-          <th>Size</th>
-          <th>Type</th>
-          <th>Uploaded By</th>
-          <th>Date Uploaded</th>
-        </tr>
-      </thead>
+    <thead>
+    <tr>
+      <th>Select</th>
+      <th onClick={() => toggleSortOrder('name')} style={{ cursor: 'pointer' }}>
+        Name {sortColumn === 'name' && (sortOrder === 'asc' ? '▲' : '▼')}
+      </th>
+      <th onClick={() => toggleSortOrder('size')} style={{ cursor: 'pointer' }}>
+        Size {sortColumn === 'size' && (sortOrder === 'asc' ? '▲' : '▼')}
+      </th>
+      <th onClick={() => toggleSortOrder('type')} style={{ cursor: 'pointer' }}>
+        Type {sortColumn === 'type' && (sortOrder === 'asc' ? '▲' : '▼')}
+      </th>
+      <th onClick={() => toggleSortOrder('uploadedBy')} style={{ cursor: 'pointer' }}>
+        Uploaded By {sortColumn === 'uploadedBy' && (sortOrder === 'asc' ? '▲' : '▼')}
+      </th>
+      <th onClick={() => toggleSortOrder('dateUploaded')} style={{ cursor: 'pointer' }}>
+        Date Uploaded {sortColumn === 'dateUploaded' && (sortOrder === 'asc' ? '▲' : '▼')}
+      </th>
+    </tr>
+  </thead>
       <tbody>
         {filteredFolders.length === 0 && filteredFiles.length === 0 ? (
           <tr>
@@ -738,7 +795,7 @@ const filteredFiles = files.filter((file) =>
                     {file.name.replace(/\.[^/.]+$/, '') /* Remove file extension */}
                   </td>
                   <td>{file.size || '—'}</td>
-                  <td>{file.type || 'Unknown'}</td>
+                  <td>{file?.type?.length > 10 ? file.type.substring(0,15) + '...' : file.type || 'Unknown'}</td>
                   <td>{file.uploadedBy || 'Unknown'}</td>
                   <td>
                     {file.dateUploaded ? formatDate(file.dateUploaded) : 'Unknown'}

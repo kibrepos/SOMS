@@ -256,7 +256,7 @@ button:hover {
 
 /* Search Bar */
 .OrgResour-input-search {
-  width: 100px; /* Full width for responsiveness */
+  width: 100%; /* Full width for responsiveness */
   max-width: 400px;
   padding: 10px; /* Padding for better usability */
   font-size: 16px; /* Set a readable font size */

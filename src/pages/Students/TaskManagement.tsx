@@ -573,32 +573,33 @@ const handleMemberSelect = (memberId: string) => {
             const fetchedTasks: Task[] = querySnapshot.docs.map((doc) => {
               const data = doc.data();
   
-              // Debug fetched data
-              console.log("Fetched Task Data:", data);
-  
-              // Check if task is overdue
-              const taskStatus = 
-                data.taskStatus !== "Completed" && new Date(data.dueDate) < now
-                  ? "Overdue"
-                  : data.taskStatus;
+              // Determine the task's current status
+              let taskStatus = data.taskStatus;
+              if (taskStatus === "Extended-Overdue" && new Date(data.dueDate) < now) {
+                taskStatus = "Overdue"; // Update status to "Overdue" if the due date has passed
+              } else if (taskStatus !== "Completed" && new Date(data.dueDate) < now) {
+                taskStatus = "Overdue"; // General case for overdue tasks
+              }
   
               return {
                 id: doc.id,
                 ...data,
-                taskStatus, // Update taskStatus if overdue
+                taskStatus, // Updated task status
               } as Task;
             });
   
-            // Update Firestore for overdue tasks
+            // Update Firestore for tasks transitioning to "Overdue"
             const overdueTasks = fetchedTasks.filter(
               (task) => task.taskStatus === "Overdue"
             );
-            
   
             try {
               await Promise.all(
                 overdueTasks.map(async (task) => {
-                  const taskDocRef = doc(firestore, `tasks/${organizationName}/AllTasks/${task.id}`);
+                  const taskDocRef = doc(
+                    firestore,
+                    `tasks/${organizationName}/AllTasks/${task.id}`
+                  );
                   await updateDoc(taskDocRef, { taskStatus: "Overdue" });
                 })
               );
