@@ -1,5 +1,5 @@
 import React, { useEffect, useState, ChangeEvent, FormEvent,useRef } from 'react';
-import { doc, updateDoc, collection,deleteDoc, setDoc,getDoc,onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, collection,deleteDoc, setDoc,getDoc,onSnapshot,getDocs } from 'firebase/firestore';
 import { firestore } from '../../services/firebaseConfig';
 import Header from '../../components/Header';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -13,18 +13,28 @@ import '../../styles/TaskManagement.css';
 import { showToast } from '../../components/toast';
 
 interface Task {
-    id: string;
-    event?: string;
-    title: string;
-    description: string;
-    assignedTo: string[];
-    assignedToNames: string[];
-    startDate: string;
-    dueDate: string;
-    taskStatus: 'In-Progress' | 'Started' | 'Completed' | 'Overdue';
-    givenBy: string; 
-    attachments?: string[];
-  }
+  id: string;
+  event?: string;
+  title: string;
+  description: string;
+  assignedTo: string[]; // Deprecated or used for backward compatibility
+  assignedToNames?: string[];
+  assignedMembers: string[]; // New property
+  assignedCommittees: string[]; // New property
+  startDate: string;
+  dueDate: string;
+  taskStatus: 
+    | 'In-Progress' 
+    | 'Started' 
+    | 'Completed' 
+    | 'Overdue'
+    | 'Extended' // New status for extended tasks
+    | 'Extended-Overdue'; // New status for extended tasks that were overdue
+  givenBy: string;
+  attachments?: string[];
+  submissions?: Submission[];
+}
+
 
 interface Member {
   id: string;
@@ -42,9 +52,7 @@ interface Submission {
   fileAttachments?: string[]; // Array of file URLs for attachments
   date: string;
 }
-interface Task {
-  submissions?: Submission[];
-}
+
 const TaskManagement: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +96,10 @@ const [attachmentURLs, setAttachmentURLs] = useState<string[]>([]); // For URLs
 const [activeTab, setActiveTab] = useState(1); // Active tab state (default: 1)
 const [comments, setComments] = useState<{ text: string; user: any; timestamp: number }[][]>([]);
 const [commentText, setCommentText] = useState("");
+const now = new Date();
+const formattedNow = now.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
+
+
 
 useEffect(() => {
   const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -102,16 +114,30 @@ useEffect(() => {
   return () => unsubscribe(); // Cleanup on unmount
 }, []);
 
-useEffect(() => {
-  if (organizationName) {
-    fetchTasks(); // Fetch tasks when the organization name is available
-    fetchOrganizationData(); // Fetch any additional organization-specific data
-  } else {
-    console.error("Organization name is missing or invalid.");
-    setError("Organization name is missing or invalid.");
-  }
-}, [organizationName]);
 
+useEffect(() => {
+  const fetchData = async () => {
+    if (!organizationName) {
+      console.error("Organization name is missing or invalid.");
+      setError("Organization name is missing or invalid.");
+      return;
+    }
+
+    try {
+      // First, fetch organization data
+      await fetchOrganizationData();
+      console.log("Organization data fetched successfully.");
+
+      // Then, fetch tasks
+      fetchTasks();
+    } catch (err) {
+      console.error("Error while fetching data:", err);
+      setError("Failed to load data. Please try again.");
+    }
+  };
+
+  fetchData(); // Run the chained fetches
+}, [organizationName])
 
 const handleAddComment = async (submissionIndex: number) => {
   if (!commentText.trim()) {
@@ -196,30 +222,34 @@ const handleAddComment = async (submissionIndex: number) => {
 const openEditModal = (task: Task) => {
   setTaskToEdit(task);
 
-  // Populate selectedMembers and selectedCommittees based on assignedTo
-  const taskAssignedMembers = task.assignedTo.filter((id) =>
-    availableMembers.some((member) => member.id === id)
-  );
-  const taskAssignedCommittees = task.assignedTo.filter((id) =>
-    availableCommittees.some((committee) => committee.id === id)
-  );
+  setSelectedMembers(task.assignedMembers);
+  setSelectedCommittees(task.assignedCommittees);
 
-  setSelectedMembers(taskAssignedMembers);
-  setSelectedCommittees(taskAssignedCommittees);
-
-  // Set URLs directly for display
   setAttachmentURLs(task.attachments || []);
   setAttachments([]); // Clear new attachments for editing
+
+  setNewTaskStartDate(task.startDate);
+  setNewTaskDueDate(task.dueDate);
 
   setIsEditModalOpen(true);
 };
 
 
 
+
 const closeEditModal = () => {
-  setTaskToEdit(null);
-  setIsEditModalOpen(false);
+  setTaskToEdit(null); // Clear the current task being edited
+  setNewTaskTitle(""); // Reset the task title
+  setNewTaskDescription(""); // Reset the task description
+  setNewTaskStartDate(""); // Reset the start date
+  setNewTaskDueDate(""); // Reset the due date
+  setSelectedMembers([]); // Clear selected members
+  setSelectedCommittees([]); // Clear selected committees
+  setAttachments([]); // Clear new attachments
+  setAttachmentURLs([]); // Clear attachment URLs
+  setIsEditModalOpen(false); // Close the modal
 };
+
 
 
 const openSubmissionsModal = async (task: Task) => {
@@ -278,8 +308,10 @@ const filteredTasks = tasks
     const statusOrder = {
       "In-Progress": 0,
       "Started": 1,
-      "Completed": 2,
-      "Overdue": 3
+      "Extended":2,
+      "Extended-Overdue":3,
+      "Completed":4,   
+      "Overdue":5
     };
 
     // First, compare by task status
@@ -303,85 +335,103 @@ const filteredTasks = tasks
 
 
   const handleEditTask = async (e: FormEvent) => {
-    e.preventDefault();
-  
-    if (!taskToEdit || !organizationName) {
+  e.preventDefault();
 
-      showToast("Missing task to edit or organization name.","error");
-      return;
-    }
-  
-    // Validate dates
-    if (new Date(newTaskDueDate || taskToEdit.dueDate) < new Date(newTaskStartDate || taskToEdit.startDate)) {
-    
-      showToast("Due date cannot be earlier than the start date.","error");
-      return;
-    }
-    if (selectedMembers.length === 0 && selectedCommittees.length === 0) {
-      showToast("You must assign the task to at least one member or committee.", "error");
-      return;
+  if (!taskToEdit || !organizationName) {
+    showToast("Missing task to edit or organization name.", "error");
+    return;
+  }
+
+  // Validate dates
+  const currentDate = new Date();
+  const updatedDueDate = new Date(newTaskDueDate || taskToEdit.dueDate);
+  const updatedStartDate = new Date(newTaskStartDate || taskToEdit.startDate);
+
+  if (updatedDueDate < updatedStartDate) {
+    showToast("Due date cannot be earlier than the start date.", "error");
+    return;
+  }
+
+  if (selectedMembers.length === 0 && selectedCommittees.length === 0) {
+    showToast("You must assign the task to at least one member or committee.", "error");
+    return;
+  }
+
+  try {
+    // Upload new files
+    const newAttachmentURLs = await Promise.all(
+      attachments.map(async (file) => {
+        const storageRef = ref(storage, `tasks/${Date.now()}-${file.name}`);
+        await uploadBytes(storageRef, file);
+        return await getDownloadURL(storageRef);
+      })
+    );
+
+    // Merge existing and new attachments
+    const updatedAttachments = [
+      ...(taskToEdit.attachments || []),
+      ...newAttachmentURLs,
+    ];
+
+    // Determine the new status
+    let newStatus: Task["taskStatus"];
+    const wasOverdue =
+      taskToEdit.taskStatus === "Overdue" || taskToEdit.taskStatus === "Extended-Overdue";
+
+    if (wasOverdue && updatedDueDate > currentDate) {
+      newStatus = "Extended-Overdue";
+    } else if (updatedDueDate < currentDate) {
+      newStatus = "Overdue";
+    } else if (taskToEdit.taskStatus === "Completed") {
+      newStatus = "Completed";
+    } else {
+      newStatus = "Extended";
     }
 
-    try {
-      // Upload new files
-      const newAttachmentURLs = await Promise.all(
-        attachments
-          .filter((file) => file instanceof File) // Only upload new files
-          .map(async (file) => {
-            const storageRef = ref(storage, `tasks/${Date.now()}-${file.name}`);
-            await uploadBytes(storageRef, file);
-            return await getDownloadURL(storageRef);
-          })
-      );
+    const updatedFields = {
+      title: newTaskTitle.trim() || taskToEdit.title,
+      description: newTaskDescription.trim() || taskToEdit.description,
+      assignedMembers: selectedMembers,
+      assignedCommittees: selectedCommittees,
+      startDate: newTaskStartDate || taskToEdit.startDate,
+      dueDate: newTaskDueDate || taskToEdit.dueDate,
+      attachments: updatedAttachments,
+      taskStatus: newStatus,
+    };
+
+    // Update Firestore
+    const taskDocRef = doc(
+      firestore,
+      `tasks/${organizationName}/AllTasks/${taskToEdit.id}`
+    );
+    await updateDoc(taskDocRef, updatedFields);
+
+    // Update state
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskToEdit.id ? { ...task, ...updatedFields } : task
+      )
+    );
+
+    if (taskToView?.id === taskToEdit.id) {
+      setTaskToView((prev) => (prev ? { ...prev, ...updatedFields } : null));
+    }
+
+    // Reset modal
+    closeEditModal();
+
+    showToast("Task updated successfully!", "success");
+  } catch (error) {
+    console.error("Error updating task:", error);
+    showToast("Failed to update the task. Please try again.", "error");
+  }
+};
+
   
-      // Merge existing and new attachments
-      const updatedAttachments = [
-        ...(taskToEdit.attachments || []), // Existing attachments
-        ...newAttachmentURLs, // Newly uploaded attachments
-      ];
-  
-      const updatedFields = {
-        title: newTaskTitle.trim() || taskToEdit.title,
-        description: newTaskDescription.trim() || taskToEdit.description,
-        assignedTo: [...selectedMembers, ...selectedCommittees],
-        startDate: newTaskStartDate || taskToEdit.startDate,
-        dueDate: newTaskDueDate || taskToEdit.dueDate,
-        attachments: updatedAttachments,
-      };
-  
-      // Update Firestore
-      const taskDocRef = doc(firestore, `tasks/${organizationName}/AllTasks/${taskToEdit.id}`);
-      await updateDoc(taskDocRef, updatedFields);
-  
-      // Update state
-      setTasks((prev) =>
-        prev.map((task) =>
-          task.id === taskToEdit.id ? { ...task, ...updatedFields } : task
-        )
-      );
   
 
-      if (taskToView?.id === taskToEdit.id) {
-        setTaskToView((prev) => (prev ? { ...prev, ...updatedFields } : null));
-      }
-  
-      // Reset modal
-      setNewTaskTitle("");
-      setNewTaskDescription("");
-      setNewTaskStartDate("");
-      setNewTaskDueDate("");
-      setSelectedMembers([]);
-      setSelectedCommittees([]);
-      setAttachments([]);
-      closeEditModal();
-  
-      showToast("Task updated successfully!","success");
-    } catch (error) {
-      console.error("Error updating task:", error);
-      showToast("Failed to update the task. Please try again.","error");
-    }
-  };
-  
+
+
 
 const openViewModal = (task: Task) => {
   setTaskToView(task);
@@ -504,56 +554,81 @@ const handleMemberSelect = (memberId: string) => {
   };
   
    
-
-// nagdidissapear minsan pag live 
-// nagdidissapear minsan pag live 
-// nagdidissapear minsan pag live 
-// nagdidissapear minsan pag live 
-const fetchTasks = () => {
-  if (!organizationName) {
-    console.error("Organization name is missing or invalid.");
-    setError("Organization name is missing or invalid.");
-    return;
-  }
-
-  try {
-    const taskCollectionRef = collection(firestore, `tasks/${organizationName}/AllTasks`);
-
-    const unsubscribe = onSnapshot(
-      taskCollectionRef,
-      (querySnapshot) => {
-        if (!querySnapshot.empty) {
-          const fetchedTasks: Task[] = querySnapshot.docs.map((doc) => {
-            const data = doc.data();
-            // Debug fetched data
-            console.log("Fetched Task Data:", data);
-
-            return {
-              id: doc.id,
-              ...data, // Ensure this matches your `Task` interface
-            } as Task;
-          });
-
-          setTasks(fetchedTasks);
-        } else {
-          console.warn("No tasks found in Firestore.");
-          setTasks([]); // Clear tasks if none exist
-        }
-      },
-      (error) => {
-        console.error("Error fetching tasks:", error);
-        setError("Failed to fetch tasks. Please try again.");
-      }
-    );
-
-    return () => unsubscribe();
-  } catch (err) {
-    console.error("Error initializing task fetch:", err);
-    setError("Failed to fetch tasks. Please try again.");
-  }
-};
-
+  const fetchTasks = () => {
+    if (!organizationName) {
+      console.error("Organization name is missing or invalid.");
+      setError("Organization name is missing or invalid.");
+      return;
+    }
   
+    try {
+      const taskCollectionRef = collection(firestore, `tasks/${organizationName}/AllTasks`);
+  
+      const unsubscribe = onSnapshot(
+        taskCollectionRef,
+        async (querySnapshot) => {
+          if (!querySnapshot.empty) {
+            const now = new Date();
+  
+            const fetchedTasks: Task[] = querySnapshot.docs.map((doc) => {
+              const data = doc.data();
+  
+              // Debug fetched data
+              console.log("Fetched Task Data:", data);
+  
+              // Check if task is overdue
+              const taskStatus = 
+                data.taskStatus !== "Completed" && new Date(data.dueDate) < now
+                  ? "Overdue"
+                  : data.taskStatus;
+  
+              return {
+                id: doc.id,
+                ...data,
+                taskStatus, // Update taskStatus if overdue
+              } as Task;
+            });
+  
+            // Update Firestore for overdue tasks
+            const overdueTasks = fetchedTasks.filter(
+              (task) => task.taskStatus === "Overdue"
+            );
+            
+  
+            try {
+              await Promise.all(
+                overdueTasks.map(async (task) => {
+                  const taskDocRef = doc(firestore, `tasks/${organizationName}/AllTasks/${task.id}`);
+                  await updateDoc(taskDocRef, { taskStatus: "Overdue" });
+                })
+              );
+              if (overdueTasks.length > 0) {
+                console.log(`${overdueTasks.length} task(s) updated to Overdue.`);
+              }
+            } catch (error) {
+              console.error("Error updating overdue tasks in Firestore:", error);
+            }
+  
+            setTasks(fetchedTasks);
+          } else {
+            console.warn("No tasks found in Firestore.");
+            setTasks([]); // Clear tasks if none exist
+          }
+        },
+        (error) => {
+          console.error("Error fetching tasks:", error);
+          setError("Failed to fetch tasks. Please try again.");
+        }
+      );
+  
+      return () => unsubscribe();
+    } catch (err) {
+      console.error("Error initializing task fetch:", err);
+      setError("Failed to fetch tasks. Please try again.");
+    }
+  };
+  
+
 
 
 useEffect(() => {
@@ -600,6 +675,10 @@ useEffect(() => {
       return;
     }
   
+    if (new Date(newTaskStartDate) < now) {
+      showToast("Start date cannot be in the past.", "error");
+      return;
+    }
     // Validate that the due date is not earlier than the start date
     if (new Date(newTaskDueDate) < new Date(newTaskStartDate)) {
 
@@ -644,8 +723,9 @@ useEffect(() => {
         id: Date.now().toString(),
         title: newTaskTitle,
         description: newTaskDescription,
-        assignedTo: assignedToWithNames.map((entry) => entry.id), // IDs only
-        assignedToNames: assignedToWithNames.map((entry) => entry.name), // Names only
+        assignedTo: [], // Keeping for backward compatibility
+        assignedMembers: selectedMembers,
+        assignedCommittees: selectedCommittees,
         startDate: newTaskStartDate,
         dueDate: newTaskDueDate,
         event: "General Task",
@@ -732,6 +812,8 @@ useEffect(() => {
     <option value="In-Progress">In Progress</option>
     <option value="Completed">Completed</option>
     <option value="Overdue">Overdue</option>
+    <option value="Extended">Extended</option>
+    <option value="Extended-Overdue">Extended-Overdue</option>
   </select>
   <input
   type="date"
@@ -888,23 +970,30 @@ useEffect(() => {
 
           {/* Right Column */}
           <div className="altask-right-column">
-            <label className="altask-label">Start Date</label>
-            <input
-              type="date"
-              value={newTaskStartDate}
-              onChange={(e) => setNewTaskStartDate(e.target.value)}
-              required
-              className="altask-date-input"
-            />
+          <label className="altask-label">Start Date & Time</label>
+  <div className="altask-date-time-input">
 
-            <label className="altask-label">Due Date</label>
-            <input
-              type="date"
-              value={newTaskDueDate}
-              onChange={(e) => setNewTaskDueDate(e.target.value)}
-              required
-              className="altask-date-input"
-            />
+    <input
+    type="datetime-local"
+    value={newTaskStartDate}
+    onChange={(e) => setNewTaskStartDate(e.target.value)}
+    required
+    className="altask-date-input"
+    placeholder={formattedNow}
+  />
+</div>
+
+<label className="altask-label">Due Date & Time</label>
+<div className="altask-date-time-input">
+<input
+    type="datetime-local"
+    value={newTaskDueDate}
+    onChange={(e) => setNewTaskDueDate(e.target.value)}
+    required
+    className="altask-date-input"
+    placeholder={formattedNow}
+  />
+</div>
 
             <label className="altask-label">Assign to:</label>
             <div className="altask-assign-to-section">
@@ -1027,23 +1116,19 @@ useEffect(() => {
         <div className="task-details-row">
           <p><strong>Given by:</strong> {taskToView.givenBy}</p>
           <div>
-            <strong>Assigned to:</strong>
+          <strong>Assigned to:</strong>
             <ul>
-              {/* Committees first */}
-              {taskToView.assignedTo
-                .map((id) => availableCommittees.find((c) => c.id === id))
-                .filter(Boolean)
-                .map((committee, index) => (
-                  <li key={`committee-${index}`}>{committee?.name}</li>
-                ))}
+              <li><strong>Members:</strong></li>
+              {taskToView.assignedMembers.map((id) => {
+                const member = availableMembers.find((m) => m.id === id);
+                return <li key={id}>{member?.name || 'Unknown Member'}</li>;
+              })}
 
-              {/* Members next */}
-              {taskToView.assignedTo
-                .map((id) => availableMembers.find((m) => m.id === id))
-                .filter(Boolean)
-                .map((member, index) => (
-                  <li key={`member-${index}`}>{member?.name}</li>
-                ))}
+              <li><strong>Committees:</strong></li>
+              {taskToView.assignedCommittees.map((id) => {
+                const committee = availableCommittees.find((c) => c.id === id);
+                return <li key={id}>{committee?.name || 'Unknown Committee'}</li>;
+              })}
             </ul>
           </div>
         </div>
@@ -1053,6 +1138,9 @@ useEffect(() => {
               year: 'numeric',
               month: 'long',
               day: 'numeric',
+              hour: "numeric",
+    minute: "numeric",
+    hour12: true,
             })}
           </p>
           <p><strong>Due Date:</strong> 
@@ -1060,14 +1148,25 @@ useEffect(() => {
               year: 'numeric',
               month: 'long',
               day: 'numeric',
+              hour: "numeric",
+    minute: "numeric",
+    hour12: true,
             })}
           </p>
         </div>
         <div className="task-details-row">
           <p><strong>Status:</strong> 
-            <span className={`status-badge ${taskToView.taskStatus.replace(' ', '-').toLowerCase()}`}>
-              {taskToView.taskStatus}
-            </span>
+          <span
+            className={`status-badge ${
+              taskToView.taskStatus === "Extended"
+                ? "extended"
+                : taskToView.taskStatus === "Extended-Overdue"
+                ? "extended-overdue"
+                : taskToView.taskStatus.replace(" ", "-").toLowerCase()
+            }`}
+          >
+            {taskToView.taskStatus === "Extended-Overdue" ? "Extended (Overdue)" : taskToView.taskStatus}
+          </span>
           </p>
         </div>
         <div className="task-details-row">
@@ -1193,23 +1292,30 @@ useEffect(() => {
 
           {/* Right Column */}
           <div className="altask-right-column">
-            <label className="altask-label">Start Date</label>
-            <input
-              type="date"
-              value={newTaskStartDate || taskToEdit.startDate}
-              onChange={(e) => setNewTaskStartDate(e.target.value)}
-              required
-              className="altask-date-input"
-            />
+          <label className="altask-label">Start Date & Time</label>
+          <div className="altask-date-time-input">
 
-            <label className="altask-label">Due Date</label>
-            <input
-              type="date"
-              value={newTaskDueDate || taskToEdit.dueDate}
-              onChange={(e) => setNewTaskDueDate(e.target.value)}
-              required
-              className="altask-date-input"
-            />
+<input
+type="datetime-local"
+value={newTaskStartDate}
+onChange={(e) => setNewTaskStartDate(e.target.value)}
+required
+className="altask-date-input"
+placeholder={formattedNow}
+/>
+</div>
+
+<label className="altask-label">Due Date & Time</label>
+<div className="altask-date-time-input">
+<input
+type="datetime-local"
+value={newTaskDueDate}
+onChange={(e) => setNewTaskDueDate(e.target.value)}
+required
+className="altask-date-input"
+placeholder={formattedNow}
+/>
+</div>
 
             <label className="altask-label">Assign to:</label>
             <div className="altask-assign-to-section">
@@ -1330,36 +1436,57 @@ useEffect(() => {
 
       {/* Tabs */}
       {submissionsTask.submissions &&
-      Array.isArray(submissionsTask.submissions) &&
-      submissionsTask.submissions.length > 0 ? (
-        <>
-          <div className="submitmeninja-tabs">
-            {[1, 2, 3].map((tabIndex) => {
-              const isTabDisabled =
-                !(submissionsTask.submissions &&
-                  submissionsTask.submissions[tabIndex - 1]); // Check if submission exists for this tab
-              return (
-                <div
-                  key={tabIndex}
-                  className={`submitmeninja-tab ${
-                    activeTab === tabIndex ? "active" : ""
-                  } ${isTabDisabled ? "disabled" : ""}`}
-                  onClick={() => {
-                    if (isTabDisabled) {
-                      showToast(
-                        `No submission found for Submission ${tabIndex}.`,
-                        "error"
-                      );
-                    } else {
-                      setActiveTab(tabIndex);
-                    }
-                  }}
-                >
-                  Submission {tabIndex}
-                </div>
-              );
-            })}
-          </div>
+Array.isArray(submissionsTask.submissions) &&
+submissionsTask.submissions.length > 0 ? (
+  <>
+   <div className="submitmeninja-tabs">
+  {/* Navigation Buttons */}
+  <button
+    className="tab-navigation-button"
+    onClick={() => {
+      // Move to the previous set of tabs and set the first tab of that set as active
+      const newTab = Math.max(Math.floor((activeTab - 1) / 3) * 3 - 3, 1);
+      setActiveTab(newTab); 
+    }}
+    disabled={Math.floor((activeTab - 1) / 3) <= 0} // Disable if there's no previous set
+  >
+    &lt;
+  </button>
+
+  {/* Visible Tabs */}
+  {submissionsTask.submissions
+    .slice(
+      Math.floor((activeTab - 1) / 3) * 3,
+      Math.floor((activeTab - 1) / 3) * 3 + 3
+    ) // Show 3 submissions at a time
+    .map((_, index) => {
+      const tabIndex = Math.floor((activeTab - 1) / 3) * 3 + index + 1; // Calculate the actual tab index
+      return (
+        <div
+          key={tabIndex}
+          className={`submitmeninja-tab ${
+            activeTab === tabIndex ? "active" : ""
+          }`}
+          onClick={() => setActiveTab(tabIndex)} // Set the clicked tab as active
+        >
+          Submission {tabIndex}
+        </div>
+      );
+    })}
+
+  {/* Next Button */}
+  <button
+    className="tab-navigation-button"
+    onClick={() => {
+      // Move to the next set of tabs and set the first tab of that set as active
+      const newTab = Math.floor((activeTab - 1) / 3) * 3 + 3 + 1; // First tab of the next set
+      setActiveTab(newTab);
+    }}
+    disabled={Math.floor((activeTab - 1) / 3) * 3 + 3 >= submissionsTask.submissions.length} // Disable if there are no next tabs
+  >
+    &gt;
+  </button>
+</div>
 
           {/* Tab Content */}
           <div className="submitmeninja-tab-content">
@@ -1575,29 +1702,40 @@ useEffect(() => {
           </td>
           <td>{task.givenBy}</td>
           <td>
-  {(() => {
-    const names = task.assignedTo
-      .map((id) => {
-        const member = availableMembers.find((m) => m.id === id);
-        const committee = availableCommittees.find((c) => c.id === id);
-        return member?.name || committee?.name || "Unknown";
-      });
+        {(() => {
+          const memberNames = task.assignedMembers
+            .map((id) => {
+              const member = availableMembers.find((m) => m.id === id);
+              return member?.name || "Unknown Member";
+            })
+            .filter(Boolean);
 
-    if (names.length <= 3) {
-      return names.join(", ");
-    } else {
-      const visibleNames = names.slice(0, 3);
-      const hiddenCount = names.length - 3;
-      return `${visibleNames.join(", ")}, +${hiddenCount}`;
-    }
-  })()}
-</td>
+          const committeeNames = task.assignedCommittees
+            .map((id) => {
+              const committee = availableCommittees.find((c) => c.id === id);
+              return committee?.name || "Unknown Committee";
+            })
+            .filter(Boolean);
 
+          const allNames = [...memberNames, ...committeeNames];
+
+          if (allNames.length <= 3) {
+            return allNames.join(", ");
+          } else {
+            const visibleNames = allNames.slice(0, 3);
+            const hiddenCount = allNames.length - 3;
+            return `${visibleNames.join(", ")}, +${hiddenCount}`;
+          }
+        })()}
+      </td>
           <td>
             {new Date(task.startDate).toLocaleDateString("en-US", {
               year: "numeric",
               month: "long",
               day: "numeric",
+              hour: "numeric",
+    minute: "numeric",
+    hour12: true,
             })}
           </td>
           <td>
@@ -1605,16 +1743,24 @@ useEffect(() => {
               year: "numeric",
               month: "long",
               day: "numeric",
+              hour: "numeric",
+    minute: "numeric",
+    hour12: true,
             })}
           </td>
           <td>
-            <span
-              className={`status-badge ${task.taskStatus
-                .replace(" ", "-")
-                .toLowerCase()}`}
-            >
-              {task.taskStatus}
-            </span>
+          <span
+  className={`status-badge ${
+    task.taskStatus === "Extended"
+      ? "extended"
+      : task.taskStatus === "Extended-Overdue"
+      ? "extended-overdue"
+      : task.taskStatus.replace(" ", "-").toLowerCase()
+  }`}
+>
+  {task.taskStatus === "Extended-Overdue" ? "Extended (Overdue)" : task.taskStatus}
+</span>
+
           </td>
           <td>
           <div className="task-dropdown">

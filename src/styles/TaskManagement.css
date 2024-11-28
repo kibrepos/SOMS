@@ -498,6 +498,19 @@
   background-color: #dc3545; /* Red for Overdue */
   color: #fff; /* White text for readability */
 }
+.status-badge.reassigned {
+  background-color: #004691; /* Red for Overdue */
+  color: #fff; /* White text for readability */
+}
+.status-badge.extended {
+  background-color: #007bff; /* Blue for not overdue */
+  color: white;
+}
+
+.status-badge.extended-overdue {
+  background-color: #dc3545; /* Red for overdue */
+  color: white;
+}
 
 
 /* Scrollbar Styling */
@@ -919,7 +932,9 @@
   font-weight: bold;
 }
 
-/* Tabs */
+
+
+
 .submitmeninja-tabs {
   display: flex;
   justify-content: space-between;
@@ -927,7 +942,7 @@
 }
 
 .submitmeninja-tab {
-  flex: 1;
+  flex: .4;
   text-align: center;
   padding: 10px;
   border: 1px solid #e0e0e0;
@@ -943,16 +958,30 @@
   color: #fff;
 }
 
-.submitmeninja-tab.disabled {
-  pointer-events: none;
-  background-color: #f1f1f1;
-  color: #999;
-}
 
-.submitmeninja-tab:hover:not(.disabled) {
+.submitmeninja-tab:hover {
   background-color: #9ecdff;
   color: #ffffff;
 }
+.tab-navigation-button {
+  background-color: transparent;
+  border: none;
+  color: #007bff;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.tab-navigation-button:hover {
+  color: #0056b3;
+  transform: scale(1.1); /* Slightly larger on hover */
+}
+.tab-navigation-button:disabled {
+  color: #a7a7a7;
+  transform: scale(1.1); /* Slightly larger on hover */
+}
+
 
 /* Tab Content */
 .submitmeninja-tab-content {

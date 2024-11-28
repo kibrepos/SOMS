@@ -19,13 +19,16 @@ interface Task {
   event?: string;
   title: string;
   description: string;
-  assignedTo: string[];
-  assignedToNames: string[];
+  assignedTo: string[]; 
+  assignedToNames?: string[];
+  assignedMembers: string[];
+  assignedCommittees: string[]; 
   startDate: string;
   dueDate: string;
   taskStatus: 'In-Progress' | 'Started' | 'Completed' | 'Overdue';
-  givenBy: string; 
+  givenBy: string;
   attachments?: string[];
+  submissions?: Submission[];
 }
 
 interface Submission {
@@ -42,9 +45,6 @@ interface Submission {
     };
     timestamp: number;
   }[];
-}
-interface Task {
-  submissions?: Submission[];
 }
 const MyTasks: React.FC = () => {
   const { organizationName } = useParams<{ organizationName: string }>();
@@ -63,7 +63,7 @@ const [sortOrder, setSortOrder] = useState("asc");
 const [selectedDate, setSelectedDate] = useState("");
 const [comments, setComments] = useState<{ text: string; user: any; timestamp: number }[][]>([]);
 const [commentText, setCommentText] = useState("");
-const [activeTab, setActiveTab] = useState(1); // For tabs in submissions modal
+const [activeTab, setActiveTab] = useState(0); // For tabs in submissions modal
 const [isSubmissionsModalOpen, setIsSubmissionsModalOpen] = useState(false);
 const [submissionsTask, setSubmissionsTask] = useState<Task | null>(null);
 const [availableCommittees, setAvailableCommittees] = useState<any[]>([]);
@@ -196,7 +196,6 @@ const fetchAvailableMembersAndCommittees = async () => {
   }
 };
 
-
 const fetchMyTasks = async () => {
   if (!currentUser || !organizationName) return;
 
@@ -208,86 +207,94 @@ const fetchMyTasks = async () => {
     const orgDocRef = doc(firestore, "organizations", decodedOrgName);
     const orgDoc = await getDoc(orgDocRef);
 
-    if (orgDoc.exists()) {
-      const orgData = orgDoc.data();
-      setOrganizationData(orgData);
-
-      // Determine the user's role in the organization
-      if (orgData.president?.id === currentUser.uid) {
-        setUserRole("president");
-      } else if (orgData.officers?.some((officer: any) => officer.id === currentUser.uid)) {
-        setUserRole("officer");
-      } else if (orgData.members?.some((member: any) => member.id === currentUser.uid)) {
-        setUserRole("member");
-      } else {
-        setUserRole(null);
-      }
-
-      // Extract committees
-      const committees = orgData?.committees || [];
-      const userId = currentUser.uid;
-
-      // Get committees where the user is either the head or a member
-      const userCommittees = committees.filter((committee: any) => {
-        return (
-          committee.head?.id === userId ||
-          committee.members?.some((member: any) => member.id === userId)
-        );
-      });
-
-      // Collect all committee IDs where the user is involved
-      const userCommitteeIds = userCommittees.map((committee: any) => committee.id);
-
-      // Set up real-time listener for tasks
-      const tasksCollectionPath = `tasks/${decodedOrgName}/AllTasks`;
-      const taskQuery = query(collection(firestore, tasksCollectionPath));
-
-      // Listen for real-time updates using onSnapshot
-      const unsubscribe = onSnapshot(taskQuery, async (querySnapshot) => {
-        if (querySnapshot.empty) {
-          console.log("No tasks found.");
-          setTasks([]); // Clear any previous tasks
-          return;
-        }
-
-        const userTasks: Task[] = [];
-        const currentDate = new Date();
-
-        for (const doc of querySnapshot.docs) {
-          const taskData = doc.data() as Task;
-          const taskDueDate = new Date(taskData.dueDate);
-
-          // Adjust due date to 12:01 AM the next day
-          taskDueDate.setDate(taskDueDate.getDate() + 1);
-          taskDueDate.setHours(0, 1, 0, 0); // Set to 12:01 AM the next day
-
-          // Check if the task is overdue
-          if (currentDate >= taskDueDate && (!taskData.submissions || taskData.submissions.length === 0)) {
-            // Update Firestore to mark as "Overdue"
-            await updateDoc(doc.ref, { taskStatus: "Overdue" });
-            taskData.taskStatus = "Overdue"; // Update local task data
-          }
-
-          // Check if the task is assigned to the current user or their committees
-          if (
-            taskData.assignedTo.includes(userId) ||
-            taskData.assignedTo.some((assignedId) => userCommitteeIds.includes(assignedId))
-          ) {
-            userTasks.push({ ...taskData, id: doc.id });
-          }
-        }
-        console.log("Mapped User Tasks:", userTasks);
-
-        setTasks(userTasks);
-        setError(null);
-      });
-
-      // Clean up the listener when the component is unmounted or no longer needed
-      return () => unsubscribe();
-    } else {
+    if (!orgDoc.exists()) {
       console.error("Organization not found.");
       setError("Organization not found.");
+      return;
     }
+
+    const orgData = orgDoc.data();
+    setOrganizationData(orgData);
+
+    // Determine the user's role in the organization
+    if (orgData.president?.id === currentUser.uid) {
+      setUserRole("president");
+    } else if (orgData.officers?.some((officer: any) => officer.id === currentUser.uid)) {
+      setUserRole("officer");
+    } else if (orgData.members?.some((member: any) => member.id === currentUser.uid)) {
+      setUserRole("member");
+    } else {
+      setUserRole(null);
+    }
+
+    // Extract committees
+    const committees = orgData?.committees || [];
+    const userId = currentUser.uid;
+
+    // Get committees where the user is either the head or a member
+    const userCommittees = committees.filter((committee: any) => {
+      return (
+        committee.head?.id === userId ||
+        committee.members?.some((member: any) => member.id === userId)
+      );
+    });
+
+    // Collect all committee IDs where the user is involved
+    const userCommitteeIds = userCommittees.map((committee: any) => committee.id);
+
+    // Set up real-time listener for tasks
+    const tasksCollectionPath = `tasks/${decodedOrgName}/AllTasks`;
+    const taskQuery = query(collection(firestore, tasksCollectionPath));
+
+    // Listen for real-time updates using onSnapshot
+    const unsubscribe = onSnapshot(taskQuery, async (querySnapshot) => {
+      if (querySnapshot.empty) {
+        console.log("No tasks found.");
+        setTasks([]); // Clear any previous tasks
+        return;
+      }
+
+      const userTasks: Task[] = [];
+      const currentDate = new Date();
+
+      const updateOverdueTasks = querySnapshot.docs.map(async (docSnapshot) => {
+        const taskData = docSnapshot.data() as Task;
+        const taskDueDate = new Date(taskData.dueDate);
+
+        // Adjust due date to 12:01 AM the next day
+        taskDueDate.setDate(taskDueDate.getDate() + 1);
+        taskDueDate.setHours(0, 1, 0, 0); // Set to 12:01 AM the next day
+
+        // Check if the task is overdue
+        if (currentDate > taskDueDate && taskData.taskStatus !== "Overdue") {
+          const overdueTimestamp = currentDate.toISOString(); // Record current date and time
+          await updateDoc(docSnapshot.ref, {
+            taskStatus: "Overdue",
+            overdueTime: overdueTimestamp, // Store the overdue time
+          });
+
+          taskData.taskStatus = "Overdue"; // Update local task data
+        }
+
+        // Check if the task is assigned to the current user or their committees
+        if (
+          taskData.assignedMembers?.includes(userId) ||
+          taskData.assignedCommittees?.some((assignedId) => userCommitteeIds.includes(assignedId))
+        ) {
+          userTasks.push({ ...taskData, id: docSnapshot.id });
+        }
+      });
+
+      await Promise.all(updateOverdueTasks);
+
+      console.log("Mapped User Tasks:", userTasks);
+
+      setTasks(userTasks);
+      setError(null);
+    });
+
+    // Clean up the listener when the component is unmounted or no longer needed
+    return () => unsubscribe();
   } catch (error) {
     console.error("Error fetching tasks:", error);
     setError("Failed to fetch tasks. Please try again.");
@@ -296,7 +303,12 @@ const fetchMyTasks = async () => {
   }
 };
 
-  
+  useEffect(() => {
+  if (isSubmissionsModalOpen) {
+    setActiveTab(1); // Reset to Submission 1 when modal opens
+  }
+}, [isSubmissionsModalOpen]);
+
   
   // Sidebar Logic
   const getSidebarComponent = () => {
@@ -324,9 +336,6 @@ const fetchMyTasks = async () => {
 
     return () => unsubscribe();
   }, []);
-
-
-  
 
   useEffect(() => {
     const fetchData = async () => {
@@ -423,101 +432,114 @@ const fetchMyTasks = async () => {
     }
   };
   
-  const handleSubmission = async (
-    taskId: string,
-    textContent: string,
-    files: File[] | null
-  ) => {
-    const user = auth.currentUser;
-  
-    if (!user) {
-      showToast("You must be signed in to submit.", "error");
-      return;
-    }
-  
-    const userDoc = await getDoc(doc(firestore, "students", user.uid));
-    const userData = userDoc.exists() ? userDoc.data() : null;
-  
-    const memberName = userData
-      ? `${userData.firstname} ${userData.lastname}`
-      : user.displayName || "Unknown";
-  
-    if (!taskId) {
-      showToast("Task ID is missing. Please try again.", "error");
-      return;
-    }
-  
-    try {
-      // Get the task document
-      const taskDocRef = doc(firestore, `tasks/${organizationName}/AllTasks/${taskId}`);
-      const taskDoc = await getDoc(taskDocRef);
-  
-      if (taskDoc.exists()) {
-        const taskData = taskDoc.data();
-  
-        // Check if submissions already exist and count the number of submissions for this user
-        const userSubmissions = taskData.submissions?.filter(
-          (submission: any) => submission.memberId === user.uid
-        ) || [];
-  
-        if (userSubmissions.length >= 3) {
-          showToast("You can only submit up to 3 times.", "error");
-          return;
-        }
-      } else {
-        showToast("Task not found. Please try again.", "error");
+ const handleSubmission = async (
+  taskId: string,
+  textContent: string,
+  attachments: File[] | null
+) => {
+  const user = auth.currentUser;
+
+  if (!user) {
+    showToast("You must be signed in to submit.", "error");
+    return;
+  }
+
+  const userDoc = await getDoc(doc(firestore, "students", user.uid));
+  const userData = userDoc.exists() ? userDoc.data() : null;
+
+  const memberName = userData
+    ? `${userData.firstname} ${userData.lastname}`
+    : user.displayName || "Unknown";
+
+  if (!taskId) {
+    showToast("Task ID is missing. Please try again.", "error");
+    return;
+  }
+
+  try {
+    // Get the task document
+    const taskDocRef = doc(
+      firestore,
+      `tasks/${organizationName}/AllTasks/${taskId}`
+    );
+
+    const taskDoc = await getDoc(taskDocRef);
+
+    if (taskDoc.exists()) {
+      const taskData = taskDoc.data();
+
+      if (taskData.taskStatus === "Overdue") {
+        showToast("This task is overdue. Submissions are no longer accepted.", "error");
         return;
       }
-  
-      const storage = getStorage();
-      const fileURLs: string[] = [];
-  
-      // If there are files, upload each to Firebase Storage
-      if (files && files.length > 0) {
-        for (const file of files) {
-          const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-          const storageRef = ref(storage, `submissions/${Date.now()}-${sanitizedFileName}`);
-          const snapshot = await uploadBytes(storageRef, file);
-          const fileURL = await getDownloadURL(snapshot.ref);
-          fileURLs.push(fileURL);
-        }
+      const userSubmissions = taskData.submissions?.filter(
+        (submission: any) => submission.memberId === user.uid
+      );
+
+      if (userSubmissions && userSubmissions.length >= 3) {
+        showToast("You can only submit up to 3 times for this task.", "error");
+        return;
       }
-  
-      // Prepare the submission object
-      const submission = {
-        memberId: user.uid,
-        memberName,
-        textContent: textContent || null, // Include textContent if provided
-        fileAttachments: fileURLs.length > 0 ? fileURLs : null, // Include file attachments if any
-        date: new Date().toISOString(),
-      };
-  
-      // Update the task in Firestore
-      await updateDoc(taskDocRef, {
-        submissions: arrayUnion(submission),
-        taskStatus: "Completed",
-      });
-  
-      const updatedTaskDoc = await getDoc(taskDocRef);
-      if (updatedTaskDoc.exists()) {
-        const updatedTask = updatedTaskDoc.data() as Task;
-        setSubmissionsTask(updatedTask); // Update the submissions modal data
-        setComments(
-          updatedTask.submissions?.map((submission) => submission.comments || []) || []
-        ); // Update the comments state
-      }
-  
-      showToast("Submission successful!", "success");
-      setIsSubmitModalOpen(false); // Close the modal after successful submission
-    } catch (error) {
-      console.error("Error submitting:", error);
-      showToast("Failed to submit. Please try again.", "error");
+    } else {
+      showToast("Task not found. Please try again.", "error");
+      return;
     }
-  };
+
+    const storage = getStorage();
+    const fileURLs: string[] = [];
+
+    // If there are files, upload each to Firebase Storage
+    if (attachments && attachments.length > 0) {
+      for (const file of attachments) {
+        const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+        const storageRef = ref(
+          storage,
+          `submissions/${Date.now()}-${sanitizedFileName}`
+        );
+        const snapshot = await uploadBytes(storageRef, file);
+        const fileURL = await getDownloadURL(snapshot.ref);
+        fileURLs.push(fileURL);
+      }
+    }
+
+    // Prepare the submission object
+    const submission = {
+      memberId: user.uid,
+      memberName,
+      textContent: textContent || null, // Include textContent if provided
+      fileAttachments: fileURLs,
+      date: new Date().toISOString(),
+    };
+
+    // Update the task in Firestore
+    await updateDoc(taskDocRef, {
+      submissions: arrayUnion(submission),
+      taskStatus: "Completed",
+    });
+
+    const updatedTaskDoc = await getDoc(taskDocRef);
+    if (updatedTaskDoc.exists()) {
+      const updatedTask = updatedTaskDoc.data() as Task;
+      setSubmissionsTask(updatedTask); // Update the submissions modal data
+      setComments(
+        updatedTask.submissions?.map(
+          (submission) => submission.comments || []
+        ) || []
+      ); // Update the comments state
+    }
+
+    showToast("Submission successful!", "success");
+    setIsSubmitModalOpen(false); // Close the modal after successful submission
+  } catch (error) {
+    console.error("Error submitting:", error);
+    showToast("Failed to submit. Please try again.", "error");
+  }
+};
+
   
   const resetSubmissionForm = () => {
     setTextContent(""); // Clear the text submission
-    setFile(null); // Clear the selected files
+    setAttachments([]); // Clear the selected files
   };
   
 
@@ -670,22 +692,19 @@ const closeSubmissionsModal = () => {
           <p><strong>Given by:</strong> {taskToView.givenBy}</p>
           <div>
             <strong>Assigned to:</strong>
+          
             <ul>
-              {/* Committees first */}
-              {taskToView.assignedTo
-                .map((id) => availableCommittees.find((c) => c.id === id))
-                .filter(Boolean)
-                .map((committee, index) => (
-                  <li key={`committee-${index}`}>{committee?.name}</li>
-                ))}
+              <li><strong>Members:</strong></li>
+              {taskToView.assignedMembers.map((id) => {
+                const member = availableMembers.find((m) => m.id === id);
+                return <li key={id}>{member?.name || 'Unknown Member'}</li>;
+              })}
 
-              {/* Members next */}
-              {taskToView.assignedTo
-                .map((id) => availableMembers.find((m) => m.id === id))
-                .filter(Boolean)
-                .map((member, index) => (
-                  <li key={`member-${index}`}>{member?.name}</li>
-                ))}
+              <li><strong>Committees:</strong></li>
+              {taskToView.assignedCommittees.map((id) => {
+                const committee = availableCommittees.find((c) => c.id === id);
+                return <li key={id}>{committee?.name || 'Unknown Committee'}</li>;
+              })}
             </ul>
           </div>
         </div>
@@ -695,6 +714,9 @@ const closeSubmissionsModal = () => {
               year: 'numeric',
               month: 'long',
               day: 'numeric',
+              hour: "numeric",
+              minute: "numeric",
+              hour12: true,
             })}
           </p>
           <p><strong>Due Date:</strong> 
@@ -702,6 +724,9 @@ const closeSubmissionsModal = () => {
               year: 'numeric',
               month: 'long',
               day: 'numeric',
+              hour: "numeric",
+              minute: "numeric",
+              hour12: true,
             })}
           </p>
         </div>
@@ -789,7 +814,6 @@ const closeSubmissionsModal = () => {
 {/* Preview Selected Files */}
 {attachments && attachments.length > 0 && (
   <div className="Susz-file-preview">
-    <p>Selected Files:</p>
     <ul className="Susz-file-list">
       {attachments.map((attachment, index) => (
         <li key={index} className="Susz-file-item">
@@ -814,8 +838,10 @@ const closeSubmissionsModal = () => {
       <div className="Susz-modal-actions">
         <button
           onClick={() => {
-            handleSubmission(submissionsTask.id, textContent, file);
-            resetSubmissionForm(); // Reset form after submission
+            handleSubmission(submissionsTask.id, textContent, attachments);
+            setIsSubmitModalOpen(false);
+            resetSubmissionForm();
+            closeViewModal();
           }}
           className="Susz-submit-btn"
         >
@@ -846,36 +872,61 @@ const closeSubmissionsModal = () => {
 
       {/* Tabs */}
       {submissionsTask.submissions &&
-      Array.isArray(submissionsTask.submissions) &&
-      submissionsTask.submissions.length > 0 ? (
-        <>
-          <div className="submitmeninja-tabs">
-            {[1, 2, 3].map((tabIndex) => {
-              const isTabDisabled =
-                !(submissionsTask.submissions &&
-                  submissionsTask.submissions[tabIndex - 1]); // Check if submission exists for this tab
-              return (
-                <div
-                  key={tabIndex}
-                  className={`submitmeninja-tab ${
-                    activeTab === tabIndex ? "active" : ""
-                  } ${isTabDisabled ? "disabled" : ""}`}
-                  onClick={() => {
-                    if (isTabDisabled) {
-                      showToast(
-                        `No submission found for Submission ${tabIndex}.`,
-                        "error"
-                      );
-                    } else {
-                      setActiveTab(tabIndex);
-                    }
-                  }}
-                >
-                  Submission {tabIndex}
-                </div>
-              );
-            })}
-          </div>
+Array.isArray(submissionsTask.submissions) &&
+submissionsTask.submissions.length > 0 ? (
+  <>
+   <div className="submitmeninja-tabs">
+  {/* Navigation Buttons */}
+  <button
+    className="tab-navigation-button"
+    onClick={() => {
+      // Move to the previous set of tabs and set the first tab of that set as active
+      const newTab = Math.max(Math.floor((activeTab - 1) / 3) * 3 - 3, 1);
+      setActiveTab(newTab); 
+    }}
+    disabled={Math.floor((activeTab - 1) / 3) <= 0} // Disable if there's no previous set
+  >
+    &lt;
+  </button>
+
+  {/* Visible Tabs */}
+  {submissionsTask.submissions
+    .slice(
+      Math.floor((activeTab - 1) / 3) * 3,
+      Math.floor((activeTab - 1) / 3) * 3 + 3
+    ) // Show 3 submissions at a time
+    .map((_, index) => {
+      const tabIndex = Math.floor((activeTab - 1) / 3) * 3 + index + 1; // Calculate the actual tab index
+      return (
+        <div
+          key={tabIndex}
+          className={`submitmeninja-tab ${
+            activeTab === tabIndex ? "active" : ""
+          }`}
+          onClick={() => setActiveTab(tabIndex)} // Set the clicked tab as active
+        >
+          Submission {tabIndex}
+        </div>
+      );
+    })}
+
+  {/* Next Button */}
+  <button
+    className="tab-navigation-button"
+    onClick={() => {
+      // Move to the next set of tabs and set the first tab of that set as active
+      const newTab = Math.floor((activeTab - 1) / 3) * 3 + 3 + 1; // First tab of the next set
+      setActiveTab(newTab);
+    }}
+    disabled={Math.floor((activeTab - 1) / 3) * 3 + 3 >= submissionsTask.submissions.length} // Disable if there are no next tabs
+  >
+    &gt;
+  </button>
+</div>
+
+
+ 
+
 
           {/* Tab Content */}
           <div className="submitmeninja-tab-content">
@@ -1045,29 +1096,40 @@ const closeSubmissionsModal = () => {
           </td>
           <td>{task.givenBy}</td>
           <td>
-  {(() => {
-    const names = task.assignedTo
-      .map((id) => {
-        const member = availableMembers.find((m) => m.id === id);
-        const committee = availableCommittees.find((c) => c.id === id);
-        return member?.name || committee?.name || "Unknown";
-      });
+        {(() => {
+          const memberNames = task.assignedMembers
+            .map((id) => {
+              const member = availableMembers.find((m) => m.id === id);
+              return member?.name || "Unknown Member";
+            })
+            .filter(Boolean);
 
-    if (names.length <= 3) {
-      return names.join(", ");
-    } else {
-      const visibleNames = names.slice(0, 3);
-      const hiddenCount = names.length - 3;
-      return `${visibleNames.join(", ")}, +${hiddenCount}`;
-    }
-  })()}
-</td>
+          const committeeNames = task.assignedCommittees
+            .map((id) => {
+              const committee = availableCommittees.find((c) => c.id === id);
+              return committee?.name || "Unknown Committee";
+            })
+            .filter(Boolean);
 
+          const allNames = [...memberNames, ...committeeNames];
+
+          if (allNames.length <= 3) {
+            return allNames.join(", ");
+          } else {
+            const visibleNames = allNames.slice(0, 3);
+            const hiddenCount = allNames.length - 3;
+            return `${visibleNames.join(", ")}, +${hiddenCount}`;
+          }
+        })()}
+      </td>
           <td>
             {new Date(task.startDate).toLocaleDateString("en-US", {
               year: "numeric",
               month: "long",
               day: "numeric",
+              hour: "numeric",
+        minute: "numeric",
+        hour12: true,
             })}
           </td>
           <td>
@@ -1075,6 +1137,9 @@ const closeSubmissionsModal = () => {
               year: "numeric",
               month: "long",
               day: "numeric",
+              hour: "numeric",
+        minute: "numeric",
+        hour12: true,
             })}
           </td>
           <td>
