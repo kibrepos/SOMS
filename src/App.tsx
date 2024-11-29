@@ -113,5 +113,47 @@ const App: React.FC = () => {
   );
 };
 
+/* 
+//CODE FOR DELETION UNCOMMENTING THIS WILL CRASH THE PROGRAM
+import express from 'express';
+import { adminAuth } from './services/firebaseAdminConfig'; // Importing the adminAuth
+import { adminFirestore } from './services/firebaseAdminConfig'; // Importing the adminFirestore
+
+const app = express();
+const port = 3001; // Your server port
+
+app.use(express.json()); // For parsing JSON request bodies
+
+// Deactivate user endpoint
+app.post('/deactivate-user', async (req, res) => {
+  const { uid } = req.body;
+
+  if (!uid) {
+    return res.status(400).send('UID is required');
+  }
+
+  try {
+    // Deactivate user in Firebase Authentication
+    await adminAuth.updateUser(uid, { disabled: true });
+
+    // Optionally: Update Firestore to reflect deactivation status
+    const userDocRef = adminFirestore.collection('students').doc(uid);
+    await userDocRef.update({
+      isDeactivated: true,
+      deactivatedAt: new Date(),
+    });
+
+    res.status(200).send({ message: `User with UID ${uid} has been deactivated.` });
+  } catch (error) {
+    console.error('Error deactivating user:', error);
+    res.status(500).send({ message: 'Error deactivating user' });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
+*/
+
 
 export default App;
