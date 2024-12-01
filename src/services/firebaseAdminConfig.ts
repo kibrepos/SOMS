@@ -10,8 +10,5 @@ if (!admin.apps.length) {
 }
 
 // Export initialized Firebase Admin services
-export const adminAuth = admin.auth();
-export const adminFirestore = admin.firestore();
-
-// If you're using Firebase Functions within Admin SDK, you can export it like this:
-export const functions = admin.app().functions();
+export const adminAuth = admin.auth(); // For Firebase Authentication management
+export const adminFirestore = admin.firestore(); // For Firestore access

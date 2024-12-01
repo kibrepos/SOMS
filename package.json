@@ -16,6 +16,7 @@
     "@types/react-router-dom": "^5.3.3",
     "admin": "^1.4.1",
     "axios": "^1.7.7",
+    "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
     "firebase": "^10.14.1",
@@ -44,6 +45,7 @@
     "globals": "^15.9.0",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
-    "vite": "^5.4.1"
+    "vite": "^5.4.1",
+    "vite-plugin-wasm": "^3.3.0"
   }
 }
