@@ -1,0 +1,136 @@
+/* General styling for the create event page */
+.create-event-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+  }
+  
+
+  
+  .create-event-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .create-event-label {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  
+  .create-event-input, .create-event-textarea {
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+  }
+  
+  .create-event-textarea {
+    resize: vertical;
+    min-height: 150px;
+  }
+  
+  .create-event-submit-btn {
+    padding: 12px 20px;
+    font-size: 18px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .create-event-submit-btn:hover {
+    background-color: #45a049;
+  }
+  
+  .add-date-btn, .remove-date-btn {
+    padding: 8px 12px;
+    font-size: 14px;
+    background-color: #f1f1f1;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .add-date-btn:hover, .remove-date-btn:hover {
+    background-color: #ddd;
+  }
+  
+  /* Custom dropdown styles */
+  .custom-dropdown {
+    position: relative;
+    width: 100%;
+  }
+  
+  .dropdown-toggle {
+    padding: 10px;
+    font-size: 16px;
+    background-color: #f1f1f1;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .dropdown-toggle:hover {
+    background-color: #ddd;
+  }
+  
+  .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background-color: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 10;
+  }
+  
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  
+  .dropdown-item:hover {
+    background-color: #f1f1f1;
+  }
+  
+  .dropdown-profile-pic {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin-right: 10px;
+  }
+  
+  /* Styling for the uploaded image input */
+  #imageFile {
+    margin: 10px 0;
+  }
+  
+
+  .main-content {
+    flex: 1;
+    padding: 20px;
+    background-color: #ffffff;
+  }
+  
+  .dashboard-container {
+    display: flex;
+    gap: 20px;
+  }
+  
+  .create-event-wrapper {
+    margin: 0 auto;
+    max-width: 800px;
+  }
+  

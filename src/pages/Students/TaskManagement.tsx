@@ -775,10 +775,10 @@ useEffect(() => {
           <StudentPresidentSidebar />
         </div>
         <div className="task-content">
-          <div className="header-actions">
-          <h2>All Tasks List</h2>
+        <div className="header-container">
+        <h1 className="headtitle">All Tasks List</h1>
           <button
-      className="my-tasks-btn"
+      className="create-new-btn"
       onClick={() => navigate(`/Organization/${organizationName}/mytasks`)}
     >
       View My Tasks
@@ -1442,14 +1442,13 @@ submissionsTask.submissions.length > 0 ? (
   <>
    <div className="submitmeninja-tabs">
   {/* Navigation Buttons */}
-  <button
+   <button
     className="tab-navigation-button"
     onClick={() => {
-      // Move to the previous set of tabs and set the first tab of that set as active
-      const newTab = Math.max(Math.floor((activeTab - 1) / 3) * 3 - 3, 1);
-      setActiveTab(newTab); 
+      const newTab = Math.max(activeTab - 3, 1);
+      setActiveTab(newTab);
     }}
-    disabled={Math.floor((activeTab - 1) / 3) <= 0} // Disable if there's no previous set
+    disabled={activeTab === 1}
   >
     &lt;
   </button>

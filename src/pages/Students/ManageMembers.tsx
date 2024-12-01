@@ -541,15 +541,15 @@ const handleKick = async () => {
           <StudentPresidentSidebar />
         </div>
         <div className="MM-main-content">
-          <div className="MM-header-actions">
-            <h2>Manage Members</h2>
-            <button className="MM-committee-btn" onClick={goToManageCommittees}>
+        <div className="header-container">
+        <h1 className="headtitle">Manage Members</h1>
+            <button className="create-new-btn" onClick={goToManageCommittees}>
               Manage Committees
             </button>
-            <button onClick={() => setIsInviteModalOpen(true)}>Invite a member</button>
+          
 
           </div>
-  
+          <button onClick={() => setIsInviteModalOpen(true)}>Invite a member</button>
           {isInviteModalOpen && (
   <div className="MM-modal-overlay">
     <div className="MM-modal-content">

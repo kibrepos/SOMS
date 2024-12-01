@@ -596,11 +596,11 @@ const closeSubmissionsModal = () => {
   {getSidebarComponent()}
 </div>
         <div className="task-content">
-        <div className="header-actions">
-  <h2>My Tasks</h2>
+        <div className="header-container">
+        <h1 className="headtitle">My Tasks</h1>
   {userRole === "president" || userRole === "officer" ? (
     <button
-      className="my-tasks-btns"
+      className="create-new-btn"
       onClick={() => navigate(`/Organization/${organizationName}/Alltasks`)}
     >
       View All Tasks
@@ -880,11 +880,10 @@ submissionsTask.submissions.length > 0 ? (
   <button
     className="tab-navigation-button"
     onClick={() => {
-      // Move to the previous set of tabs and set the first tab of that set as active
-      const newTab = Math.max(Math.floor((activeTab - 1) / 3) * 3 - 3, 1);
-      setActiveTab(newTab); 
+      const newTab = Math.max(activeTab - 3, 1);
+      setActiveTab(newTab);
     }}
-    disabled={Math.floor((activeTab - 1) / 3) <= 0} // Disable if there's no previous set
+    disabled={activeTab === 1}
   >
     &lt;
   </button>

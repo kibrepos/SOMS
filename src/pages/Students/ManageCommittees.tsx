@@ -253,9 +253,9 @@ const ManageCommittees: React.FC = () => {
           <StudentPresidentSidebar />
         </div>
         <div className="MC-main-content">
-          <div className="MC-header-actions">
-            <h2>Manage Committees</h2>
-            <button className="MC-add-committee-btn" onClick={openCreateCommitteeModal}>
+        <div className="header-container">
+        <h1 className="headtitle">Manage Committees</h1>
+            <button className="create-new-btn" onClick={openCreateCommitteeModal}>
               Create New Committee
             </button>
           </div>

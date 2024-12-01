@@ -113,7 +113,9 @@ const OrganizationActivityLogs: React.FC = () => {
       
       <div className="OAC-admin-activity-logs">
         <div className="OAC-activity-logs-content">
-          <h2>Activity Logs for {organizationName}</h2>
+        <div className="header-container">
+        <h1 className="headtitle">{organizationName} Activity Logs</h1>
+          </div>
           {loading ? (
             <p>Loading logs...</p>
           ) : (

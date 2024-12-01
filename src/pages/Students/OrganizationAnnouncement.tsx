@@ -398,15 +398,17 @@ useEffect(() => {
       <div className="organization-announcements-container">
   <StudentPresidentSidebar />
   <div className="organization-announcements-content">
-    <h2>{organizationData?.name} Announcements</h2>
+  <div className="header-container">
+  <h1 className="headtitle">Announcements</h1>
 
     {/* Announcement Creation Button */}
     {(organizationData?.officers.some(officer => officer.id === auth.currentUser?.uid) ||
       organizationData?.president?.id === auth.currentUser?.uid) && (
-      <button onClick={() => setIsModalOpen(true)} className="organization-announcements-create-announcement-button">
-        Add New Announcement
+      <button onClick={() => setIsModalOpen(true)} className="create-new-btn">
+        + Add New Announcement
       </button>
     )}
+    </div>
 {isModalOpen && (
   <div className="organization-announcements-modal-overlay" onClick={() => setIsModalOpen(false)}>
     <div className="organization-announcements-modal-container" onClick={(e) => e.stopPropagation()}>
@@ -512,6 +514,7 @@ useEffect(() => {
     type="text"
     value={searchInput}
     placeholder="Search..."
+    className="tksks-search-input"
     onChange={(e) => setSearchInput(e.target.value)}
   />
   <button onClick={handleApplyFilters} className="organization-announcements-apply-button">
