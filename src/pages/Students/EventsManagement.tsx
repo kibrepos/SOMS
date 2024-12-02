@@ -229,77 +229,84 @@ const EventsManagement: React.FC = () => {
               </button>
             )}
        </div>
-          <div className="event-section">
-            <h3>Upcoming Events</h3>
-            {upcomingEvents.length === 0 ? (
-              <p>No upcoming events.</p>
-            ) : (
-              <ul className="event-list">
-                {upcomingEvents.map((event, index) => (
-                  <li key={index} className="event-item">
-                    <img
-                      src={event.imageUrl}
-                      alt={event.title}
-                      className="event-image"
-                    />
-                    <h4>{event.title}</h4>
-                    <p>{event.description}</p>
-                    <p><strong>Venue:</strong> {event.venue}</p>
-                    <p><strong>Date:</strong> {formatEventDates(event.eventDates)}</p>
+       <div className="event-section">
+  <h3>Upcoming Events</h3>
+  {upcomingEvents.length === 0 ? (
+    <p>No upcoming events.</p>
+  ) : (
+    <ul className="event-list">
+      {upcomingEvents.map((event, index) => (
+        <li
+          key={index}
+          className="event-item"
+          onClick={() =>
+            navigate(`/organization/${organizationName}/events/${encodeURIComponent(event.title)}`)
+          }
+          style={{ cursor: "pointer" }} // Visual indicator for clickable items
+        >
+          <img src={event.imageUrl} alt={event.title} className="event-image" />
+          <h4>{event.title}</h4>
+          <p>{event.description}</p>
+          <p><strong>Venue:</strong> {event.venue}</p>
+          <p><strong>Date:</strong> {formatEventDates(event.eventDates)}</p>
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
 
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-  
-          <div className="event-section">
-            <h3>Ongoing Events</h3>
-            {ongoingEvents.length === 0 ? (
-              <p>No ongoing events.</p>
-            ) : (
-              <ul className="event-list">
-                {ongoingEvents.map((event, index) => (
-                  <li key={index} className="event-item">
-                    <img
-                      src={event.imageUrl}
-                      alt={event.title}
-                      className="event-image"
-                    />
-                    <h4>{event.title}</h4>
-                    <p>{event.description}</p>
-                    <p><strong>Venue:</strong> {event.venue}</p>
-                    <p><strong>Date:</strong> {formatEventDates(event.eventDates)}</p>
+<div className="event-section">
+  <h3>Ongoing Events</h3>
+  {ongoingEvents.length === 0 ? (
+    <p>No ongoing events.</p>
+  ) : (
+    <ul className="event-list">
+      {ongoingEvents.map((event, index) => (
+        <li
+          key={index}
+          className="event-item"
+          onClick={() =>
+            navigate(`/organization/${organizationName}/events/${encodeURIComponent(event.title)}`)
+          }
+          style={{ cursor: "pointer" }}
+        >
+          <img src={event.imageUrl} alt={event.title} className="event-image" />
+          <h4>{event.title}</h4>
+          <p>{event.description}</p>
+          <p><strong>Venue:</strong> {event.venue}</p>
+          <p><strong>Date:</strong> {formatEventDates(event.eventDates)}</p>
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
 
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-  
-          <div className="event-section">
-            <h3>Completed Events</h3>
-            {completedEvents.length === 0 ? (
-              <p>No completed events.</p>
-            ) : (
-              <ul className="event-list">
-                {completedEvents.map((event, index) => (
-                  <li key={index} className="event-item">
-                    <img
-                      src={event.imageUrl}
-                      alt={event.title}
-                      className="event-image"
-                    />
-                    <h4>{event.title}</h4>
-                    <p>{event.description}</p>
-                    <p><strong>Venue:</strong> {event.venue}</p>
-                    <p><strong>Date:</strong> {formatEventDates(event.eventDates)}</p>
+<div className="event-section">
+  <h3>Completed Events</h3>
+  {completedEvents.length === 0 ? (
+    <p>No completed events.</p>
+  ) : (
+    <ul className="event-list">
+      {completedEvents.map((event, index) => (
+        <li
+          key={index}
+          className="event-item"
+          onClick={() =>
+            navigate(`/organization/${organizationName}/events/${encodeURIComponent(event.title)}`)
+          }
+          style={{ cursor: "pointer" }}
+        >
+          <img src={event.imageUrl} alt={event.title} className="event-image" />
+          <h4>{event.title}</h4>
+          <p>{event.description}</p>
+          <p><strong>Venue:</strong> {event.venue}</p>
+          <p><strong>Date:</strong> {formatEventDates(event.eventDates)}</p>
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
 
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
         </div>
       </div>
     </div>

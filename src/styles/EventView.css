@@ -1,0 +1,88 @@
+
+.event-view-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 85vh; /* Full viewport height */
+}
+
+.dashboard-container {
+  display: flex;
+  height: 100%; /* Full height to accommodate the layout */
+}
+
+.main-content {
+    width: 80%;
+    padding: 20px;
+    background: #ffffff;
+    overflow-y: auto; /* Enable vertical scrolling */
+    height: 100%; /* Ensure it takes full available height */
+  }
+  
+  .event-picture-section {
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  .event-picture {
+    width: 100%;
+    max-height: 400px;
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .event-details-card {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .event-details-left,
+  .event-details-right {
+    flex: 1;
+  }
+  
+  .event-details-left h3,
+  .event-details-right h3 {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    color: #333;
+  }
+  
+  .event-details-left p,
+  .event-details-right p {
+    font-size: 1rem;
+    margin-bottom: 15px;
+    color: #666;
+  }
+  
+  .event-details-left {
+    border-right: 1px solid #ddd;
+    padding-right: 20px;
+  }
+  
+  .event-details-right {
+    padding-left: 20px;
+  }
+  
+  .head-event-manager {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between the image and text */
+    margin-top: 15px; /* Add some spacing from the previous element */
+  }
+  
+  .profile-pics {
+    width: 40px; /* Adjust the size of the profile picture */
+    height: 40px;
+    border-radius: 50%; /* Make the image circular */
+    object-fit: cover; /* Ensure the image scales correctly */
+    border: 2px solid #ccc; /* Optional border */
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); /* Optional shadow */
+  }
+  
+  

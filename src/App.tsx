@@ -11,6 +11,7 @@ import ManageMembers from './pages/Students/ManageMembers';
 import ManageCommittees from './pages/Students/ManageCommittees';
 import CreateEvent from './pages/Students/CreateEvent';
 import EventsManagement from './pages/Students/EventsManagement';
+import EventsView from './pages/Students/EventsView';
 import TaskManagement from './pages/Students/TaskManagement';
 import MyTasks from './pages/Students/MyTasks';
 import StudentProfile from './pages/Students/StudentProfile';
@@ -66,6 +67,7 @@ const App: React.FC = () => {
             <Route path="/Organization/:organizationName/mytasks" element={<MyTasks />} />
             <Route path="/Organization/:organizationName/events" element={<EventsManagement />} />
             <Route path="/Organization/:organizationName/create-event" element={<CreateEvent />} />
+            <Route path="/Organization/:organizationName/events/:eventName" element={<EventsView />} />
         
             
           </Route>
