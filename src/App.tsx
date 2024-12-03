@@ -68,6 +68,8 @@ const App: React.FC = () => {
             <Route path="/Organization/:organizationName/events" element={<EventsManagement />} />
             <Route path="/Organization/:organizationName/create-event" element={<CreateEvent />} />
             <Route path="/Organization/:organizationName/events/:eventName" element={<EventsView />} />
+ 
+
         
             
           </Route>

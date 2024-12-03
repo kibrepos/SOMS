@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { collection, query, where, getDocs,doc,getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs,doc,getDoc,onSnapshot,addDoc,updateDoc  } from "firebase/firestore";
 import { firestore, auth } from "../../services/firebaseConfig";
 import Header from "../../components/Header";
 import StudentPresidentSidebar from "./StudentPresidentSidebar";
@@ -28,6 +28,19 @@ interface Event {
     email?: string;
     role?: string;
   }
+  interface Message {
+    id: string;
+    text: string;
+    userId: string;
+    userName: string;
+    userProfilePic: string;
+    timestamp: string | Date; // Adjust type based on your timestamp
+  }
+  interface Attendance {
+    dayIndex: number;
+    attendees: string[];
+    id?: string; // Assuming each attendance record has a Firestore document ID
+  }
   
 
 const EventsView: React.FC = () => {
@@ -36,7 +49,37 @@ const EventsView: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [organizationData, setOrganizationData] = useState<any>(null);
+  const [eventId, setEventId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+const [newMessage, setNewMessage] = useState("");
+const [currentUser, setCurrentUser] = useState(auth.currentUser);
+const [rsvps, setRsvps] = useState<any[]>([]);
+const [attendance, setAttendance] = useState<Attendance[]>([]);
+const [editable, setEditable] = useState<boolean>(true);
+const userRSVP = rsvps.find((rsvp) => rsvp.userId === currentUser?.uid) || null;
+const getDayAttendance = (index: number) => 
+  attendance.find((a) => a.dayIndex === index) || null;
 
+const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+const [modalDayIndex, setModalDayIndex] = useState<number | null>(null);
+
+
+const getUserDetailsFromOrg = (userId: string, organizationData: any) => {
+  // Check in president
+  if (organizationData.president?.id === userId) {
+    return organizationData.president;
+  }
+
+  // Check in officers
+  const officer = organizationData.officers?.find((officer: any) => officer.id === userId);
+  if (officer) return officer;
+
+  // Check in members
+  const member = organizationData.members?.find((member: any) => member.id === userId);
+  if (member) return member;
+
+  return null;
+};
 
   useEffect(() => {
     const fetchEventDetails = async () => {
@@ -58,6 +101,7 @@ const EventsView: React.FC = () => {
         if (!querySnapshot.empty) {
           const eventDoc = querySnapshot.docs[0]; // Assuming titles are unique
           setEventDetails(eventDoc.data() as Event);
+          setEventId(eventDoc.id); 
           console.log("Event found:", eventDoc.data());
         } else {
           console.error("Event not found with title:", eventName);
@@ -71,6 +115,18 @@ const EventsView: React.FC = () => {
   
     fetchEventDetails();
   }, [organizationName, eventName]);
+
+
+  useEffect(() => {
+    if (eventDetails) {
+      const currentDate = new Date();
+      const eventStartDates = eventDetails.eventDates.map((d) => new Date(d.startDate));
+      setEditable(eventStartDates.some((d) => currentDate < d));
+    }
+  }, [eventDetails]);
+  
+  
+
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -105,6 +161,147 @@ const EventsView: React.FC = () => {
     });
   }, [organizationName]);
 
+  useEffect(() => {
+    if (!organizationName || !eventId) return;
+  
+    const messagesRef = collection(
+      firestore,
+      `events/${organizationName}/event/${eventId}/forum`
+    );
+  
+    const unsubscribe = onSnapshot(messagesRef, (snapshot) => {
+      const fetchedMessages = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          text: data.text,
+          userId: data.userId,
+          userName: data.userName,
+          userProfilePic: data.userProfilePic,
+          timestamp: data.timestamp,
+        };
+      });
+      setMessages(
+        fetchedMessages.sort(
+          (a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        )
+      );
+    });
+  
+    return () => unsubscribe(); // Cleanup on component unmount
+  }, [organizationName, eventId]);
+  
+  const AttendanceModal: React.FC<{ 
+    attendees: { id: string; name: string; role: string }[]; 
+    dayIndex: number; 
+    onClose: () => void; 
+    onSave: (updatedAttendance: { userId: string; status: string }[]) => void; 
+  }> = ({ attendees, dayIndex, onClose, onSave }) => {
+    const [attendanceData, setAttendanceData] = useState(
+      attendees.map((attendee) => ({
+        userId: attendee.id,
+        name: attendee.name,
+        role: attendee.role,
+        status: "Present", // Default status
+      }))
+    );
+  
+    const handleStatusChange = (userId: string, status: string) => {
+      setAttendanceData((prev) =>
+        prev.map((data) =>
+          data.userId === userId ? { ...data, status } : data
+        )
+      );
+    };
+  
+    const handleSave = () => {
+      onSave(attendanceData);
+    };
+  
+    return (
+      <div className="attendance-modal-overlay">
+        <div className="attendance-modal-content">
+          <h3>Manage Attendance for Day {dayIndex + 1}</h3>
+          <table className="attendance-modal-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {attendanceData.map((attendee) => (
+                <tr key={attendee.userId}>
+                  <td>{attendee.name}</td>
+                  <td>{attendee.role}</td>
+                  <td>
+                    <select
+                      value={attendee.status}
+                      onChange={(e) =>
+                        handleStatusChange(attendee.userId, e.target.value)
+                      }
+                    >
+                      <option value="Present">Present</option>
+                      <option value="Late">Late</option>
+                      <option value="Absent">Absent</option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="attendance-modal-actions">
+            <button onClick={onClose}>Cancel</button>
+            <button onClick={handleSave}>Save</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
+  const handleOpenAttendanceModal = (dayIndex: number) => {
+  setModalDayIndex(dayIndex);
+  setShowAttendanceModal(true);
+};
+
+const handleSaveAttendance = async (
+  updatedAttendance: { userId: string; status: string }[]
+) => {
+  if (!organizationName || !eventId || modalDayIndex === null) return;
+
+  const attendanceRef = collection(
+    firestore,
+    "events",
+    organizationName,
+    "event",
+    eventId,
+    "attendance"
+  );
+
+  const existingDayAttendance = attendance.find(
+    (a) => a.dayIndex === modalDayIndex
+  );
+
+  try {
+    if (existingDayAttendance) {
+      const attendanceDocRef = doc(attendanceRef, existingDayAttendance.id);
+      await updateDoc(attendanceDocRef, {
+        attendees: updatedAttendance,
+      });
+    } else {
+      await addDoc(attendanceRef, {
+        dayIndex: modalDayIndex,
+        attendees: updatedAttendance,
+      });
+    }
+    console.log("Attendance saved successfully");
+  } catch (error) {
+    console.error("Error saving attendance:", error);
+  }
+};
+
   const getSidebarComponent = () => {
     switch (userRole) {
       case "president":
@@ -118,6 +315,160 @@ const EventsView: React.FC = () => {
     }
   };
 
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+  
+    if (!newMessage.trim() || !currentUser || !organizationName || !eventId || !organizationData) return;
+  
+    try {
+      // Get user details from organization data
+      const userDetails = getUserDetailsFromOrg(currentUser.uid, organizationData);
+  
+      if (!userDetails) {
+        console.error("User details not found in the organization.");
+        return;
+      }
+  
+      // Save the message to Firestore
+      const messagesRef = collection(
+        firestore,
+        `events/${organizationName}/event/${eventId}/forum`
+      );
+  
+      const newMessageData = {
+        text: newMessage,
+        userId: currentUser.uid,
+        userName: userDetails.name,
+        userProfilePic: userDetails.profilePicUrl || "",
+        timestamp: new Date().toISOString(),
+      };
+  
+      await addDoc(messagesRef, newMessageData);
+      setNewMessage(""); // Clear the input field
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
+  };
+    // Fetch RSVP and Attendance
+    useEffect(() => {
+      if (!organizationName || !eventName) {
+        setRsvps([]);
+        setAttendance([]);
+        return;
+      }
+    
+      const rsvpRef = collection(firestore, "events", organizationName, "event", eventName, "rsvps");
+      const attendanceRef = collection(firestore, "events", organizationName, "event", eventName, "attendance");
+    
+      const unsubscribeRSVP = onSnapshot(rsvpRef, (snapshot) => {
+        setRsvps(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      });
+    
+      const unsubscribeAttendance = onSnapshot(attendanceRef, (snapshot) => {
+        const fetchedAttendance = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            dayIndex: data.dayIndex || 0, // Provide a default value or ensure dayIndex exists
+            attendees: data.attendees || [], // Default to an empty array if attendees is undefined
+          } as Attendance;
+        });
+        setAttendance(fetchedAttendance);
+      });
+      
+    
+      return () => {
+        unsubscribeRSVP();
+        unsubscribeAttendance();
+      };
+    }, [organizationName, eventName]);
+  
+    // Handle RSVP
+    const handleRSVP = async (responses: { dayIndex: number; status: string }[]) => {
+      if (!editable || !currentUser) {
+        console.error("RSVP not editable or user not authenticated");
+        return;
+      }
+    
+      if (!organizationName || !eventId) {
+        console.error("Organization name or event ID is undefined");
+        return;
+      }
+    
+      try {
+        const rsvpRef = collection(firestore, "events", organizationName, "event", eventId, "rsvps");
+    
+        // Get user details from organization data
+        const userDetails = getUserDetailsFromOrg(currentUser.uid, organizationData);
+    
+        if (!userDetails) {
+          console.error("User details not found in the organization");
+          return;
+        }
+    
+        const userRSVP = rsvps.find((rsvp) => rsvp.userId === currentUser.uid);
+        if (userRSVP) {
+          // Update existing RSVP
+          const rsvpDocRef = doc(rsvpRef, userRSVP.id);
+          await updateDoc(rsvpDocRef, { responses });
+          console.log("RSVP updated successfully");
+        } else {
+          // Add new RSVP
+          await addDoc(rsvpRef, {
+            userId: currentUser.uid,
+            name: userDetails.name || "Unknown User",
+            responses,
+          });
+          console.log("RSVP added successfully");
+        }
+      } catch (error) {
+        console.error("Error saving RSVP:", error);
+      }
+    };
+    
+
+    const handleAttendance = async (dayIndex: number, userId: string) => {
+      if (!currentUser || (userRole !== "officer" && userRole !== "president")) {
+        console.error("User not authorized to handle attendance");
+        return;
+      }
+    
+      if (!organizationName || !eventId) {
+        console.error("Organization name or event ID is undefined");
+        return;
+      }
+    
+      try {
+        const attendanceRef = collection(firestore, "events", organizationName, "event", eventId, "attendance");
+    
+        const dayAttendance = attendance.find((a) => a.dayIndex === dayIndex) || null;
+    
+        if (dayAttendance) {
+          const attendanceDocRef = doc(attendanceRef, dayAttendance.id);
+          if (!dayAttendance.attendees.includes(userId)) {
+            await updateDoc(attendanceDocRef, {
+              attendees: [...dayAttendance.attendees, userId],
+            });
+            console.log("Attendance updated successfully");
+          } else {
+            console.log("User already marked present");
+          }
+        } else {
+          await addDoc(attendanceRef, {
+            dayIndex,
+            attendees: [userId],
+          });
+          console.log("Attendance added successfully");
+        }
+      } catch (error) {
+        console.error("Error handling attendance:", error);
+      }
+    };
+    
+    
+    
+    
+    
   
   const formatEventDates = (dates: EventDate[]): JSX.Element => {
     if (dates.length === 1) {
@@ -223,10 +574,74 @@ const EventsView: React.FC = () => {
           <h1 className="headtitle">
             {eventDetails.title}
           </h1>
-          <button className="create-new-btn" >
-             Edit
-            </button>
+         <button
+  className="create-new-btn"
+ 
+>
+  Edit
+</button>
+
+
        </div>
+        {/* RSVP Section */}
+        <h3>RSVP</h3>
+              {eventDetails?.eventDates.map((date, idx) => (
+                <div key={idx}>
+                  <p>Day {idx + 1}: {new Date(date.startDate).toDateString()}</p>
+                  {editable ? (
+                    <select onChange={(e) => handleRSVP([{ dayIndex: idx, status: e.target.value }])}>
+                      <option value="Attending">Attending</option>
+                      <option value="Maybe">Maybe</option>
+                      <option value="Not Attending">Not Attending</option>
+                    </select>
+                  ) : (
+                    <p>RSVP is closed.</p>
+                  )}
+                </div>
+              ))}
+
+              {/* Attendance Section */}
+              <h3>Attendance</h3>
+{eventDetails?.eventDates.map((date, idx) => (
+  <div key={idx}>
+    <p>Day {idx + 1}: {new Date(date.startDate).toDateString()}</p>
+    {new Date() > new Date(date.endDate) ? (
+      <button onClick={() => handleOpenAttendanceModal(idx)}>
+        Manage Attendance
+      </button>
+    ) : (
+      <p>Attendance available after this day ends.</p>
+    )}
+  </div>
+))}
+
+{showAttendanceModal && modalDayIndex !== null && (
+  <AttendanceModal
+    attendees={[
+      {
+        id: organizationData?.president?.id || "",
+        name: organizationData?.president?.name || "President",
+        role: "President",
+      },
+      ...(organizationData?.officers || []).map((officer: any) => ({
+        id: officer.id,
+        name: officer.name,
+        role: "Officer",
+      })),
+      ...(organizationData?.members || []).map((member: any) => ({
+        id: member.id,
+        name: member.name,
+        role: "Member",
+      })),
+    ]}
+    dayIndex={modalDayIndex}
+    onClose={() => setShowAttendanceModal(false)}
+    onSave={handleSaveAttendance}
+  />
+)}
+
+
+
           {/* Event Picture */}
           <div className="event-picture-section">
             <img
@@ -280,6 +695,52 @@ const EventsView: React.FC = () => {
 
             </div>
           </div>
+ {/* Event Forum Section */}
+<div className="event-forum">
+  <h3>Event Forum</h3>
+  <div className="forum-messages">
+    {messages.map((message) => (
+      <div
+        key={message.id}
+        className={`forum-message ${
+          message.userId === currentUser?.uid ? "message-right" : "message-left"
+        }`}
+      >
+        <img
+          src={message.userProfilePic || "https://via.placeholder.com/50"}
+          alt={message.userName}
+          className="profile-picko"
+        />
+        <div className="message-content">
+          <p className="message-author">{message.userName}</p>
+          <p className="message-text">{message.text}</p>
+          <p className="message-time">
+            {new Date(message.timestamp).toLocaleString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              hour: "numeric",
+              minute: "numeric",
+              hour12: true,
+            })}
+          </p>
+        </div>
+      </div>
+    ))}
+  </div>
+  <form onSubmit={handleSendMessage} className="forum-input">
+    <input
+      type="text"
+      value={newMessage}
+      onChange={(e) => setNewMessage(e.target.value)}
+      placeholder="Write a message..."
+      required
+    />
+    <button type="submit">Send</button>
+  </form>
+</div>
+
+
         </div>
       </div>
     </div>
