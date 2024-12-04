@@ -52,6 +52,14 @@ interface Submission {
   fileAttachments?: string[]; // Array of file URLs for attachments
   date: string;
 }
+interface Event {
+  id: string;
+  title?: string; // Make title optional if it might be missing
+  startDate?: string;
+  endDate?: string;
+  [key: string]: any; // Allow other fields
+}
+
 
 const TaskManagement: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -98,6 +106,8 @@ const [comments, setComments] = useState<{ text: string; user: any; timestamp: n
 const [commentText, setCommentText] = useState("");
 const now = new Date();
 const formattedNow = now.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
+const [availableEvents, setAvailableEvents] = useState<Event[]>([]);
+const [newTaskEvent, setNewTaskEvent] = useState("General Task");
 
 
 
@@ -114,6 +124,25 @@ useEffect(() => {
   return () => unsubscribe(); // Cleanup on unmount
 }, []);
 
+useEffect(() => {
+  const fetchEvents = async () => {
+    if (!organizationName) return;
+
+    try {
+      const eventCollectionRef = collection(firestore, `events/${organizationName}/event`);
+      const querySnapshot = await getDocs(eventCollectionRef);
+      const events: Event[] = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setAvailableEvents(events);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    }
+  };
+
+  fetchEvents();
+}, [organizationName]);
 
 useEffect(() => {
   const fetchData = async () => {
@@ -230,7 +259,7 @@ const openEditModal = (task: Task) => {
 
   setNewTaskStartDate(task.startDate);
   setNewTaskDueDate(task.dueDate);
-
+  setNewTaskEvent(task.event || "General Task");
   setIsEditModalOpen(true);
 };
 
@@ -578,7 +607,7 @@ const handleMemberSelect = (memberId: string) => {
               if (taskStatus === "Extended-Overdue" && new Date(data.dueDate) < now) {
                 taskStatus = "Overdue"; // Update status to "Overdue" if the due date has passed
               } else if (taskStatus !== "Completed" && new Date(data.dueDate) < now) {
-                taskStatus = "Overdue"; // General case for overdue tasks
+                taskStatus = "Overdue"; 
               }
   
               return {
@@ -729,7 +758,7 @@ useEffect(() => {
         assignedCommittees: selectedCommittees,
         startDate: newTaskStartDate,
         dueDate: newTaskDueDate,
-        event: "General Task",
+        event: newTaskEvent,
         taskStatus: "Started",
         givenBy,
         attachments: attachmentURLs,
@@ -785,24 +814,19 @@ useEffect(() => {
     </button>
           </div>
           <div className="tksks-filters">
-    <select
-              value={filterByEvent}
-              onChange={(e) => setFilterByEvent(e.target.value)}
-              className="tksks-event-dropdown"
-            >
-    <option value="All">All Events</option>
-   
-
-    {tasks
-      .map((task) => task.event)
-      .filter((event, index, self) => event && self.indexOf(event) === index) // Unique events
-      .map((event) => (
-        <option key={event} value={event}>
-          {event}
-        </option>
-      ))}
-  </select>
-
+          <select
+  value={filterByEvent}
+  onChange={(e) => setFilterByEvent(e.target.value)}
+  className="tksks-event-dropdown"
+>
+  <option value="All">All Events</option>
+  <option value="General Task">General Task</option>
+  {availableEvents.map((event) => (
+    <option key={event.id} value={event.id}>
+      {event.title}
+    </option>
+  ))}
+</select>
   <select
     value={filterByStatus}
     onChange={(e) => setFilterByStatus(e.target.value)}
@@ -970,7 +994,28 @@ useEffect(() => {
           </div>
 
           {/* Right Column */}
+
+          
           <div className="altask-right-column">
+
+
+          <label className="altask-label">Event</label>
+          <select
+  value={newTaskEvent}
+  onChange={(e) => setNewTaskEvent(e.target.value)}
+  required
+  className="altask-event-dropdown"
+>
+  <option value="General Task">General Task</option>
+  {availableEvents.map((event) => (
+    <option key={event.id} value={event.id}>
+      {event.title}
+    </option>
+  ))}
+</select>
+
+
+
           <label className="altask-label">Start Date & Time</label>
   <div className="altask-date-time-input">
 
@@ -995,6 +1040,15 @@ useEffect(() => {
     placeholder={formattedNow}
   />
 </div>
+
+
+
+
+
+
+
+
+
 
             <label className="altask-label">Assign to:</label>
             <div className="altask-assign-to-section">
@@ -1106,7 +1160,13 @@ useEffect(() => {
       <h3>Task Details</h3>
       <div className="task-details-info">
         <div className="task-details-row">
-          <p><strong>Event:</strong> {taskToView.event || 'General Task'}</p>
+        <p><strong>Event:</strong> {
+  (() => {
+    const event = availableEvents.find(ev => ev.id === taskToView.event);
+    return event ? event.title : 'General Task';
+  })()
+}</p>
+
         </div>
         <div className="task-details-row">
           <p><strong>Title:</strong> {taskToView.title}</p>
@@ -1134,6 +1194,7 @@ useEffect(() => {
           </div>
         </div>
         <div className="task-details-row">
+          
           <p><strong>Start Date:</strong> 
             {new Date(taskToView.startDate).toLocaleDateString('en-US', {
               year: 'numeric',
@@ -1293,6 +1354,22 @@ useEffect(() => {
 
           {/* Right Column */}
           <div className="altask-right-column">
+          <label className="altask-label">Event</label>
+            <select
+              value={newTaskEvent || taskToEdit.event || "General Task"}
+              onChange={(e) => setNewTaskEvent(e.target.value)}
+              className="altask-event-dropdown"
+              required
+            >
+              <option value="General Task">General Task</option>
+              {availableEvents.map((event) => (
+                <option key={event.id} value={event.id}>
+                  {event.title}
+                </option>
+              ))}
+            </select>
+
+
           <label className="altask-label">Start Date & Time</label>
           <div className="altask-date-time-input">
 
@@ -1695,7 +1772,14 @@ submissionsTask.submissions.length > 0 ? (
               onChange={() => handleCheckboxChange(task.id)}
             />
           </td>
-          <td>{task.event || "General Task"}</td>
+          <td>
+        {
+          (() => {
+            const event = availableEvents.find((ev) => ev.id === task.event);
+            return event ? event.title : "General Task";
+          })()
+        }
+      </td>
           <td>
             <strong>{task.title}</strong>
             <p>{task.description}</p>
