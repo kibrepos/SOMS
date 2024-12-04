@@ -1,86 +1,172 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { collection, query, where, getDocs,doc,getDoc,onSnapshot,addDoc,updateDoc  } from "firebase/firestore";
+import React, { useEffect, useState, useRef } from "react";
+import { useParams } from "react-router-dom";
+import {  collection, query, where, getDocs, doc, getDoc, onSnapshot, addDoc, updateDoc, setDoc} from "firebase/firestore";
 import { firestore, auth } from "../../services/firebaseConfig";
 import Header from "../../components/Header";
 import StudentPresidentSidebar from "./StudentPresidentSidebar";
 import StudentOfficerSidebar from "./StudentOfficerSidebar";
 import StudentMemberSidebar from "./StudentMemberSidebar";
 import "../../styles/EventView.css";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCheck,faClock, faTimes  } from '@fortawesome/free-solid-svg-icons';
 
 interface Event {
-    title: string;
-    description: string;
-    eventDates: { startDate: string; endDate: string }[];
-    imageUrl: string;
-    eventHead: string;
-    venue: string;
-    createdAt: any;
-  }
-  type EventDate = {
-    startDate: string; // ISO string format
-    endDate: string; // ISO string format
-  };
-  interface Officer {
-    id: string;
-    name: string;
-    profilePicUrl: string;
-    email?: string;
-    role?: string;
-  }
-  interface Message {
-    id: string;
-    text: string;
-    userId: string;
-    userName: string;
-    userProfilePic: string;
-    timestamp: string | Date; // Adjust type based on your timestamp
-  }
-  interface Attendance {
-    dayIndex: number;
-    attendees: string[];
-    id?: string; // Assuming each attendance record has a Firestore document ID
-  }
-  
+  title: string;
+  description: string;
+  eventDates: { startDate: string; endDate: string }[];
+  imageUrl: string;
+  eventHead: string;
+  venue: string;
+  createdAt: any;
+}
+
+type EventDate = {
+  startDate: string;
+  endDate: string;
+};
+
+interface Officer {
+  id: string;
+  name: string;
+  profilePicUrl: string;
+  email?: string;
+  role?: string;
+}
+
+interface Message {
+  id: string;
+  text: string;
+  userId: string;
+  userName: string;
+  userProfilePic: string;
+  timestamp: string | Date;
+}
+
+interface Attendance {
+  dayIndex: number;
+  attendees: { userId: string; status: string }[]; // Update here
+  id?: string; // Firestore document ID
+}
+interface Response {
+  dayIndex: number;
+  status: string;
+}
+
+interface RSVP {
+  id: string; // Add this line to include the Firestore document ID
+  userId: string;
+  responses: Response[];
+}
+
 
 const EventsView: React.FC = () => {
-  const { organizationName, eventName } = useParams<{ organizationName: string; eventName: string }>();
+  const { organizationName, eventName } = useParams<{
+    organizationName: string;
+    eventName: string;
+  }>();
   const [eventDetails, setEventDetails] = useState<Event | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [organizationData, setOrganizationData] = useState<any>(null);
   const [eventId, setEventId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-const [newMessage, setNewMessage] = useState("");
-const [currentUser, setCurrentUser] = useState(auth.currentUser);
-const [rsvps, setRsvps] = useState<any[]>([]);
-const [attendance, setAttendance] = useState<Attendance[]>([]);
-const [editable, setEditable] = useState<boolean>(true);
-const userRSVP = rsvps.find((rsvp) => rsvp.userId === currentUser?.uid) || null;
-const getDayAttendance = (index: number) => 
-  attendance.find((a) => a.dayIndex === index) || null;
+  const [newMessage, setNewMessage] = useState("");
+  const [currentUser, setCurrentUser] = useState(auth.currentUser);
+  const [rsvps, setRsvps] = useState<RSVP[]>([]);
+  const [attendance, setAttendance] = useState<Attendance[]>([]);
+  const [editable, setEditable] = useState<boolean>(true);
+  const [dickeditable, dickEditable] = useState<boolean>(true);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+  const [modalDayIndex, setModalDayIndex] = useState<number | null>(null);
+  const [showRSVPModal, setShowRSVPModal] = useState(false);
+  const [responses, setResponses] = useState<{ dayIndex: number; status: string }[]>([]);
+  const [showRSVPResponsesModal, setShowRSVPResponsesModal] = useState(false); // Controls visibility of the modal
+  
 
-const [showAttendanceModal, setShowAttendanceModal] = useState(false);
-const [modalDayIndex, setModalDayIndex] = useState<number | null>(null);
 
 
-const getUserDetailsFromOrg = (userId: string, organizationData: any) => {
-  // Check in president
-  if (organizationData.president?.id === userId) {
-    return organizationData.president;
-  }
+  const handleOpenRSVPModal = () => {
+    const userRSVP = rsvps.find((rsvp) => rsvp.userId === currentUser?.uid);
+    const initialResponses = eventDetails?.eventDates.map((_, idx) => ({
+      dayIndex: idx,
+      status: userRSVP?.responses.find((r) => r.dayIndex === idx)?.status || "No response",
+    }));
+    setResponses(initialResponses || []);
+    setShowRSVPModal(true);
+  };
+  
+  
+  const getUserDetailsFromOrg = (userId: string, organizationData: any) => {
+    if (organizationData.president?.id === userId) {
+      return organizationData.president;
+    }
 
-  // Check in officers
-  const officer = organizationData.officers?.find((officer: any) => officer.id === userId);
-  if (officer) return officer;
+    const officer = organizationData.officers?.find(
+      (officer: any) => officer.id === userId
+    );
+    if (officer) return officer;
 
-  // Check in members
-  const member = organizationData.members?.find((member: any) => member.id === userId);
-  if (member) return member;
+    const member = organizationData.members?.find(
+      (member: any) => member.id === userId
+    );
+    if (member) return member;
 
-  return null;
-};
+    return null;
+  };
 
+  useEffect(() => {
+    if (!organizationName || !eventId) return;
+  
+    const attendanceRef = collection(
+      firestore,
+      "events",
+      organizationName,
+      "event",
+      eventId,
+      "attendance"
+    );
+  
+    const unsubscribe = onSnapshot(attendanceRef, (snapshot) => {
+      const fetchedAttendance: Attendance[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Attendance[];
+  
+      setAttendance(fetchedAttendance);
+    });
+  
+    return () => unsubscribe();
+  }, [organizationName, eventId]);
+  
+  
+  useEffect(() => {
+    if (!organizationName || !eventId) return;
+  
+    const rsvpsRef = collection(
+      firestore,
+      "events",
+      organizationName,
+      "event",
+      eventId,
+      "rsvps"
+    );
+  
+    const unsubscribe = onSnapshot(rsvpsRef, (snapshot) => {
+      const fetchedRSVPs: RSVP[] = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          userId: data.userId || "", // Ensure a fallback if the field is missing
+          responses: data.responses || [], // Ensure a fallback for responses
+        };
+      });
+      setRsvps(fetchedRSVPs); // Update state with properly typed RSVP objects
+    });
+  
+    return () => unsubscribe();
+  }, [organizationName, eventId]);
+  
   useEffect(() => {
     const fetchEventDetails = async () => {
       try {
@@ -89,20 +175,24 @@ const getUserDetailsFromOrg = (userId: string, organizationData: any) => {
           setLoading(false);
           return;
         }
-  
-        console.log("Fetching event details for:", organizationName, eventName);
-  
-        // Query the events subcollection for the document with the matching title
-        const eventsRef = collection(firestore, "events", decodeURIComponent(organizationName), "event");
-        const q = query(eventsRef, where("title", "==", decodeURIComponent(eventName)));
-  
+
+        const eventsRef = collection(
+          firestore,
+          "events",
+          decodeURIComponent(organizationName),
+          "event"
+        );
+        const q = query(
+          eventsRef,
+          where("title", "==", decodeURIComponent(eventName))
+        );
+
         const querySnapshot = await getDocs(q);
-  
+
         if (!querySnapshot.empty) {
-          const eventDoc = querySnapshot.docs[0]; // Assuming titles are unique
+          const eventDoc = querySnapshot.docs[0];
           setEventDetails(eventDoc.data() as Event);
-          setEventId(eventDoc.id); 
-          console.log("Event found:", eventDoc.data());
+          setEventId(eventDoc.id);
         } else {
           console.error("Event not found with title:", eventName);
         }
@@ -112,28 +202,37 @@ const getUserDetailsFromOrg = (userId: string, organizationData: any) => {
         setLoading(false);
       }
     };
-  
+
     fetchEventDetails();
   }, [organizationName, eventName]);
-
 
   useEffect(() => {
     if (eventDetails) {
       const currentDate = new Date();
-      const eventStartDates = eventDetails.eventDates.map((d) => new Date(d.startDate));
+      const eventStartDates = eventDetails.eventDates.map(
+        (d) => new Date(d.startDate)
+      );
       setEditable(eventStartDates.some((d) => currentDate < d));
+      dickEditable(eventStartDates.some((d) => currentDate < d));
     }
   }, [eventDetails]);
-  
-  
 
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [newMessage]);
 
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
         const user = auth.currentUser;
         if (user && organizationName) {
-          const orgDocRef = doc(firestore, "organizations", decodeURIComponent(organizationName));
+          const orgDocRef = doc(
+            firestore,
+            "organizations",
+            decodeURIComponent(organizationName)
+          );
           const orgDoc = await getDoc(orgDocRef);
 
           if (orgDoc.exists()) {
@@ -142,9 +241,13 @@ const getUserDetailsFromOrg = (userId: string, organizationData: any) => {
 
             if (orgData.president?.id === user.uid) {
               setUserRole("president");
-            } else if (orgData.officers?.some((officer: any) => officer.id === user.uid)) {
+            } else if (
+              orgData.officers?.some((officer: any) => officer.id === user.uid)
+            ) {
               setUserRole("officer");
-            } else if (orgData.members?.some((member: any) => member.id === user.uid)) {
+            } else if (
+              orgData.members?.some((member: any) => member.id === user.uid)
+            ) {
               setUserRole("member");
             } else {
               setUserRole(null);
@@ -163,12 +266,12 @@ const getUserDetailsFromOrg = (userId: string, organizationData: any) => {
 
   useEffect(() => {
     if (!organizationName || !eventId) return;
-  
+
     const messagesRef = collection(
       firestore,
       `events/${organizationName}/event/${eventId}/forum`
     );
-  
+
     const unsubscribe = onSnapshot(messagesRef, (snapshot) => {
       const fetchedMessages = snapshot.docs.map((doc) => {
         const data = doc.data();
@@ -188,119 +291,272 @@ const getUserDetailsFromOrg = (userId: string, organizationData: any) => {
         )
       );
     });
-  
-    return () => unsubscribe(); // Cleanup on component unmount
+
+    return () => unsubscribe();
   }, [organizationName, eventId]);
-  
-  const AttendanceModal: React.FC<{ 
-    attendees: { id: string; name: string; role: string }[]; 
-    dayIndex: number; 
-    onClose: () => void; 
-    onSave: (updatedAttendance: { userId: string; status: string }[]) => void; 
-  }> = ({ attendees, dayIndex, onClose, onSave }) => {
-    const [attendanceData, setAttendanceData] = useState(
-      attendees.map((attendee) => ({
-        userId: attendee.id,
-        name: attendee.name,
-        role: attendee.role,
-        status: "Present", // Default status
-      }))
-    );
-  
-    const handleStatusChange = (userId: string, status: string) => {
+
+
+const AttendanceModal: React.FC<{
+  attendees: { id: string; name: string; role: string; status?: string }[];
+  dayIndex: number;
+  onClose: () => void;
+  onSave: (updatedAttendance: { userId: string; status: string }[]) => void;
+  editable: boolean;
+}> = ({ attendees, dayIndex, onClose, onSave, editable }) => {
+  const [attendanceData, setAttendanceData] = useState(attendees);
+
+  const handleStatusChange = (userId: string, status: string) => {
+    if (editable) {
       setAttendanceData((prev) =>
         prev.map((data) =>
-          data.userId === userId ? { ...data, status } : data
+          data.id === userId ? { ...data, status } : data
         )
       );
-    };
-  
-    const handleSave = () => {
-      onSave(attendanceData);
-    };
-  
-    return (
-      <div className="attendance-modal-overlay">
-        <div className="attendance-modal-content">
-          <h3>Manage Attendance for Day {dayIndex + 1}</h3>
-          <table className="attendance-modal-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Role</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {attendanceData.map((attendee) => (
-                <tr key={attendee.userId}>
-                  <td>{attendee.name}</td>
-                  <td>{attendee.role}</td>
-                  <td>
-                    <select
-                      value={attendee.status}
-                      onChange={(e) =>
-                        handleStatusChange(attendee.userId, e.target.value)
-                      }
+    }
+  };
+
+  const handleSave = () => {
+    if (editable) {
+      onSave(
+        attendanceData.map((attendee) => ({
+          userId: attendee.id,
+          status: attendee.status || "Absent", // Default to "Absent" if status is undefined
+        }))
+      );
+    }
+  };
+
+  return (
+    <div className="attendance-modal-overlay">
+      <div className="attendance-modal-content">
+        <h3>Manage Attendance for Day {dayIndex + 1}</h3>
+        <table className="attendance-modal-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {attendanceData.map((attendee) => (
+              <tr key={attendee.id}>
+                <td>{attendee.name}</td>
+                <td>{attendee.role}</td>
+                <td>
+                  <div className="status-buttons">
+                    <button
+                      className={`status-button present ${attendee.status === "Present" ? "active" : ""}`}
+                      onClick={() => handleStatusChange(attendee.id, "Present")}
+                      disabled={!editable}
                     >
-                      <option value="Present">Present</option>
-                      <option value="Late">Late</option>
-                      <option value="Absent">Absent</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="attendance-modal-actions">
-            <button onClick={onClose}>Cancel</button>
-            <button onClick={handleSave}>Save</button>
-          </div>
+                     <FontAwesomeIcon icon={faCheck} className="custom-icon" 
+                     />
+
+                    </button>
+                    <button
+                      className={`status-button absent ${attendee.status === "Absent" ? "active" : ""}`}
+                      onClick={() => handleStatusChange(attendee.id, "Absent")}
+                      disabled={!editable}
+                    >
+                      <FontAwesomeIcon icon={faTimes} className="custom-icon" />
+                    </button>
+                    <button
+                      className={`status-button late ${attendee.status === "Late" ? "active" : ""}`}
+                      onClick={() => handleStatusChange(attendee.id, "Late")}
+                      disabled={!editable}
+                    >
+                      <FontAwesomeIcon icon={faClock} className="custom-icon" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="attendance-modal-actions">
+          <button onClick={onClose}>Cancel</button>
+          <button onClick={handleSave} disabled={!editable}>
+            {editable ? "Save" : "Locked"}
+          </button>
         </div>
       </div>
+    </div>
+  );
+};
+
+  
+  
+  
+  const handleOpenAttendanceModal = (dayIndex: number) => {
+    const isEditable =
+      currentUser?.uid === organizationData?.president?.id ||
+      currentUser?.uid ===
+        organizationData?.officers?.find(
+          (officer: any) => officer.id === eventDetails?.eventHead
+        )?.id;
+  
+    // Find attendance data for the selected day
+    const dayAttendance = attendance.find((a) => a.dayIndex === dayIndex);
+  
+    const attendees = organizationData
+      ? [
+          {
+            id: organizationData.president.id,
+            name: organizationData.president.name,
+            role: "President",
+            status: dayAttendance?.attendees.find(
+              (attendee) => attendee.userId === organizationData.president.id
+            )?.status || "Absent",
+          },
+          ...organizationData.officers.map((officer: any) => ({
+            id: officer.id,
+            name: officer.name,
+            role: "Officer",
+            status: dayAttendance?.attendees.find(
+              (attendee) => attendee.userId === officer.id
+            )?.status || "Absent",
+          })),
+          ...organizationData.members.map((member: any) => ({
+            id: member.id,
+            name: member.name,
+            role: "Member",
+            status: dayAttendance?.attendees.find(
+              (attendee) => attendee.userId === member.id
+            )?.status || "Absent",
+          })),
+        ]
+      : [];
+  
+    setEditable(isEditable);
+    setModalDayIndex(dayIndex);
+    setShowAttendanceModal(true);
+    setAttendance((prev) =>
+      prev.map((a) =>
+        a.dayIndex === dayIndex
+          ? { ...a, attendees }
+          : a
+      )
     );
   };
   
-  const handleOpenAttendanceModal = (dayIndex: number) => {
-  setModalDayIndex(dayIndex);
-  setShowAttendanceModal(true);
-};
 
-const handleSaveAttendance = async (
-  updatedAttendance: { userId: string; status: string }[]
-) => {
-  if (!organizationName || !eventId || modalDayIndex === null) return;
 
-  const attendanceRef = collection(
-    firestore,
-    "events",
-    organizationName,
-    "event",
-    eventId,
-    "attendance"
-  );
 
-  const existingDayAttendance = attendance.find(
-    (a) => a.dayIndex === modalDayIndex
-  );
+  
 
-  try {
-    if (existingDayAttendance) {
-      const attendanceDocRef = doc(attendanceRef, existingDayAttendance.id);
-      await updateDoc(attendanceDocRef, {
-        attendees: updatedAttendance,
-      });
-    } else {
-      await addDoc(attendanceRef, {
-        dayIndex: modalDayIndex,
-        attendees: updatedAttendance,
-      });
+  const handleRSVP = async () => {
+    if (!editable || !currentUser || !organizationName || !eventId) {
+      console.error("RSVP not editable, user not authenticated, or invalid data");
+      return;
     }
-    console.log("Attendance saved successfully");
-  } catch (error) {
-    console.error("Error saving attendance:", error);
-  }
-};
+  
+    try {
+      const rsvpDocRef = doc(
+        firestore,
+        "events",
+        organizationName,
+        "event",
+        eventId,
+        "rsvps",
+        currentUser.uid // Use userId as the document ID
+      );
+  
+      // Save or overwrite the RSVP
+      await updateDoc(rsvpDocRef, { responses }).catch(async (err) => {
+        if (err.code === "not-found") {
+          await setDoc(rsvpDocRef, {
+            userId: currentUser.uid,
+            responses,
+          });
+        }
+      });
+  
+      console.log("RSVP saved successfully");
+      setShowRSVPModal(false);
+    } catch (error) {
+      console.error("Error saving RSVP:", error);
+    }
+  };
+  const handleSaveAttendance = async (
+    updatedAttendance: { userId: string; status: string }[]
+  ) => {
+    if (!organizationName || !eventId || modalDayIndex === null) {
+      console.error("Missing organizationName, eventId, or modalDayIndex.");
+      return;
+    }
+  
+    try {
+      const attendanceRef = doc(
+        firestore,
+        "events",
+        organizationName,
+        "event",
+        eventId,
+        "attendance",
+        `day-${modalDayIndex}` // Use dayIndex as the document ID
+      );
+  
+      // Update Firestore with the new attendance data
+      await setDoc(attendanceRef, {
+        dayIndex: modalDayIndex,
+        attendees: updatedAttendance.map((user) => ({
+          ...user,
+          status: user.status || "Absent", // Default to "Absent" if status is undefined
+        })),
+      });
+  
+      console.log("Attendance saved successfully for day:", modalDayIndex);
+  
+      // Fetch updated attendance data
+      const updatedAttendanceData = await fetchAttendanceData(modalDayIndex);
+  
+      // Update local state with new attendance data
+      setAttendance((prev) =>
+        prev.map((a) =>
+          a.dayIndex === modalDayIndex
+            ? { ...a, attendees: updatedAttendanceData?.attendees || [] }
+            : a
+        )
+      );
+    } catch (error) {
+      console.error("Error saving attendance to Firestore:", error);
+    }
+  };
+  
+
+  const fetchAttendanceData = async (dayIndex: number) => {
+    if (!organizationName || !eventId) return null;
+  
+    try {
+      const attendanceRef = collection(
+        firestore,
+        "events",
+        organizationName,
+        "event",
+        eventId,
+        "attendance"
+      );
+      const attendanceQuery = query(
+        attendanceRef,
+        where("dayIndex", "==", dayIndex)
+      );
+      const querySnapshot = await getDocs(attendanceQuery);
+  
+      if (!querySnapshot.empty) {
+        const attendanceDoc = querySnapshot.docs[0];
+        return { ...attendanceDoc.data(), id: attendanceDoc.id } as Attendance;
+      }
+    } catch (error) {
+      console.error("Error fetching attendance data:", error);
+    }
+  
+    return null;
+  };
+  
+  
+  
+  
 
   const getSidebarComponent = () => {
     switch (userRole) {
@@ -317,24 +573,29 @@ const handleSaveAttendance = async (
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-  
-    if (!newMessage.trim() || !currentUser || !organizationName || !eventId || !organizationData) return;
-  
+
+    if (
+      !newMessage.trim() ||
+      !currentUser ||
+      !organizationName ||
+      !eventId ||
+      !organizationData
+    )
+      return;
+
     try {
-      // Get user details from organization data
       const userDetails = getUserDetailsFromOrg(currentUser.uid, organizationData);
-  
+
       if (!userDetails) {
         console.error("User details not found in the organization.");
         return;
       }
-  
-      // Save the message to Firestore
+
       const messagesRef = collection(
         firestore,
         `events/${organizationName}/event/${eventId}/forum`
       );
-  
+
       const newMessageData = {
         text: newMessage,
         userId: currentUser.uid,
@@ -342,182 +603,71 @@ const handleSaveAttendance = async (
         userProfilePic: userDetails.profilePicUrl || "",
         timestamp: new Date().toISOString(),
       };
-  
+
       await addDoc(messagesRef, newMessageData);
-      setNewMessage(""); // Clear the input field
+      setNewMessage("");
     } catch (error) {
       console.error("Error sending message:", error);
     }
   };
-    // Fetch RSVP and Attendance
-    useEffect(() => {
-      if (!organizationName || !eventName) {
-        setRsvps([]);
-        setAttendance([]);
-        return;
-      }
-    
-      const rsvpRef = collection(firestore, "events", organizationName, "event", eventName, "rsvps");
-      const attendanceRef = collection(firestore, "events", organizationName, "event", eventName, "attendance");
-    
-      const unsubscribeRSVP = onSnapshot(rsvpRef, (snapshot) => {
-        setRsvps(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-      });
-    
-      const unsubscribeAttendance = onSnapshot(attendanceRef, (snapshot) => {
-        const fetchedAttendance = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            dayIndex: data.dayIndex || 0, // Provide a default value or ensure dayIndex exists
-            attendees: data.attendees || [], // Default to an empty array if attendees is undefined
-          } as Attendance;
-        });
-        setAttendance(fetchedAttendance);
-      });
-      
-    
-      return () => {
-        unsubscribeRSVP();
-        unsubscribeAttendance();
-      };
-    }, [organizationName, eventName]);
-  
-    // Handle RSVP
-    const handleRSVP = async (responses: { dayIndex: number; status: string }[]) => {
-      if (!editable || !currentUser) {
-        console.error("RSVP not editable or user not authenticated");
-        return;
-      }
-    
-      if (!organizationName || !eventId) {
-        console.error("Organization name or event ID is undefined");
-        return;
-      }
-    
-      try {
-        const rsvpRef = collection(firestore, "events", organizationName, "event", eventId, "rsvps");
-    
-        // Get user details from organization data
-        const userDetails = getUserDetailsFromOrg(currentUser.uid, organizationData);
-    
-        if (!userDetails) {
-          console.error("User details not found in the organization");
-          return;
-        }
-    
-        const userRSVP = rsvps.find((rsvp) => rsvp.userId === currentUser.uid);
-        if (userRSVP) {
-          // Update existing RSVP
-          const rsvpDocRef = doc(rsvpRef, userRSVP.id);
-          await updateDoc(rsvpDocRef, { responses });
-          console.log("RSVP updated successfully");
-        } else {
-          // Add new RSVP
-          await addDoc(rsvpRef, {
-            userId: currentUser.uid,
-            name: userDetails.name || "Unknown User",
-            responses,
-          });
-          console.log("RSVP added successfully");
-        }
-      } catch (error) {
-        console.error("Error saving RSVP:", error);
-      }
-    };
-    
 
-    const handleAttendance = async (dayIndex: number, userId: string) => {
-      if (!currentUser || (userRole !== "officer" && userRole !== "president")) {
-        console.error("User not authorized to handle attendance");
-        return;
-      }
-    
-      if (!organizationName || !eventId) {
-        console.error("Organization name or event ID is undefined");
-        return;
-      }
-    
-      try {
-        const attendanceRef = collection(firestore, "events", organizationName, "event", eventId, "attendance");
-    
-        const dayAttendance = attendance.find((a) => a.dayIndex === dayIndex) || null;
-    
-        if (dayAttendance) {
-          const attendanceDocRef = doc(attendanceRef, dayAttendance.id);
-          if (!dayAttendance.attendees.includes(userId)) {
-            await updateDoc(attendanceDocRef, {
-              attendees: [...dayAttendance.attendees, userId],
-            });
-            console.log("Attendance updated successfully");
-          } else {
-            console.log("User already marked present");
-          }
-        } else {
-          await addDoc(attendanceRef, {
-            dayIndex,
-            attendees: [userId],
-          });
-          console.log("Attendance added successfully");
-        }
-      } catch (error) {
-        console.error("Error handling attendance:", error);
-      }
-    };
-    
-    
-    
-    
-    
-  
   const formatEventDates = (dates: EventDate[]): JSX.Element => {
     if (dates.length === 1) {
-      // Single date range: no "Day 1"
       const startDate = new Date(dates[0].startDate);
       const endDate = new Date(dates[0].endDate);
-  
+
       if (startDate.toDateString() === endDate.toDateString()) {
-        // Same-day event
         return (
           <div>
             {startDate.toLocaleDateString(undefined, {
               year: "numeric",
               month: "long",
               day: "numeric",
+            })}
+            - {startDate.toLocaleTimeString(undefined, {
+              hour: "numeric",
+              minute: "numeric",
             })}{" "}
-            - {startDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })} to{" "}
-            {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
+            to{" "}
+            {endDate.toLocaleTimeString(undefined, {
+              hour: "numeric",
+              minute: "numeric",
+            })}
           </div>
         );
       } else {
-        // Event spans multiple days
         return (
           <div>
             {startDate.toLocaleDateString(undefined, {
               year: "numeric",
               month: "long",
               day: "numeric",
+            })}
+            - {startDate.toLocaleTimeString(undefined, {
+              hour: "numeric",
+              minute: "numeric",
             })}{" "}
-            - {startDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })} to{" "}
+            to{" "}
             {endDate.toLocaleDateString(undefined, {
               year: "numeric",
               month: "long",
               day: "numeric",
-            })}{" "}
-            - {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
+            })}
+            - {endDate.toLocaleTimeString(undefined, {
+              hour: "numeric",
+              minute: "numeric",
+            })}
           </div>
         );
       }
     } else {
-      // Multiple date ranges: include "Day X" with bold styling
       return (
         <>
-          {dates.map((date: EventDate, idx: number) => {
+          {dates.map((date, idx) => {
             const startDate = new Date(date.startDate);
             const endDate = new Date(date.endDate);
-  
+
             if (startDate.toDateString() === endDate.toDateString()) {
-              // Same-day event
               return (
                 <div key={idx}>
                   <strong>Day {idx + 1}:</strong>{" "}
@@ -525,13 +675,19 @@ const handleSaveAttendance = async (
                     year: "numeric",
                     month: "long",
                     day: "numeric",
+                  })}
+                  - {startDate.toLocaleTimeString(undefined, {
+                    hour: "numeric",
+                    minute: "numeric",
                   })}{" "}
-                  - {startDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}{" "}
-                  to {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
+                  to{" "}
+                  {endDate.toLocaleTimeString(undefined, {
+                    hour: "numeric",
+                    minute: "numeric",
+                  })}
                 </div>
               );
             } else {
-              // Event spans multiple days
               return (
                 <div key={idx}>
                   <strong>Day {idx + 1}:</strong>{" "}
@@ -539,14 +695,21 @@ const handleSaveAttendance = async (
                     year: "numeric",
                     month: "long",
                     day: "numeric",
+                  })}
+                  - {startDate.toLocaleTimeString(undefined, {
+                    hour: "numeric",
+                    minute: "numeric",
                   })}{" "}
-                  - {startDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}{" "}
-                  to {endDate.toLocaleDateString(undefined, {
+                  to{" "}
+                  {endDate.toLocaleDateString(undefined, {
                     year: "numeric",
                     month: "long",
                     day: "numeric",
-                  })}{" "}
-                  - {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
+                  })}
+                  - {endDate.toLocaleTimeString(undefined, {
+                    hour: "numeric",
+                    minute: "numeric",
+                  })}
                 </div>
               );
             }
@@ -555,94 +718,22 @@ const handleSaveAttendance = async (
       );
     }
   };
-  
-  
-  
+
   if (loading) return <p>Loading event details...</p>;
-  
-  if (!eventDetails) return <p>Event not found in the database. Please check the event name.</p>;
-  
+
+  if (!eventDetails)
+    return <p>Event not found in the database. Please check the event name.</p>;
+
   return (
     <div className="event-view-wrapper">
       <Header />
       <div className="dashboard-container">
-        <div className="sidebar-section">
-        {getSidebarComponent()}     
-        </div>
+        <div className="sidebar-section">{getSidebarComponent()}</div>
         <div className="main-content">
-        <div className="header-container">
-          <h1 className="headtitle">
-            {eventDetails.title}
-          </h1>
-         <button
-  className="create-new-btn"
- 
->
-  Edit
-</button>
+          <div className="header-container">
+            <h1 className="headtitle">{eventDetails.title}</h1>
+          </div>
 
-
-       </div>
-        {/* RSVP Section */}
-        <h3>RSVP</h3>
-              {eventDetails?.eventDates.map((date, idx) => (
-                <div key={idx}>
-                  <p>Day {idx + 1}: {new Date(date.startDate).toDateString()}</p>
-                  {editable ? (
-                    <select onChange={(e) => handleRSVP([{ dayIndex: idx, status: e.target.value }])}>
-                      <option value="Attending">Attending</option>
-                      <option value="Maybe">Maybe</option>
-                      <option value="Not Attending">Not Attending</option>
-                    </select>
-                  ) : (
-                    <p>RSVP is closed.</p>
-                  )}
-                </div>
-              ))}
-
-              {/* Attendance Section */}
-              <h3>Attendance</h3>
-{eventDetails?.eventDates.map((date, idx) => (
-  <div key={idx}>
-    <p>Day {idx + 1}: {new Date(date.startDate).toDateString()}</p>
-    {new Date() > new Date(date.endDate) ? (
-      <button onClick={() => handleOpenAttendanceModal(idx)}>
-        Manage Attendance
-      </button>
-    ) : (
-      <p>Attendance available after this day ends.</p>
-    )}
-  </div>
-))}
-
-{showAttendanceModal && modalDayIndex !== null && (
-  <AttendanceModal
-    attendees={[
-      {
-        id: organizationData?.president?.id || "",
-        name: organizationData?.president?.name || "President",
-        role: "President",
-      },
-      ...(organizationData?.officers || []).map((officer: any) => ({
-        id: officer.id,
-        name: officer.name,
-        role: "Officer",
-      })),
-      ...(organizationData?.members || []).map((member: any) => ({
-        id: member.id,
-        name: member.name,
-        role: "Member",
-      })),
-    ]}
-    dayIndex={modalDayIndex}
-    onClose={() => setShowAttendanceModal(false)}
-    onSave={handleSaveAttendance}
-  />
-)}
-
-
-
-          {/* Event Picture */}
           <div className="event-picture-section">
             <img
               src={eventDetails.imageUrl || "https://via.placeholder.com/800x400"}
@@ -650,7 +741,49 @@ const handleSaveAttendance = async (
               className="event-picture"
             />
           </div>
-          {/* Event Details */}
+
+          <div className="event-details-card">
+            <h3>Attendance</h3>
+            {eventDetails?.eventDates.map((date, idx) => (
+              <div key={idx}>
+                <p>Day {idx + 1}: {new Date(date.startDate).toDateString()}</p>
+                {new Date() > new Date(date.endDate) ? (
+                  <button onClick={() => handleOpenAttendanceModal(idx)}>
+                    Manage Attendance
+                  </button>
+                ) : (
+                  <p>Attendance available after this day ends.</p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {showAttendanceModal && modalDayIndex !== null && (
+            <AttendanceModal
+              attendees={[
+                {
+                  id: organizationData?.president?.id || "",
+                  name: organizationData?.president?.name || "President",
+                  role: "President",
+                },
+                ...(organizationData?.officers || []).map((officer: any) => ({
+                  id: officer.id,
+                  name: officer.name,
+                  role: "Officer",
+                })),
+                ...(organizationData?.members || []).map((member: any) => ({
+                  id: member.id,
+                  name: member.name,
+                  role: "Member",
+                })),
+              ]}
+              dayIndex={modalDayIndex}
+              onClose={() => setShowAttendanceModal(false)}
+              onSave={handleSaveAttendance}
+              editable={editable}
+            />
+          )}
+
           <div className="event-details-card">
             <div className="event-details-left">
               <h3>Event Name</h3>
@@ -667,80 +800,260 @@ const handleSaveAttendance = async (
               <p>{formatEventDates(eventDetails.eventDates)}</p>
 
               <h3>Head Event Manager</h3>
-{organizationData ? (
-  (() => {
-    const headManager =
-      organizationData.officers?.find((officer: Officer) => officer.id === eventDetails.eventHead) ||
-      (organizationData.president?.id === eventDetails.eventHead ? organizationData.president : null);
+              {organizationData ? (
+                (() => {
+                  const headManager =
+                    organizationData.officers?.find(
+                      (officer: Officer) =>
+                        officer.id === eventDetails?.eventHead
+                    ) ||
+                    (organizationData.president?.id ===
+                    eventDetails?.eventHead
+                      ? organizationData.president
+                      : null);
 
-    if (headManager) {
-      return (
-        <div className="head-event-manager">
-          <img
-            src={headManager.profilePicUrl || "https://via.placeholder.com/50"}
-            alt={headManager.name}
-            className="profile-pics"
-          />
-          <p>{headManager.name}</p>
-        </div>
-      );
-    }
+                  if (headManager) {
+                    return (
+                      <div className="head-event-manager">
+                        <img
+                          src={
+                            headManager.profilePicUrl ||
+                            "https://via.placeholder.com/50"
+                          }
+                          alt={headManager.name}
+                          className="profile-pics"
+                        />
+                        <p>{headManager.name}</p>
+                      </div>
+                    );
+                  }
 
-    return <p>Head Event Manager not found.</p>;
-  })()
-) : (
-  <p>Loading Head Event Manager...</p>
+                  return <p>Head Event Manager not found.</p>;
+                })()
+              ) : (
+                <p>Loading Head Event Manager...</p>
+        
+        )}
+{/* RSVP Responses Modal */}
+{/* RSVP Responses Modal */}
+{/* RSVP Responses Modal */}
+{showRSVPResponsesModal && (
+  <div className="rsvp-responses-modal-overlay">
+    <div className="rsvp-responses-modal-content">
+      <h3>RSVP Responses</h3>
+      <table className="rsvp-responses-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Role</th>
+            {/* Create headers for each event day */}
+            {eventDetails?.eventDates.map((date, idx) => (
+              <th key={idx}>Day {idx + 1}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {/* Loop through all members, officers, and president */}
+          {/* First, categorize users into those who responded and those who did not */}
+          {[...organizationData?.officers, ...organizationData?.members, organizationData?.president]
+            .sort((userA, userB) => {
+              // Get RSVP response for both users
+              const rsvpA = rsvps.find((rsvp) => rsvp.userId === userA.id);
+              const rsvpB = rsvps.find((rsvp) => rsvp.userId === userB.id);
+              
+              // Check if user A and user B have given a response
+              const statusA = rsvpA ? rsvpA.responses.some((r) => r.status !== "No response yet") : false;
+              const statusB = rsvpB ? rsvpB.responses.some((r) => r.status !== "No response yet") : false;
+              
+              // Sort attending/maybe/not attending first, then no response at the bottom
+              if (statusA && !statusB) return -1;
+              if (!statusA && statusB) return 1;
+              return 0;
+            })
+            .sort((userA, userB) => {
+              // Prioritize President and Officers first (Attending), then Members
+              if (userA.role === "President" || userA.role === "Officer") return -1;
+              if (userB.role === "President" || userB.role === "Officer") return 1;
+              return 0;
+            })
+            .map((user: any) => {
+              // Find the RSVP response for the user
+              const rsvp = rsvps.find((rsvp) => rsvp.userId === user.id);
+              
+              return (
+                <tr key={user.id}>
+                  <td>{user.name}</td>
+                  <td>{user.role || "Member"}</td>
+                  {/* Loop through all event days and display RSVP status */}
+                  {eventDetails?.eventDates.map((_, dayIdx) => {
+                    const userResponse = rsvp?.responses.find(response => response.dayIndex === dayIdx);
+                    const status = userResponse ? userResponse.status : "No response yet";  // Default response if none
+                    
+                    return <td key={dayIdx}>{status}</td>;  {/* Display the status for each day */}
+                  })}
+                </tr>
+              );
+            })}
+        </tbody>
+      </table>
+      <div className="rsvp-responses-modal-actions">
+        <button onClick={() => setShowRSVPResponsesModal(false)}>Close</button>
+      </div>
+    </div>
+  </div>
 )}
+
+
+{showRSVPModal && (
+  <div className="modal-overlay">
+  <div className="modal-content">
+    <h3>Edit RSVP</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Day</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {eventDetails?.eventDates.map((_, idx) => {
+          const existingResponse = responses.find((r) => r.dayIndex === idx);
+
+          return (
+            <tr key={idx}>
+              <td>Day {idx + 1}</td>
+              <td>
+                <select
+                  value={existingResponse?.status || "No response"}
+                  onChange={(e) => {
+                    const newStatus = e.target.value;
+
+                    // Update the `responses` state correctly
+                    setResponses((prevResponses) => {
+                      const updatedResponses = [...prevResponses];
+                      const responseIndex = updatedResponses.findIndex(
+                        (r) => r.dayIndex === idx
+                      );
+
+                      if (responseIndex >= 0) {
+                        // Update existing response
+                        updatedResponses[responseIndex].status = newStatus;
+                      } else {
+                        // Add new response
+                        updatedResponses.push({ dayIndex: idx, status: newStatus });
+                      }
+
+                      return updatedResponses;
+                    });
+                  }}
+                >
+                  <option value="Attending">Attending</option>
+                  <option value="Maybe">Maybe</option>
+                  <option value="Not Attending">Not Attending</option>
+                </select>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+    <button onClick={() => setShowRSVPModal(false)}>Cancel</button>
+    <button onClick={handleRSVP}>Save</button>
+  </div>
+</div>
+
+)}
+
+
+
+
+<div className="rsvp-section">
+  <h3>Participation Status</h3>
+  <button onClick={() => setShowRSVPResponsesModal(true)} className="view-rsvp-responses-button">
+    View RSVP Responses
+  </button>
+  {eventDetails?.eventDates.map((date, idx) => {
+    const userRSVP = rsvps.find((rsvp) => rsvp.userId === currentUser?.uid);
+    const dayResponse = userRSVP?.responses?.find((r) => r.dayIndex === idx);
+
+    return (
+      <div key={idx} className="rsvp-day">
+        <p>
+          <strong>Day {idx + 1}:</strong> {new Date(date.startDate).toDateString()}
+        </p>
+        <p>
+          <strong>Status:</strong> {dayResponse ? dayResponse.status : "No response"}
+        </p>
+      </div>
+    );
+  })}
+
+  {/* Only show the edit button if RSVP data can be edited */}
+  {dickeditable && !showAttendanceModal && (
+    <button onClick={handleOpenRSVPModal} className="edit-rsvp-button">
+      Edit RSVP
+    </button>
+  )}
+</div>
+
+
+
+
 
 
             </div>
           </div>
- {/* Event Forum Section */}
-<div className="event-forum">
-  <h3>Event Forum</h3>
-  <div className="forum-messages">
-    {messages.map((message) => (
-      <div
-        key={message.id}
-        className={`forum-message ${
-          message.userId === currentUser?.uid ? "message-right" : "message-left"
-        }`}
-      >
-        <img
-          src={message.userProfilePic || "https://via.placeholder.com/50"}
-          alt={message.userName}
-          className="profile-picko"
-        />
-        <div className="message-content">
-          <p className="message-author">{message.userName}</p>
-          <p className="message-text">{message.text}</p>
-          <p className="message-time">
-            {new Date(message.timestamp).toLocaleString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-              hour: "numeric",
-              minute: "numeric",
-              hour12: true,
-            })}
-          </p>
-        </div>
-      </div>
-    ))}
-  </div>
-  <form onSubmit={handleSendMessage} className="forum-input">
-    <input
-      type="text"
-      value={newMessage}
-      onChange={(e) => setNewMessage(e.target.value)}
-      placeholder="Write a message..."
-      required
-    />
-    <button type="submit">Send</button>
-  </form>
-</div>
 
+          <div className="event-forum">
+            <h3>Event Forum</h3>
+            <div className="forum-messages">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`forum-message ${
+                    message.userId === currentUser?.uid
+                      ? "message-right"
+                      : "message-left"
+                  }`}
+                >
+                  <img
+                    src={
+                      message.userProfilePic ||
+                      "https://via.placeholder.com/50"
+                    }
+                    alt={message.userName}
+                    className="profile-picko"
+                  />
+                  <div className="message-content">
+                    <p className="message-author">{message.userName}</p>
+                    <p className="message-text">{message.text}</p>
+                    <p className="message-time">
+                      {new Date(message.timestamp).toLocaleString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "numeric",
+                        hour12: true,
+                      })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              <div ref={messagesEndRef}></div>
+            </div>
 
+            <form onSubmit={handleSendMessage} className="forum-input">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Write a message..."
+                required
+              />
+              <button type="submit">Send</button>
+            </form>
+          </div>
         </div>
       </div>
     </div>

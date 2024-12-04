@@ -2,7 +2,8 @@
 .event-view-wrapper {
   display: flex;
   flex-direction: column;
-  height: 85vh; /* Full viewport height */
+  height: 85vh;
+
 }
 
 .dashboard-container {
@@ -112,33 +113,89 @@
   .attendance-modal-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 10px;
   }
   
   .attendance-modal-table th,
   .attendance-modal-table td {
-    border: 1px solid #ddd;
-    padding: 8px;
+    padding: 10px;
     text-align: left;
+    border: 1px solid #ddd;
   }
   
-  .attendance-modal-actions {
+  .status-buttons {
     display: flex;
-    justify-content: flex-end;
-    margin-top: 10px;
+    justify-content: space-around;
   }
   
-  .attendance-modal-actions button {
-    margin-left: 10px;
-    padding: 8px 16px;
-    border: none;
+  .status-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+  
     cursor: pointer;
-    border-radius: 4px;
+    transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
   }
   
-  .attendance-modal-actions button:hover {
-    opacity: 0.9;
+  .status-button.present {
+    background-color: gray;
   }
+  .custom-icon {
+    color:  gray;
+    font-size: 24px;
+  }
+  
+  .status-button.active .custom-icon {
+    color: white;
+  }
+  
+  .status-button.late {
+    background-color: gray;
+  }
+  
+  .status-button.absent {
+    background-color: gray;
+  }
+  
+  .status-button.present.active {
+    background-color: #63df63;
+  }
+  
+  .status-button.absent.active {
+    background-color: #ff8282;
+  }
+  
+  .status-button.late.active {
+    background-color: #efaf6f;
+  }
+  
+  .status-button i {
+    color: white;
+    font-size: 18px; /* Adjust size */
+    opacity: 0; /* Initially hidden */
+    transition: opacity 0.3s ease;
+  }
+  
+  .status-button.active i {
+    opacity: 1; /* Show icon when active */
+  }
+  
+  .status-button:hover {
+    opacity: 0.7;
+  }
+  
+  .status-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  
+  .status-button.active:hover {
+    opacity: 1;
+  }
+  
   
 
 
@@ -151,6 +208,7 @@
   margin-top: 20px;
   border-top: 1px solid #ccc;
   padding-top: 20px;
+  overflow-y: hidden;
 }
 
 /* Title of the forum section */
@@ -162,7 +220,8 @@
 
 /* Container for all messages */
 .forum-messages {
-  max-height: 300px;
+  max-height: 500px;
+  min-height: 150px;
   overflow-y: auto;
   padding: 10px;
   background-color: #f9f9f9;
@@ -214,7 +273,41 @@
   margin-bottom: 5px;
 }
 
-/* Message author */
+
+.message-file {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.message-attachment {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out;
+}
+
+.message-attachment:hover {
+  transform: scale(1.05);
+}
+
+.attachment-link {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 5px 10px;
+  background-color: #007bff;
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+}
+
+.attachment-link:hover {
+  background-color: #0056b3;
+}
+
+
 .message-author {
   font-size: 0.9rem;
   font-weight: bold;
@@ -266,4 +359,89 @@
 
 .forum-input button:hover {
   background-color: #0056b3;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.view-rsvp-responses-button {
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.view-rsvp-responses-button:hover {
+  background-color: #45a049;
+}
+
+.rsvp-responses-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.rsvp-responses-modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 5px;
+  width: 80%;
+  max-width: 600px;
+  overflow-y: auto;
+}
+
+.rsvp-responses-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rsvp-responses-table th,
+.rsvp-responses-table td {
+  padding: 10px;
+  text-align: left;
+  border: 1px solid #ddd;
+}
+
+.rsvp-responses-modal-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.rsvp-responses-modal-actions button {
+  padding: 10px 20px;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.rsvp-responses-modal-actions button:hover {
+  background-color: #e53935;
 }

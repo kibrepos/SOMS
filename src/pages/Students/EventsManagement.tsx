@@ -35,41 +35,58 @@ const EventsManagement: React.FC = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       if (!organizationName) return;
-
+  
       try {
         const eventsRef = collection(firestore, "events", organizationName, "event");
         const querySnapshot = await getDocs(eventsRef);
-
+  
         const upcoming: Event[] = [];
         const ongoing: Event[] = [];
         const completed: Event[] = [];
-
+  
+        const currentDate = new Date();
+  
         querySnapshot.forEach((doc) => {
           const eventData = doc.data() as Event;
-          const eventStartDate = new Date(eventData.eventDates[0].startDate);
-          const eventEndDate = new Date(eventData.eventDates[0].endDate);
-          const currentDate = new Date();
-
-          if (eventEndDate < currentDate) {
+  
+          // Check event dates
+          const isCompleted = eventData.eventDates.every(
+            (date) => new Date(date.endDate) < currentDate
+          );
+          const isUpcoming = eventData.eventDates.every(
+            (date) => new Date(date.startDate) > currentDate
+          );
+          const isOngoing = eventData.eventDates.some(
+            (date) =>
+              new Date(date.startDate) <= currentDate &&
+              new Date(date.endDate) >= currentDate
+          );
+  
+          if (isCompleted) {
             completed.push(eventData);
-          } else if (eventStartDate > currentDate) {
+          } else if (isUpcoming) {
             upcoming.push(eventData);
-          } else {
+          } else if (isOngoing) {
             ongoing.push(eventData);
           }
         });
-
+  
         setUpcomingEvents(upcoming);
         setOngoingEvents(ongoing);
         setCompletedEvents(completed);
+  
+        console.log("Ongoing Events:", ongoing); // Add logging to check
       } catch (error) {
         console.error("Error fetching events:", error);
       }
     };
-
+  
     fetchEvents();
+  
+    const interval = setInterval(fetchEvents, 60000); // Refresh every 60 seconds
+    return () => clearInterval(interval); // Cleanup on unmount
   }, [organizationName]);
-
+  
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
@@ -116,8 +133,7 @@ const EventsManagement: React.FC = () => {
         return null;
     }
   };
-
-  const formatEventDates = (dates: EventDate[]): JSX.Element => {
+ const formatEventDates = (dates: EventDate[]): JSX.Element => {
     if (dates.length === 1) {
       // Single date range: no "Day 1"
       const startDate = new Date(dates[0].startDate);
@@ -126,7 +142,7 @@ const EventsManagement: React.FC = () => {
       if (startDate.toDateString() === endDate.toDateString()) {
         // Same-day event
         return (
-          <span>
+          <div>
             {startDate.toLocaleDateString(undefined, {
               year: "numeric",
               month: "long",
@@ -134,12 +150,12 @@ const EventsManagement: React.FC = () => {
             })}{" "}
             - {startDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })} to{" "}
             {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
-          </span>
+          </div>
         );
       } else {
         // Event spans multiple days
         return (
-          <span>
+          <div>
             {startDate.toLocaleDateString(undefined, {
               year: "numeric",
               month: "long",
@@ -152,7 +168,7 @@ const EventsManagement: React.FC = () => {
               day: "numeric",
             })}{" "}
             - {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
-          </span>
+          </div>
         );
       }
     } else {
@@ -166,7 +182,7 @@ const EventsManagement: React.FC = () => {
             if (startDate.toDateString() === endDate.toDateString()) {
               // Same-day event
               return (
-                <span key={idx}>
+                <div key={idx}>
                   <strong>Day {idx + 1}:</strong>{" "}
                   {startDate.toLocaleDateString(undefined, {
                     year: "numeric",
@@ -175,13 +191,12 @@ const EventsManagement: React.FC = () => {
                   })}{" "}
                   - {startDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}{" "}
                   to {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
-                  {idx < dates.length - 1 && " | "}
-                </span>
+                </div>
               );
             } else {
               // Event spans multiple days
               return (
-                <span key={idx}>
+                <div key={idx}>
                   <strong>Day {idx + 1}:</strong>{" "}
                   {startDate.toLocaleDateString(undefined, {
                     year: "numeric",
@@ -195,8 +210,7 @@ const EventsManagement: React.FC = () => {
                     day: "numeric",
                   })}{" "}
                   - {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
-                  {idx < dates.length - 1 && " | "}
-                </span>
+                </div>
               );
             }
           })}
