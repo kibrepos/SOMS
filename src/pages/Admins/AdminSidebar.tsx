@@ -25,6 +25,23 @@ const AdminSidebar: React.FC = () => {
     );};
 
   useEffect(() => {
+
+    const handleResize = () => {
+      if (window.innerHeight > window.innerWidth) {
+        setCollapsed(true);  // Collapse sidebar when the height is greater than width
+      } else {
+        setCollapsed(false);  // Expand sidebar when the width is greater than height
+      }
+    }
+
+    // Initial check
+    handleResize();
+
+    // Add event listener on resize
+    window.addEventListener('resize', handleResize);
+
+
+
     // Check if sidebar state is stored in localStorage
     const savedState = localStorage.getItem('sidebar-collapsed');
     if (savedState) {
