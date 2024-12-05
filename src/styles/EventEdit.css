@@ -1,0 +1,151 @@
+/* Overall page container */
+.event-view-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #f8f9fa;
+  }
+  
+  /* Dashboard container with flex layout to place sidebar and content side by side */
+  .dashboard-container {
+    display: flex;
+    justify-content: space-between;
+    padding: 40px;
+    gap: 20px;
+    flex-grow: 1;
+  }
+  
+  /* Sidebar section */
+  .sidebar-section {
+    flex: 0 0 250px; /* Sidebar takes fixed width */
+    max-width: 250px; 
+  }
+  
+  /* Content section for editing event */
+  .edit-event-content {
+    width: 80%;
+    padding: 20px;
+    background: #ffffff;
+    overflow-y: auto; /* Enable vertical scrolling */
+    height: 100%; /* Ensure it takes full available height */
+  }
+  }
+  
+  /* Title of Edit Event */
+  .edit-event-content h2 {
+    font-size: 28px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  /* Form layout */
+  .header-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  /* Each form section */
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  /* Labels */
+  label {
+    font-size: 16px;
+    font-weight: 500;
+    color: #555;
+  }
+  
+  /* Inputs and Textarea styling */
+  input, textarea {
+    padding: 12px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.3s ease;
+  }
+  
+  /* Focus effect for inputs */
+  input:focus, textarea:focus {
+    border-color: #007bff;
+  }
+  
+  /* Textarea specific adjustments */
+  textarea {
+    height: 150px;
+    resize: vertical;
+  }
+  
+  /* Date group layout */
+  .event-date-group {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+  }
+  
+  /* Buttons */
+  button {
+    padding: 12px 20px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    width: 100%;
+  }
+  
+  button[type="button"]:hover {
+    background-color: #218838;
+  }
+  
+  button[type="submit"] {
+    background-color: #007bff;
+    color: #fff;
+    font-weight: bold;
+  }
+  
+  button[type="submit"]:hover {
+    background-color: #0056b3;
+  }
+  
+  /* Add date range button style */
+  button[type="button"] {
+    background-color: #28a745;
+    color: #fff;
+    margin-top: 10px;
+    text-align: center;
+  }
+  
+  /* Button on hover */
+  button[type="button"]:hover {
+    background-color: #218838;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .dashboard-container {
+      flex-direction: column; /* Stack sidebar and content on small screens */
+      padding: 20px;
+    }
+  
+    .sidebar-section {
+      width: 100%;
+      max-width: none; /* Allow the sidebar to take full width on smaller screens */
+    }
+  
+    .edit-event-content {
+      width: 100%;
+      padding: 20px;
+    }
+  
+    h2 {
+      font-size: 24px;
+    }
+  }
+  
