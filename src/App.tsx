@@ -33,6 +33,9 @@ import Messenger from './components/Messenger';
 import OrganizationResources from './pages/Students/OrganizationResources';
 import OrganizationAnnouncement from './pages/Students/OrganizationAnnouncement';
 import EventsEdit from './pages/Students/EventsEdit';
+import AdminEventsManagement from './pages/Admins/AdminEventsManagement';
+import AdminUserManagement from './pages/Admins/AdminUserManagement';
+import AdminReportingAnalytics from './pages/Admins/AdminReportingAnalytics';
 
 
 const App: React.FC = () => {
@@ -56,10 +59,6 @@ const App: React.FC = () => {
           <Route path="/Student/dashboard" element={<StudentDashboard />} />
           <Route path="/Student/myprofile" element={<StudentProfile />} />
           <Route path="/messages" element={<Messenger />} />
-         
-
-
-
 
             {/* Shared Organization Routes */}
           <Route element={<ProtectedOrgRoute />}>
@@ -113,6 +112,10 @@ const App: React.FC = () => {
           <Route path="/Admin/Organizations/:organizationName" element={<AdminViewOrganization />} /> 
           <Route path="/Admin/EditOrganization/:organizationName" element={<AdminEditOrganization />} />
           <Route path="/Admin/feedback-support" element={<AdminFeedback/>} />
+          <Route path="/Admin/EventsManagement" element={<AdminEventsManagement/>} />
+          <Route path="/Admin/UserManagement" element={<AdminUserManagement/>} />
+          <Route path="/Admin/ReportingAnalytics" element={<AdminReportingAnalytics/>} />
+
          
           </Route>
         </Routes>
