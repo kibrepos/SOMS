@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 import {  collection, query, where, getDocs, doc, getDoc, onSnapshot, addDoc, updateDoc, setDoc} from "firebase/firestore";
 import { firestore, auth } from "../../services/firebaseConfig";
 import Header from "../../components/Header";
@@ -9,6 +9,10 @@ import StudentMemberSidebar from "./StudentMemberSidebar";
 import "../../styles/EventView.css";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck,faClock, faTimes  } from '@fortawesome/free-solid-svg-icons';
+import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
+
+
+
 
 interface Event {
   title: string;
@@ -82,9 +86,17 @@ const EventsView: React.FC = () => {
   const [showRSVPModal, setShowRSVPModal] = useState(false);
   const [responses, setResponses] = useState<{ dayIndex: number; status: string }[]>([]);
   const [showRSVPResponsesModal, setShowRSVPResponsesModal] = useState(false); // Controls visibility of the modal
+  const navigate = useNavigate(); // Call useNavigate at the top of the component
+
   
+  const handleBackButtonClick = () => {
+    history.back(); // Navigate back to the previous page
+  };
 
-
+// Define handleEditEventButtonClick inside the component so it has access to the navigate function
+const handleEditEventButtonClick = (eventId: string, organizationName: string) => {
+  navigate(`/Organization/${organizationName}/edit-event/${eventId}`); // Navigate to the event edit page
+};
 
   const handleOpenRSVPModal = () => {
     const userRSVP = rsvps.find((rsvp) => rsvp.userId === currentUser?.uid);
@@ -95,7 +107,6 @@ const EventsView: React.FC = () => {
     setResponses(initialResponses || []);
     setShowRSVPModal(true);
   };
-  
   
   const getUserDetailsFromOrg = (userId: string, organizationData: any) => {
     if (organizationData.president?.id === userId) {
@@ -138,7 +149,6 @@ const EventsView: React.FC = () => {
   
     return () => unsubscribe();
   }, [organizationName, eventId]);
-  
   
   useEffect(() => {
     if (!organizationName || !eventId) return;
@@ -295,7 +305,6 @@ const EventsView: React.FC = () => {
     return () => unsubscribe();
   }, [organizationName, eventId]);
 
-
 const AttendanceModal: React.FC<{
   attendees: { id: string; name: string; role: string; status?: string }[];
   dayIndex: number;
@@ -385,9 +394,6 @@ const AttendanceModal: React.FC<{
   );
 };
 
-  
-  
-  
   const handleOpenAttendanceModal = (dayIndex: number) => {
     const isEditable =
       currentUser?.uid === organizationData?.president?.id ||
@@ -440,11 +446,6 @@ const AttendanceModal: React.FC<{
     );
   };
   
-
-
-
-  
-
   const handleRSVP = async () => {
     if (!editable || !currentUser || !organizationName || !eventId) {
       console.error("RSVP not editable, user not authenticated, or invalid data");
@@ -524,7 +525,6 @@ const AttendanceModal: React.FC<{
     }
   };
   
-
   const fetchAttendanceData = async (dayIndex: number) => {
     if (!organizationName || !eventId) return null;
   
@@ -554,10 +554,6 @@ const AttendanceModal: React.FC<{
     return null;
   };
   
-  
-  
-  
-
   const getSidebarComponent = () => {
     switch (userRole) {
       case "president":
@@ -724,12 +720,17 @@ const AttendanceModal: React.FC<{
   if (!eventDetails)
     return <p>Event not found in the database. Please check the event name.</p>;
 
+  //MAIN RETURN CODE RETURNHERE
   return (
     <div className="event-view-wrapper">
       <Header />
       <div className="dashboard-container">
         <div className="sidebar-section">{getSidebarComponent()}</div>
         <div className="main-content">
+        <button className="back-button" onClick={handleBackButtonClick}>Return</button>
+        <button onClick={() => eventId && organizationName ? handleEditEventButtonClick(eventId, organizationName) : console.error('eventId or organizationName is missing')}>
+        Edit Event 
+        </button>
           <div className="header-container">
             <h1 className="headtitle">{eventDetails.title}</h1>
           </div>

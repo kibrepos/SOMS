@@ -32,6 +32,7 @@ import SignupFaculty from './components/SignupFaculty';
 import Messenger from './components/Messenger';
 import OrganizationResources from './pages/Students/OrganizationResources';
 import OrganizationAnnouncement from './pages/Students/OrganizationAnnouncement';
+import EventsEdit from './pages/Students/EventsEdit';
 
 
 const App: React.FC = () => {
@@ -61,29 +62,25 @@ const App: React.FC = () => {
 
 
             {/* Shared Organization Routes */}
-            <Route element={<ProtectedOrgRoute />}>
+          <Route element={<ProtectedOrgRoute />}>
             <Route path="/Organization/:organizationName/dashboard" element={<OrganizationDashboard />} />
             <Route path="/Organization/:organizationName/resources" element={<OrganizationResources />} />
             <Route path="/Organization/:organizationName/mytasks" element={<MyTasks />} />
             <Route path="/Organization/:organizationName/events" element={<EventsManagement />} />
             <Route path="/Organization/:organizationName/create-event" element={<CreateEvent />} />
+            <Route path="/Organization/:organizationName/edit-event/:eventId" element={<EventsEdit />} />
             <Route path="/Organization/:organizationName/events/:eventName" element={<EventsView />} />
- 
-
-        
-            
           </Route>
+
          {/* President Routes */}
-          <Route element={<ProtectedOrgRoute requiredRole="president" />}>
+        <Route element={<ProtectedOrgRoute requiredRole="president" />}>
           <Route path="/Organization/:organizationName/settings" element={<OrganizationSettings />} />
           <Route path="/Organization/:organizationName/manage-members" element={<ManageMembers />} />
           <Route path="/Organization/:organizationName/manage-committees" element={<ManageCommittees />} />
           <Route path="/Organization/:organizationName/Alltasks" element={<TaskManagement />} />
           <Route path="/Organization/:organizationName/activity-logs" element={<OrganizationActivityLogs />} />
           <Route  path="/Organization/:organizationName/announcements" element={<OrganizationAnnouncement />} />
-
-          </Route>
-
+        </Route>
 
           {/* Officer Routes */}
           <Route element={<ProtectedOrgRoute requiredRole="officer" />}>
