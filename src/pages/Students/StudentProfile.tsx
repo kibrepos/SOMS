@@ -7,6 +7,8 @@ import { auth, firestore, storage } from '../../services/firebaseConfig';
 import '../../styles/StudentProfile.css';
 import Header from '../../components/Header';
 import Locker from '../../components/Locker';
+import { showToast } from '../../components/toast';
+
 
 const StudentProfile: React.FC = () => {
   const [studentData, setStudentData] = useState<any>(null);
@@ -139,7 +141,7 @@ const StudentProfile: React.FC = () => {
         setNewProfilePic(file);
         setPreviewProfilePicUrl(URL.createObjectURL(file));
       } else {
-        alert('Please select a JPG or PNG file.');
+        showToast("Please select a JPG or PNG file.");
       }
     }
   };
@@ -167,7 +169,7 @@ const StudentProfile: React.FC = () => {
         // Update local state
         setProfilePicUrl(newProfilePicUrl);
         setPreviewProfilePicUrl(newProfilePicUrl);
-        alert('Profile picture updated successfully!');
+        showToast("Profile picture updated successfully!");
       } catch (err) {
         console.error('Error uploading profile picture:', err);
         setError('Error uploading profile picture.');
@@ -411,6 +413,12 @@ const StudentProfile: React.FC = () => {
                 <option value="CEAT">CEAT</option>
                 <option value="CICS">CICS</option>
                 <option value="CBAA">CBAA</option>
+                <option value="COCS">COCS</option>
+                <option value="COED">COED</option>
+                <option value="CCJE">CCJE</option>
+                <option value="CLAC">CLAC</option>
+
+
                 {/* Add more options as needed */}
               </select>
             </label>
