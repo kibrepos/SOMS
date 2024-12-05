@@ -41,8 +41,6 @@ const StudentProfile: React.FC = () => {
   const [cooldownWarning, setCooldownWarning] = useState<string | null>(null); // Track cooldown warning message
 
 
-    
-
   const handleFeedbackSubmit = async (): Promise<void> => {
     if (feedbackText.trim().length === 0) {
       setFeedbackError('You can\'t send a blank feedback.');
@@ -54,12 +52,35 @@ const StudentProfile: React.FC = () => {
     }
   
     const lastSubmissionTime = localStorage.getItem('lastSubmissionTime');
+    const attemptsCount = parseInt(localStorage.getItem('attemptsCount') || '0');
     const now = new Date().getTime();
+    const threeMinutesInMs = 3 * 60 * 1000; // 3 minutes in milliseconds
+    const twentyFourHoursInMs = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
   
-    // Check if 24 hours have passed since the last submission
-    if (lastSubmissionTime && (now - parseInt(lastSubmissionTime)) < 24 * 60 * 60 * 1000) {
-      setFeedbackError('You have reached the limit. Please wait 24 hours before submitting again.');
+    // Check if it's been less than 3 minutes since the last attempt
+    if (lastSubmissionTime && (now - parseInt(lastSubmissionTime)) < threeMinutesInMs) {
+      const remainingTimeInMs = threeMinutesInMs - (now - parseInt(lastSubmissionTime));
+      const remainingSeconds = Math.ceil(remainingTimeInMs / 1000); // Convert to seconds
+      setFeedbackError(`Please wait ${remainingSeconds} seconds before submitting again.`);
       return;
+    }
+  
+    // If there have been 3 attempts, apply the 24-hour cooldown
+    if (attemptsCount >= 3 && lastSubmissionTime && (now - parseInt(lastSubmissionTime)) < twentyFourHoursInMs) {
+      const remainingTimeInMs = twentyFourHoursInMs - (now - parseInt(lastSubmissionTime));
+      const remainingHours = Math.floor(remainingTimeInMs / (1000 * 60 * 60)); // Convert to hours
+      const remainingMinutes = Math.floor((remainingTimeInMs % (1000 * 60 * 60)) / (1000 * 60)); // Convert to minutes
+      setFeedbackError(`You have reached the limit of 3 attempts. Please wait ${remainingHours} hours and ${remainingMinutes} minutes before submitting again.`);
+      return;
+    }
+  
+    // If 24 hours have passed, reset the attempt count
+    if (lastSubmissionTime && (now - parseInt(lastSubmissionTime)) >= twentyFourHoursInMs) {
+      localStorage.setItem('attemptsCount', '1'); // Reset attempts count
+      localStorage.setItem('lastSubmissionTime', now.toString()); // Update the last submission time
+    } else {
+      // Otherwise, increment the attempt count
+      localStorage.setItem('attemptsCount', (attemptsCount + 1).toString());
     }
   
     if (auth.currentUser) {
@@ -76,7 +97,7 @@ const StudentProfile: React.FC = () => {
         setFeedbackSuccess('Thank you for your feedback!');
         setFeedbackText('');
   
-        // Update last submission time in local storage
+        // Update the last submission time in local storage after successful submission
         localStorage.setItem('lastSubmissionTime', now.toString());
   
       } catch (error) {
@@ -87,9 +108,8 @@ const StudentProfile: React.FC = () => {
       }
     }
   };
-  
-  
-  
+      
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
