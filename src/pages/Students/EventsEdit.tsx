@@ -8,6 +8,8 @@ import Header from "../../components/Header";
 import StudentPresidentSidebar from "./StudentPresidentSidebar";
 import StudentOfficerSidebar from "./StudentOfficerSidebar";
 import StudentMemberSidebar from "./StudentMemberSidebar";
+import { useNavigate } from "react-router-dom"; // Import navigate hook
+
 
 interface Event {
   title: string;
@@ -25,22 +27,29 @@ const EditEvent: React.FC = () => {
     eventId: string;
   }>();
 
+  const navigate = useNavigate(); // Initialize the navigate function
+
   const handleSave = async () => {
     if (!organizationName || !eventId || !eventDetails) return;
   
     const eventRef = doc(firestore, "events", organizationName, "event", eventId);
-    
+  
     try {
       await updateDoc(eventRef, {
         ...eventDetails,
-        eventDates: arrayUnion(...eventDetails.eventDates), // Example for handling array fields
+        eventDates: arrayUnion(...eventDetails.eventDates), // Handle array fields if necessary
       });
       alert("Event updated successfully");
+      window.history.back();  // Use history.back() to go to the previous page
     } catch (error) {
       console.error("Error updating event:", error);
       alert("Error updating event");
     }
   };
+  
+  
+  
+  
   
   
   
