@@ -80,13 +80,15 @@ const EditEvent: React.FC = () => {
   if (!eventDetails) return <p>Event not found. Please check the event ID.</p>;
 
   return (
-    <div className="event-view-wrapper">
-      <Header />
+    <div className="event-view-container">
+      <Header />  {/* Global Header */}
       <div className="dashboard-container">
-      <div className="sidebar-section"><StudentPresidentSidebar /></div>
-        <div className="edit-event-content">
-          Edit Event
-          <form className="header-container">
+        <div className="sidebar-section">
+          <StudentPresidentSidebar />  {/* Global Sidebar */}
+        </div>
+        <div className="event-content">
+          <h2>Edit Event</h2>
+          <form className="event-form">
             <div className="form-group">
               <label>Event Title</label>
               <input
@@ -95,7 +97,7 @@ const EditEvent: React.FC = () => {
                 onChange={(e) => setEventDetails({ ...eventDetails, title: e.target.value })}
               />
             </div>
-
+  
             <div className="form-group">
               <label>Description</label>
               <textarea
@@ -103,7 +105,7 @@ const EditEvent: React.FC = () => {
                 onChange={(e) => setEventDetails({ ...eventDetails, description: e.target.value })}
               />
             </div>
-
+  
             <div className="form-group">
               <label>Event Dates</label>
               {eventDetails.eventDates.map((date, index) => (
@@ -141,7 +143,7 @@ const EditEvent: React.FC = () => {
                 Add Date Range
               </button>
             </div>
-
+  
             <div className="form-group">
               <label>Venue</label>
               <input
@@ -150,7 +152,7 @@ const EditEvent: React.FC = () => {
                 onChange={(e) => setEventDetails({ ...eventDetails, venue: e.target.value })}
               />
             </div>
-
+  
             <div className="form-group">
               <label>Event Head</label>
               <input
@@ -159,7 +161,7 @@ const EditEvent: React.FC = () => {
                 onChange={(e) => setEventDetails({ ...eventDetails, eventHead: e.target.value })}
               />
             </div>
-
+  
             <button type="button" onClick={handleSave}>
               Save Changes
             </button>
@@ -168,6 +170,6 @@ const EditEvent: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default EditEvent;
