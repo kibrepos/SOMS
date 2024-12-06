@@ -299,92 +299,107 @@ const ManageCommittees: React.FC = () => {
             </table>
           </div>
 
-          {/* Create Committee Modal */}
-          {isCreateCommitteeModalOpen && (
-            <div className="MC-modal-overlay">
-              <div className="MC-modal-content">
-                <h3>Create New Committee</h3>
-                <input
-                  type="text"
-                  placeholder="Committee Name"
-                  value={newCommitteeName}
-                  onChange={(e) => setNewCommitteeName(e.target.value)}
-                />
-                <div>
-                  <button onClick={openHeadModal}>Select Head</button>
-                  <p>Selected Head: {selectedHead ? selectedHead.name : 'None'}</p>
-                </div>
-                <div>
-                  <button onClick={openMemberModal}>Select Members</button>
-                  <p>Selected Members: {selectedMembers.map((m) => m.name).join(', ')}</p>
-                </div>
-                <button onClick={handleCreateCommittee}>Create Committee</button>
-                <button onClick={closeCreateCommitteeModal}>Close</button>
-              </div>
-            </div>
-          )}
+       {/* Create Committee Modal */}
+{isCreateCommitteeModalOpen && (
+  <div className="custom-modal-overlay">
+    <div className="custom-modal-content create-committee-modal">
+      <button className="modal-close-btn" onClick={closeCreateCommitteeModal}>×</button>
+      <h3 className="modal-title">Create New Committee</h3>
+      <input
+        type="text"
+        placeholder="Committee Name"
+        value={newCommitteeName}
+        onChange={(e) => setNewCommitteeName(e.target.value)}
+        className="input-field"
+      />
+      <div className="modal-action">
+        <button onClick={openHeadModal} className="action-btn">Select Head</button>
+        <p className="selected-info">Selected Head: {selectedHead ? selectedHead.name : 'None'}</p>
+      </div>
+      <div className="modal-action">
+        <button onClick={openMemberModal} className="action-btn">Select Members</button>
+        <p className="selected-info">Selected Members: {selectedMembers.map((m) => m.name).join(', ')}</p>
+      </div>
+      <div className="modal-footer">
+        <button className="btn-primary" onClick={handleCreateCommittee}>Create Committee</button>
+      </div>
+    </div>
+  </div>
+)}
 
-          {/* Select Head Modal */}
-          {isHeadModalOpen && (
-            <div className="MC-modal-overlay">
-              <div className="MC-modal-content">
-                <h3>Select Committee Head</h3>
-                <div className="MC-officer-list">
-                  {availableOfficers.map((officer) => (
-                    <div key={officer.id} onClick={() => setSelectedHead(officer)}>
-                      <img src={officer.profilePicUrl || 'default-pic.png'} alt={officer.name} />
-                      <p>{officer.name}</p>
-                    </div>
-                  ))}
-                </div>
-                <button onClick={closeHeadModal}>Close</button>
-              </div>
-            </div>
-          )}
+{/* Select Head Modal */}
+{isHeadModalOpen && (
+  <div className="custom-modal-overlay">
+    <div className="custom-modal-content select-head-modal">
+      <button className="modal-close-btn" onClick={closeHeadModal}>×</button>
+      <h3 className="modal-title">Select Committee Head</h3>
+      <div className="officer-list">
+        {availableOfficers.map((officer) => (
+          <div
+            key={officer.id}
+            onClick={() => { setSelectedHead(officer); closeHeadModal(); }}
+            className="officer-item"
+          >
+            <img src={officer.profilePicUrl || 'default-pic.png'} alt={officer.name} />
+            <p>{officer.name}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
 
-          {/* Select Members Modal */}
-          {isMemberModalOpen && (
-            <div className="MC-modal-overlay">
-              <div className="MC-modal-content">
-                <h3>Select Committee Members</h3>
-                <div className="MC-member-list">
-                  {availableMembers.map((member) => (
-                    <div key={member.id} onClick={() => toggleMemberSelection(member)}>
-                      <img src={member.profilePicUrl || 'default-pic.png'} alt={member.name} />
-                      <p>{member.name}</p>
-                      {selectedMembers.some((m) => m.id === member.id) && <span>Selected</span>}
-                    </div>
-                  ))}
-                </div>
-                <button onClick={closeMemberModal}>Close</button>
-              </div>
-            </div>
-          )}
+{/* Select Members Modal */}
+{isMemberModalOpen && (
+  <div className="custom-modal-overlay">
+    <div className="custom-modal-content select-members-modal">
+      <button className="modal-close-btn" onClick={closeMemberModal}>×</button>
+      <h3 className="modal-title">Select Committee Members</h3>
+      <div className="member-list">
+        {availableMembers.map((member) => (
+          <div
+            key={member.id}
+            onClick={() => toggleMemberSelection(member)}
+            className="member-item"
+          >
+            <img src={member.profilePicUrl || 'default-pic.png'} alt={member.name} />
+            <p>{member.name}</p>
+            {selectedMembers.some((m) => m.id === member.id) && <span className="selected-tag">Selected</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
 
-          {/* Edit Committee Modal */}
-          {isEditModalOpen && (
-            <div className="MC-modal-overlay">
-              <div className="MC-modal-content">
-                <h3>Edit Committee</h3>
-                <input
-                  type="text"
-                  placeholder="Committee Name"
-                  value={newCommitteeName}
-                  onChange={(e) => setNewCommitteeName(e.target.value)}
-                />
-                <div>
-                  <button onClick={openHeadModal}>Select Head</button>
-                  <p>Selected Head: {selectedHead ? selectedHead.name : 'None'}</p>
-                </div>
-                <div>
-                  <button onClick={openMemberModal}>Select Members</button>
-                  <p>Selected Members: {selectedMembers.map((m) => m.name).join(', ')}</p>
-                </div>
-                <button onClick={handleEditCommittee}>Update Committee</button>
-                <button onClick={closeEditModal}>Close</button>
-              </div>
-            </div>
-          )}
+{/* Edit Committee Modal */}
+{isEditModalOpen && (
+  <div className="custom-modal-overlay">
+    <div className="custom-modal-content edit-committee-modal">
+      <button className="modal-close-btn" onClick={closeEditModal}>×</button>
+      <h3 className="modal-title">Edit Committee</h3>
+      <input
+        type="text"
+        placeholder="Committee Name"
+        value={newCommitteeName}
+        onChange={(e) => setNewCommitteeName(e.target.value)}
+        className="input-field"
+      />
+      <div className="modal-action">
+        <button onClick={openHeadModal} className="action-btn">Select Head</button>
+        <p className="selected-info">Selected Head: {selectedHead ? selectedHead.name : 'None'}</p>
+      </div>
+      <div className="modal-action">
+        <button onClick={openMemberModal} className="action-btn">Select Members</button>
+        <p className="selected-info">Selected Members: {selectedMembers.map((m) => m.name).join(', ')}</p>
+      </div>
+      <div className="modal-footer">
+        <button className="btn-primary" onClick={handleEditCommittee}>Update Committee</button>
+      </div>
+    </div>
+  </div>
+)}
+
 
           {/* Delete Committee Modal */}
           {isDeleteModalOpen && (

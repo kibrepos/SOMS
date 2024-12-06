@@ -163,7 +163,14 @@ const StudentProfile: React.FC = () => {
   
         // Update the profile picture in the 'organizations' collection
         await updateProfilePicInOrganizations(studentId, newProfilePicUrl);
-  
+        const userName = auth.currentUser.displayName;
+      if (userName) {
+        // Update the profile picture in notifications (for inviter and sender)
+        await updateProfilePicInNotifications(userName, newProfilePicUrl);
+      } else {
+        console.error('User displayName is null');
+      }
+
         // Update local state
         setProfilePicUrl(newProfilePicUrl);
         setPreviewProfilePicUrl(newProfilePicUrl);
@@ -221,6 +228,38 @@ const StudentProfile: React.FC = () => {
     }
   };
   
+const updateProfilePicInNotifications = async (userName: string, newProfilePicUrl: string) => {
+  try {
+    // Fetch all notifications from Firestore
+    const notificationsSnapshot = await getDocs(collection(firestore, 'notifications'));
+    const batch = writeBatch(firestore);
+
+    notificationsSnapshot.forEach((notificationDoc) => {
+      const notificationData = notificationDoc.data();
+
+      // Check if the inviterName matches the user's name and update inviterProfilePic
+      if (notificationData.inviterName === userName) {
+        batch.update(doc(firestore, 'notifications', notificationDoc.id), {
+          inviterProfilePic: newProfilePicUrl,
+        });
+      }
+
+      // Check if the senderName matches the user's name and update senderProfilePic
+      if (notificationData.senderName === userName) {
+        batch.update(doc(firestore, 'notifications', notificationDoc.id), {
+          senderProfilePic: newProfilePicUrl,
+        });
+      }
+    });
+
+    // Commit all updates in a single batch
+    await batch.commit();
+    console.log('Notifications updated with the new profile picture');
+  } catch (error) {
+    console.error('Error updating profile picture in notifications:', error);
+  }
+};
+
   
 
   const handleSaveChanges = async () => {

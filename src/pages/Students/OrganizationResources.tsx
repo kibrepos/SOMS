@@ -604,9 +604,9 @@ const filteredFiles = [...files]
   <Header />
   <div className="OrgResour-layout">
     
-    
+  <div className="sidebar-section">
   {renderSidebar()}
-
+  </div>
 
 
     <main className="main-content">

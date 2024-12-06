@@ -1,0 +1,91 @@
+/* Container for the entire reports page */
+.reports-container {
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    background-color: #f8f9fa;
+  }
+  
+  /* Title of the page */
+  .reports-container h1 {
+    font-size: 2rem;
+    color: #343a40;
+    margin-bottom: 30px;
+    text-align: center;
+  }
+  
+  /* Container for the charts */
+  .charts-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    gap: 30px;
+  }
+  
+  /* Each chart wrapper */
+  .chart {
+    width: 100%;
+    max-width: 500px;
+    padding: 15px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+  
+  /* Title of each chart */
+  .chart h2 {
+    font-size: 1.5rem;
+    color: #495057;
+    margin-bottom: 20px;
+  }
+  
+  /* General styling for loading and error states */
+  .loading, .error {
+    text-align: center;
+    font-size: 1.2rem;
+    color: #dc3545; /* Red for errors */
+    margin-top: 50px;
+  }
+  
+  /* Responsive design for smaller screens */
+  @media (max-width: 768px) {
+    .charts-container {
+      flex-direction: column;
+      align-items: center;
+    }
+  
+    .chart {
+      width: 100%;
+      max-width: 90%;
+    }
+  }
+  
+  /* Additional styling for pie charts to ensure they're centered properly */
+  .chart .chart-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  /* Add a little space around each chart */
+  .chart canvas {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  
+  /* Optional: Styles for error messages */
+  .error-message {
+    font-size: 1.2rem;
+    color: #dc3545;
+    margin-top: 20px;
+    text-align: center;
+  }
+  
+  /* For responsive Pie chart labels */
+  @media (max-width: 576px) {
+    .chart h2 {
+      font-size: 1.25rem;
+    }
+  }
+  
