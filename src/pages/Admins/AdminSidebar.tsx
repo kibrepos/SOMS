@@ -147,7 +147,7 @@ const AdminSidebar: React.FC = () => {
   </li>
   <li className="nav-item">
     <NavLink 
-      to="/events-management" 
+      to="/Admin/EventsManagement" 
       className={({ isActive }) => (isActive ? 'active nav-link' : 'nav-link')}
     >
       <FontAwesomeIcon icon={faCalendar} />
@@ -156,7 +156,7 @@ const AdminSidebar: React.FC = () => {
   </li>
   <li className="nav-item">
     <NavLink 
-      to="/user-management" 
+      to="/Admin/UserManagement" 
       className={({ isActive }) => (isActive ? 'active nav-link' : 'nav-link')}
     >
       <FontAwesomeIcon icon={faUsers} />
@@ -174,7 +174,7 @@ const AdminSidebar: React.FC = () => {
   </li>
   <li className="nav-item">
     <NavLink 
-      to="/reporting-analytics" 
+      to="/Admin/ReportingAnalytics" 
       className={({ isActive }) => (isActive ? 'active nav-link' : 'nav-link')}
     >
       <FontAwesomeIcon icon={faChartPie} />
