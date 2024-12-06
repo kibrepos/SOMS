@@ -1,5 +1,20 @@
-/* General Table Styling */
-.OrgResour-table {
+/* Dashboard Layout */
+.dashboard-layout {
+  display: flex;
+  height: 100vh;
+}
+
+
+
+/* Main Content */
+.main-content {
+  margin-left: 250px; /* Adjust based on sidebar width */
+  width: calc(100% - 250px);
+  padding: 20px;
+  background-color: #f4f4f9;
+
+  
+}.OrgResour-table {
     width: 100%;
     border-collapse: collapse;
     font-family: 'Arial', sans-serif;

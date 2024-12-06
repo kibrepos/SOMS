@@ -1,33 +1,86 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { auth, firestore } from '../../services/firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { Link } from 'react-router-dom';
 import Header from '../../components/Header';
-import StudentPresidentSidebar from './StudentPresidentSidebar'; 
-import StudentOfficerSidebar from './StudentOfficerSidebar'; 
-import StudentMemberSidebar from './StudentMemberSidebar'; 
+import StudentPresidentSidebar from './StudentPresidentSidebar';
+import StudentOfficerSidebar from './StudentOfficerSidebar';
+import StudentMemberSidebar from './StudentMemberSidebar';
 import '../../styles/OrganizationDashboard.css';
-import OrganizationSidebar from './OrganizationSidebar'; 
+import OrganizationSidebar from './OrganizationSidebar';
+
+interface Task {
+  id: string;
+  title: string;
+  dueDate: string;
+  taskStatus: string;
+  assignedCommittees: string[];
+  assignedMembers: string[];
+  assignedTo: string[];
+}
+
+interface Announcement {
+  id: string;
+  subject: string;
+  timestamp: {
+    seconds: number;
+  };
+}
 
 const OrganizationDashboard: React.FC = () => {
-  const { organizationName } = useParams<{ organizationName: string }>(); // Get organization name from URL
+  const { organizationName } = useParams<{ organizationName: string }>();
   const [organizationData, setOrganizationData] = useState<any>(null);
+  const [events, setEvents] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null); // Track user's role (president, officer, or member)
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null); // Store user ID
   const navigate = useNavigate();
 
+  const limitedTasks = tasks.slice(0, 3);
+  const limitedEvents = events.slice(0, 3);
+
+  
+  useEffect(() => {
+    const fetchUpcomingEvents = async () => {
+      try {
+        // Dynamically fetch events from Firestore for the current organization
+        const eventsCollectionRef = collection(firestore, `events/${organizationName}/event`);
+        const eventsSnapshot = await getDocs(eventsCollectionRef);
+        
+        // Extract event data and filter for upcoming events
+        const currentDate = new Date();
+        const upcomingEvents = eventsSnapshot.docs
+          .map(doc => doc.data())
+          .filter((event: any) => {
+            // Check if event has a startDate and if it is in the future
+            return event.eventDates && event.eventDates.some((date: any) => new Date(date.startDate) > currentDate);
+          });
+        
+        setEvents(upcomingEvents);
+      } catch (error) {
+        console.error('Error fetching upcoming events:', error);
+      }
+    };
+
+    if (organizationName) {
+      fetchUpcomingEvents();
+    }
+  }, [organizationName]);
+  // Fetch Organization Data and User Role
   useEffect(() => {
     const fetchOrganizationData = async () => {
       try {
         const user = auth.currentUser;
 
         if (user) {
+          setUserId(user.uid); // Set the logged-in user ID
           const userDocRef = doc(firestore, 'students', user.uid);
           const userDoc = await getDoc(userDocRef);
 
           if (userDoc.exists()) {
-
-            // Get the organization data
             const orgDocRef = doc(firestore, 'organizations', organizationName || '');
             const orgDoc = await getDoc(orgDocRef);
 
@@ -35,7 +88,6 @@ const OrganizationDashboard: React.FC = () => {
               const orgData = orgDoc.data();
               setOrganizationData(orgData);
 
-              // Determine the user's role in the organization
               if (orgData.president?.id === user.uid) {
                 setUserRole('president');
               } else if (orgData.officers?.some((officer: any) => officer.id === user.uid)) {
@@ -43,10 +95,9 @@ const OrganizationDashboard: React.FC = () => {
               } else if (orgData.members?.some((member: any) => member.id === user.uid)) {
                 setUserRole('member');
               } else {
-                setUserRole(null); // User is not part of the organization
+                setUserRole(null);
               }
 
-              // Automatically navigate to the dashboard of the organization
               if (organizationName) {
                 navigate(`/Organization/${organizationName}/dashboard`);
               }
@@ -63,6 +114,98 @@ const OrganizationDashboard: React.FC = () => {
     fetchOrganizationData();
   }, [organizationName, navigate]);
 
+  // Fetch Tasks for the Organization and filter by assignedTo, assignedCommittees, and assignedMembers
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        if (!organizationName || !userId || !organizationData) return;  // Ensure orgData is loaded
+  
+        setLoading(true);
+  
+        const tasksCollectionRef = collection(firestore, `tasks/${organizationName}/AllTasks`);
+        const snapshot = await getDocs(tasksCollectionRef);
+  
+        const fetchedTasks = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Task[];
+  
+        // Filter tasks based on the user’s role and assigned members/committees
+        const filteredTasks = fetchedTasks.filter(task => {
+          // Check if the user is assigned to this task
+          return (
+            task.assignedTo.includes(userId) || 
+            task.assignedCommittees.some((committee: string) => organizationData?.committees?.includes(committee)) || 
+            task.assignedMembers.includes(userId)
+          );
+        });
+  
+        // Filter incomplete tasks and tasks that are not overdue
+        const currentDate = new Date();
+        const incompleteTasks = filteredTasks
+          .filter(task => task.taskStatus !== "Completed")
+          .filter(task => new Date(task.dueDate) >= currentDate); // Exclude overdue tasks
+  
+        // Sort tasks by dueDate in descending order (newest tasks first)
+        const sortedTasks = incompleteTasks.sort((a, b) => {
+          const dateA = new Date(a.dueDate).getTime();
+          const dateB = new Date(b.dueDate).getTime();
+          return dateB - dateA; // Sort in descending order
+        });
+  
+        setTasks(sortedTasks);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        setLoading(false);
+      }
+    };
+  
+    if (organizationName && userId && organizationData) {
+      fetchTasks();
+    }
+  }, [organizationName, userId, organizationData]);
+  
+
+  // Fetch Announcements for the Organization
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      try {
+        if (!organizationName) return;
+
+        setLoading(true);
+
+        const orgNotificationsRef = doc(firestore, "notifications", organizationName);
+        const subCollectionRef = collection(orgNotificationsRef, "organizationAnnouncements");
+
+        const snapshot = await getDocs(subCollectionRef);
+
+        const fetchedAnnouncements = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Announcement[];
+
+        const sortedAnnouncements = fetchedAnnouncements.sort((a, b) => {
+          const dateA = new Date(a.timestamp.seconds * 1000).getTime();
+          const dateB = new Date(b.timestamp.seconds * 1000).getTime();
+          return dateB - dateA;
+        });
+
+        const latestAnnouncements = sortedAnnouncements.slice(0, 3);
+
+        setAnnouncements(latestAnnouncements);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching announcements:", error);
+        setLoading(false);
+      }
+    };
+
+    if (organizationName) {
+      fetchAnnouncements();
+    }
+  }, [organizationName]);
+
   if (loading) {
     return <div>Loading organization data...</div>;
   }
@@ -70,6 +213,7 @@ const OrganizationDashboard: React.FC = () => {
   if (!organizationData) {
     return <div>No organization data found.</div>;
   }
+
   let SidebarComponent = null;
   if (userRole === 'president') {
     SidebarComponent = <StudentPresidentSidebar />;
@@ -78,32 +222,104 @@ const OrganizationDashboard: React.FC = () => {
   } else if (userRole === 'member') {
     SidebarComponent = <StudentMemberSidebar />;
   }
+
   return (
-    <div className="organization-dashboard-wrapper">
+    <div className="organization-announcements-page">
       <Header />
 
-      <div className="dashboard-container">
-        
-      <div className="sidebar-section">{SidebarComponent}</div>
+      <div className="organization-announcements-container">
+        <div className="sidebar-section">{SidebarComponent}</div>
 
-        <div className="main-content">
+
+
+        <div className="organization-announcements-content">
+  <div className="header-container">
+  <h1 className="headtitle">Dashboard</h1>
+</div>
           <div className="dashboard-content">
-            <h1>Welcome to the {organizationData?.name || 'Organization'} Dashboard</h1>
-            <p>{organizationData?.description || 'No description available.'}</p>
+            {/* Organization Header Section */}
+            <div className="dashboard-organization-header">
+              {/* Background Image Section */}
+              <div className="dashboard-background-image-container">
+              <div 
+  className="dashboard-org-cover"
+  style={{ backgroundImage: `url(${organizationData?.coverImagePath || '/default-background.jpg'})` }}
+>
+</div>
+                {/* Profile Info Section */}
+                <div className="dashboard-org-profile-container">
+                  <img 
+                    src={organizationData?.profileImagePath || '/default-profile.jpg'} 
+                    alt="Profile"
+                     className="dashboard-org-profile"
+                  />
+                  <div className="dashboard-organization-details">
+                    <h1>{organizationData?.name}</h1>
+                    <p>{organizationData?.description}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-            <div className="stats-section">
-              <div className="stat-card">
-                <h3>Total Members</h3>
-                <p>{organizationData?.members?.length || 0}</p>
+            {/* Right Section for To-do, Announcements, and Events */}
+            <div className="dashboard-right-section">
+              {/* To-do Box */}
+              <div className="todo-box">
+                <h4>To-do</h4>
+                <ul>
+                  {limitedTasks.length > 0 ? (
+                    limitedTasks.map((task, index) => (
+                      <li key={index} className="todo-item">
+                        <strong>{task.title}</strong> {/* Show only task title */}
+                      </li>
+                    ))
+                  ) : (
+                    <p>No to-dos available.</p>
+                  )}
+                </ul>
+                {tasks.length > 3 && (
+                  <Link to={`/organization/${organizationName}/mytasks`} className="view-all-link">
+                    View All Tasks
+                  </Link>
+                )}
               </div>
-              <div className="stat-card">
-                <h3>Organization Head</h3>
-                <p>{organizationData?.head || 'No head assigned'}</p>
+
+              {/* Announcements Box */}
+              <div className="announcements-box">
+                <h4>Announcements</h4>
+                <ul>
+                  {announcements.length > 0 ? (
+                    announcements.map((announcement) => (
+                      <li key={announcement.id} className="announcement-item">
+                        <strong>{announcement.subject}</strong> {/* Show only subject */}
+                      </li>
+                    ))
+                  ) : (
+                    <p>No announcements available.</p>
+                  )}
+                </ul>
               </div>
-              <div className="stat-card">
-                <h3>Upcoming Events</h3>
-                <p>{organizationData?.events?.length || 0}</p>
-              </div>
+
+              {/* Upcoming Events Box */}
+          <div className="upcoming-events-box">
+            <h4>Upcoming Events</h4>
+            <ul>
+              {limitedEvents.length > 0 ? (
+                limitedEvents.map((event, index) => (
+                  <li key={index} className="event-item">
+                    <Link to={`/organization/${organizationName}/events/${event.title}`}>{event.title}</Link>
+                  </li>
+                ))
+              ) : (
+                <p>No upcoming events.</p>
+              )}
+            </ul>
+            {events.length > 3 && (
+              <Link to={`/organization/${organizationName}/events`} className="view-all-link">
+                View All Events
+              </Link>
+            )}
+          </div>
             </div>
           </div>
         </div>

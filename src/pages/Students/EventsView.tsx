@@ -85,10 +85,64 @@ const EventsView: React.FC = () => {
   const [modalDayIndex, setModalDayIndex] = useState<number | null>(null);
   const [showRSVPModal, setShowRSVPModal] = useState(false);
   const [responses, setResponses] = useState<{ dayIndex: number; status: string }[]>([]);
-  const [showRSVPResponsesModal, setShowRSVPResponsesModal] = useState(false); // Controls visibility of the modal
+  const [showRSVPResponsesModal, setShowRSVPResponsesModal] = useState(false); 
+  const [showAttendanceOverview, setShowAttendanceOverview] = useState(false);
+const [attendanceOverview, setAttendanceOverview] = useState<Attendance[]>([]);
   const navigate = useNavigate(); // Call useNavigate at the top of the component
 
+  useEffect(() => {
+  if (!organizationName || !eventId) return;
+
+  const fetchAllAttendanceData = async () => {
+    try {
+      const attendanceRef = collection(
+        firestore,
+        "events",
+        organizationName,
+        "event",
+        eventId,
+        "attendance"
+      );
+
+      const querySnapshot = await getDocs(attendanceRef);
+
+      const fetchedAttendance: Attendance[] = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Attendance[];
+
+      setAttendanceOverview(fetchedAttendance);
+    } catch (error) {
+      console.error("Error fetching attendance data:", error);
+    }
+  };
+
+  fetchAllAttendanceData();
+}, [organizationName, eventId]);
+
+  useEffect(() => {
+    if (!organizationName || !eventId) return;
   
+    const attendanceRef = collection(
+      firestore,
+      "events",
+      organizationName,
+      "event",
+      eventId,
+      "attendance"
+    );
+  
+    const unsubscribe = onSnapshot(attendanceRef, (snapshot) => {
+      const fetchedAttendance: Attendance[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Attendance[];
+  
+      setAttendance(fetchedAttendance);
+    });
+  
+    return () => unsubscribe();
+  }, [organizationName, eventId]);
   const handleBackButtonClick = () => {
     history.back(); // Navigate back to the previous page
   };
@@ -97,6 +151,87 @@ const EventsView: React.FC = () => {
 const handleEditEventButtonClick = (eventId: string, organizationName: string) => {
   navigate(`/Organization/${organizationName}/edit-event/${eventId}`); // Navigate to the event edit page
 };
+
+const fetchAttendanceData = async (dayIndex: number) => {
+  if (!organizationName || !eventId) return null;
+
+  try {
+    const attendanceRef = collection(
+      firestore,
+      "events",
+      organizationName,
+      "event",
+      eventId,
+      "attendance"
+    );
+    const attendanceQuery = query(
+      attendanceRef,
+      where("dayIndex", "==", dayIndex)
+    );
+    const querySnapshot = await getDocs(attendanceQuery);
+
+    if (!querySnapshot.empty) {
+      const attendanceDoc = querySnapshot.docs[0];
+      return { ...attendanceDoc.data(), id: attendanceDoc.id } as Attendance;
+    }
+  } catch (error) {
+    console.error("Error fetching attendance data:", error);
+  }
+
+  return null;
+};
+
+
+const handleSaveAttendance = async (
+  updatedAttendance: { userId: string; status: string }[]
+) => {
+  if (!organizationName || !eventId || modalDayIndex === null) {
+    console.error("Missing organizationName, eventId, or modalDayIndex.");
+    return;
+  }
+
+  try {
+    const attendanceRef = doc(
+      firestore,
+      "events",
+      organizationName,
+      "event",
+      eventId,
+      "attendance",
+      `day-${modalDayIndex}` // Use dayIndex as the document ID
+    );
+
+    // Update Firestore with the new attendance data
+    await setDoc(attendanceRef, {
+      dayIndex: modalDayIndex,
+      attendees: updatedAttendance.map((user) => ({
+        ...user,
+        status: user.status || "Absent", // Default to "Absent" if status is undefined
+      })),
+    });
+
+    console.log("Attendance saved successfully for day:", modalDayIndex);
+
+    // Fetch updated attendance data
+    const updatedAttendanceData = await fetchAttendanceData(modalDayIndex);
+
+    // Update local state with new attendance data
+    setAttendance((prev) =>
+      prev.map((a) =>
+        a.dayIndex === modalDayIndex
+          ? { ...a, attendees: updatedAttendanceData?.attendees || [] }
+          : a
+      )
+    );
+
+    // Close the modal after saving
+    setShowAttendanceModal(false);
+  } catch (error) {
+    console.error("Error saving attendance to Firestore:", error);
+  }
+};
+
+
 
   const handleOpenRSVPModal = () => {
     const userRSVP = rsvps.find((rsvp) => rsvp.userId === currentUser?.uid);
@@ -126,29 +261,8 @@ const handleEditEventButtonClick = (eventId: string, organizationName: string) =
     return null;
   };
 
-  useEffect(() => {
-    if (!organizationName || !eventId) return;
+
   
-    const attendanceRef = collection(
-      firestore,
-      "events",
-      organizationName,
-      "event",
-      eventId,
-      "attendance"
-    );
-  
-    const unsubscribe = onSnapshot(attendanceRef, (snapshot) => {
-      const fetchedAttendance: Attendance[] = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Attendance[];
-  
-      setAttendance(fetchedAttendance);
-    });
-  
-    return () => unsubscribe();
-  }, [organizationName, eventId]);
   
   useEffect(() => {
     if (!organizationName || !eventId) return;
@@ -304,96 +418,94 @@ const handleEditEventButtonClick = (eventId: string, organizationName: string) =
 
     return () => unsubscribe();
   }, [organizationName, eventId]);
+  const AttendanceModal: React.FC<{
+    attendees: { id: string; name: string; role: string; status?: string }[];
+    dayIndex: number;
+    onClose: () => void;
+    onSave: (updatedAttendance: { userId: string; status: string }[]) => void;
+    editable: boolean;
+  }> = ({ attendees, dayIndex, onClose, onSave, editable }) => {
+    const [attendanceData, setAttendanceData] = useState(attendees);
+  
+    const handleStatusChange = (userId: string, status: string) => {
+      if (editable) {
+        setAttendanceData((prev) =>
+          prev.map((data) =>
+            data.id === userId ? { ...data, status } : data
+          )
+        );
+      }
+    };
+  
 
-const AttendanceModal: React.FC<{
-  attendees: { id: string; name: string; role: string; status?: string }[];
-  dayIndex: number;
-  onClose: () => void;
-  onSave: (updatedAttendance: { userId: string; status: string }[]) => void;
-  editable: boolean;
-}> = ({ attendees, dayIndex, onClose, onSave, editable }) => {
-  const [attendanceData, setAttendanceData] = useState(attendees);
-
-  const handleStatusChange = (userId: string, status: string) => {
-    if (editable) {
-      setAttendanceData((prev) =>
-        prev.map((data) =>
-          data.id === userId ? { ...data, status } : data
-        )
-      );
-    }
-  };
-
-  const handleSave = () => {
-    if (editable) {
-      onSave(
-        attendanceData.map((attendee) => ({
-          userId: attendee.id,
-          status: attendee.status || "Absent", // Default to "Absent" if status is undefined
-        }))
-      );
-    }
-  };
-
-  return (
-    <div className="attendance-modal-overlay">
-      <div className="attendance-modal-content">
-        <h3>Manage Attendance for Day {dayIndex + 1}</h3>
-        <table className="attendance-modal-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Role</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {attendanceData.map((attendee) => (
-              <tr key={attendee.id}>
-                <td>{attendee.name}</td>
-                <td>{attendee.role}</td>
-                <td>
-                  <div className="status-buttons">
-                    <button
-                      className={`status-button present ${attendee.status === "Present" ? "active" : ""}`}
-                      onClick={() => handleStatusChange(attendee.id, "Present")}
-                      disabled={!editable}
-                    >
-                     <FontAwesomeIcon icon={faCheck} className="custom-icon" 
-                     />
-
-                    </button>
-                    <button
-                      className={`status-button absent ${attendee.status === "Absent" ? "active" : ""}`}
-                      onClick={() => handleStatusChange(attendee.id, "Absent")}
-                      disabled={!editable}
-                    >
-                      <FontAwesomeIcon icon={faTimes} className="custom-icon" />
-                    </button>
-                    <button
-                      className={`status-button late ${attendee.status === "Late" ? "active" : ""}`}
-                      onClick={() => handleStatusChange(attendee.id, "Late")}
-                      disabled={!editable}
-                    >
-                      <FontAwesomeIcon icon={faClock} className="custom-icon" />
-                    </button>
-                  </div>
-                </td>
+    
+    return (
+      <div className="attendance-modal-overlay">
+        <div className="attendance-modal-content">
+          <h3>Manage Attendance for Day {dayIndex + 1}</h3>
+          <table className="attendance-modal-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="attendance-modal-actions">
-          <button onClick={onClose}>Cancel</button>
-          <button onClick={handleSave} disabled={!editable}>
-            {editable ? "Save" : "Locked"}
-          </button>
+            </thead>
+            <tbody>
+              {attendanceData.map((attendee) => (
+                <tr key={attendee.id}>
+                  <td>{attendee.name}</td>
+                  <td>{attendee.role}</td>
+                  <td>
+                    <div className="status-buttons">
+                      <button
+                        className={`status-button present ${attendee.status === "Present" ? "active" : ""}`}
+                        onClick={() => handleStatusChange(attendee.id, "Present")}
+                        disabled={!editable}
+                      >
+                        <FontAwesomeIcon icon={faCheck} className="custom-icon" />
+                      </button>
+                      <button
+                        className={`status-button absent ${attendee.status === "Absent" ? "active" : ""}`}
+                        onClick={() => handleStatusChange(attendee.id, "Absent")}
+                        disabled={!editable}
+                      >
+                        <FontAwesomeIcon icon={faTimes} className="custom-icon" />
+                      </button>
+                      <button
+                        className={`status-button late ${attendee.status === "Late" ? "active" : ""}`}
+                        onClick={() => handleStatusChange(attendee.id, "Late")}
+                        disabled={!editable}
+                      >
+                        <FontAwesomeIcon icon={faClock} className="custom-icon" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="attendance-modal-actions">
+            <button onClick={onClose}>Cancel</button>
+            <button
+              onClick={() =>
+                onSave(
+                  attendanceData.map((attendee) => ({
+                    userId: attendee.id, // Map 'id' to 'userId'
+                    status: attendee.status || "Absent", // Ensure 'status' is not undefined
+                  }))
+                )
+              }
+              disabled={!editable}
+            >
+              {editable ? "Save" : "Locked"}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
-
+    );
+  };
+  
   const handleOpenAttendanceModal = (dayIndex: number) => {
     const isEditable =
       currentUser?.uid === organizationData?.president?.id ||
@@ -437,15 +549,16 @@ const AttendanceModal: React.FC<{
     setEditable(isEditable);
     setModalDayIndex(dayIndex);
     setShowAttendanceModal(true);
+  
+    // This will immediately set the modal's attendees state
     setAttendance((prev) =>
       prev.map((a) =>
-        a.dayIndex === dayIndex
-          ? { ...a, attendees }
-          : a
+        a.dayIndex === dayIndex ? { ...a, attendees } : a
       )
     );
   };
   
+
   const handleRSVP = async () => {
     if (!editable || !currentUser || !organizationName || !eventId) {
       console.error("RSVP not editable, user not authenticated, or invalid data");
@@ -479,80 +592,9 @@ const AttendanceModal: React.FC<{
       console.error("Error saving RSVP:", error);
     }
   };
-  const handleSaveAttendance = async (
-    updatedAttendance: { userId: string; status: string }[]
-  ) => {
-    if (!organizationName || !eventId || modalDayIndex === null) {
-      console.error("Missing organizationName, eventId, or modalDayIndex.");
-      return;
-    }
+ 
   
-    try {
-      const attendanceRef = doc(
-        firestore,
-        "events",
-        organizationName,
-        "event",
-        eventId,
-        "attendance",
-        `day-${modalDayIndex}` // Use dayIndex as the document ID
-      );
-  
-      // Update Firestore with the new attendance data
-      await setDoc(attendanceRef, {
-        dayIndex: modalDayIndex,
-        attendees: updatedAttendance.map((user) => ({
-          ...user,
-          status: user.status || "Absent", // Default to "Absent" if status is undefined
-        })),
-      });
-  
-      console.log("Attendance saved successfully for day:", modalDayIndex);
-  
-      // Fetch updated attendance data
-      const updatedAttendanceData = await fetchAttendanceData(modalDayIndex);
-  
-      // Update local state with new attendance data
-      setAttendance((prev) =>
-        prev.map((a) =>
-          a.dayIndex === modalDayIndex
-            ? { ...a, attendees: updatedAttendanceData?.attendees || [] }
-            : a
-        )
-      );
-    } catch (error) {
-      console.error("Error saving attendance to Firestore:", error);
-    }
-  };
-  
-  const fetchAttendanceData = async (dayIndex: number) => {
-    if (!organizationName || !eventId) return null;
-  
-    try {
-      const attendanceRef = collection(
-        firestore,
-        "events",
-        organizationName,
-        "event",
-        eventId,
-        "attendance"
-      );
-      const attendanceQuery = query(
-        attendanceRef,
-        where("dayIndex", "==", dayIndex)
-      );
-      const querySnapshot = await getDocs(attendanceQuery);
-  
-      if (!querySnapshot.empty) {
-        const attendanceDoc = querySnapshot.docs[0];
-        return { ...attendanceDoc.data(), id: attendanceDoc.id } as Attendance;
-      }
-    } catch (error) {
-      console.error("Error fetching attendance data:", error);
-    }
-  
-    return null;
-  };
+
   
   const getSidebarComponent = () => {
     switch (userRole) {
@@ -725,8 +767,11 @@ const AttendanceModal: React.FC<{
     <div className="event-view-wrapper">
       <Header />
       <div className="dashboard-container">
+        
         <div className="sidebar-section">{getSidebarComponent()}</div>
         <div className="main-content">
+       
+
         <button className="back-button" onClick={handleBackButtonClick}>Return</button>
         <button onClick={() => eventId && organizationName ? handleEditEventButtonClick(eventId, organizationName) : console.error('eventId or organizationName is missing')}>
         Edit Event 
