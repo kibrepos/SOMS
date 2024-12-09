@@ -236,91 +236,107 @@ const OrganizationDashboard: React.FC = () => {
   <div className="header-container">
   <h1 className="headtitle">Dashboard</h1>
 </div>
-          <div className="dashboard-content">
-            {/* Organization Header Section */}
-            <div className="dashboard-organization-header">
-              {/* Background Image Section */}
-              <div className="dashboard-background-image-container">
-              <div 
-  className="dashboard-org-cover"
-  style={{ backgroundImage: `url(${organizationData?.coverImagePath || '/default-background.jpg'})` }}
->
+<div className="dashboard-container">
+  {/* Background Image Section */}
+  <div className="dashboard-background-image-container">
+    <div
+      className="dashboard-org-cover"
+      style={{
+        backgroundImage: `url(${organizationData?.coverImagePath || '/default-background.jpg'})`,
+      }}
+    ></div>
+
+    {/* Profile Info Section */}
+    <div className="dashboard-org-profile-container">
+    <img
+      src={organizationData?.profileImagePath || '/default-profile.jpg'}
+      alt="Profile"
+      className="dashboard-org-profile"
+    />
+ <div className="dashboard-organization-name">
+      <h1>{organizationData?.name}</h1>
+    </div>
+    </div>
+    <div className="dashboard-org-details">
+    <p>{organizationData?.description}</p>
+  
+  
+  </div>
 </div>
-                {/* Profile Info Section */}
-                <div className="dashboard-org-profile-container">
-                  <img 
-                    src={organizationData?.profileImagePath || '/default-profile.jpg'} 
-                    alt="Profile"
-                     className="dashboard-org-profile"
-                  />
-                  <div className="dashboard-organization-details">
-                    <h1>{organizationData?.name}</h1>
-                    <p>{organizationData?.description}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            {/* Right Section for To-do, Announcements, and Events */}
-            <div className="dashboard-right-section">
-              {/* To-do Box */}
-              <div className="todo-box">
-                <h4>To-do</h4>
-                <ul>
-                  {limitedTasks.length > 0 ? (
-                    limitedTasks.map((task, index) => (
-                      <li key={index} className="todo-item">
-                        <strong>{task.title}</strong> {/* Show only task title */}
-                      </li>
-                    ))
-                  ) : (
-                    <p>No to-dos available.</p>
-                  )}
-                </ul>
-                {tasks.length > 3 && (
-                  <Link to={`/organization/${organizationName}/mytasks`} className="view-all-link">
-                    View All Tasks
-                  </Link>
-                )}
-              </div>
+  {/* Right Section for To-do, Announcements, and Events */}
+  <div className="dashboard-right-section">
+    {/* To-do Box */}
+    <div className="todo-box">
+      <h4>To-do</h4>
+      <ul>
+        {limitedTasks.length > 0 ? (
+          limitedTasks.map((task, index) => (
+            <li key={index} className="todo-item">
+              <strong>{task.title}</strong>
+            </li>
+          ))
+        ) : (
+          <p>No to-dos available.</p>
+        )}
+      </ul>
+      {tasks.length > 3 && (
+        <Link
+          to={`/organization/${organizationName}/mytasks`}
+          className="view-all-link"
+        >
+          View All Tasks
+        </Link>
+      )}
+    </div>
 
-              {/* Announcements Box */}
-              <div className="announcements-box">
-                <h4>Announcements</h4>
-                <ul>
-                  {announcements.length > 0 ? (
-                    announcements.map((announcement) => (
-                      <li key={announcement.id} className="announcement-item">
-                        <strong>{announcement.subject}</strong> {/* Show only subject */}
-                      </li>
-                    ))
-                  ) : (
-                    <p>No announcements available.</p>
-                  )}
-                </ul>
-              </div>
+    {/* Announcements Box */}
+    <div className="announcements-box">
+      <h4>Announcements</h4>
+      <ul>
+        {announcements.length > 0 ? (
+          announcements.map((announcement) => (
+            <li key={announcement.id} className="announcement-item-box">
+              <strong>{announcement.subject}</strong>
+            </li>
+          ))
+        ) : (
+          <p>No announcements available.</p>
+        )}
+      </ul>
+    </div>
 
-              {/* Upcoming Events Box */}
-          <div className="upcoming-events-box">
-            <h4>Upcoming Events</h4>
-            <ul>
-              {limitedEvents.length > 0 ? (
-                limitedEvents.map((event, index) => (
-                  <li key={index} className="event-item">
-                    <Link to={`/organization/${organizationName}/events/${event.title}`}>{event.title}</Link>
-                  </li>
-                ))
-              ) : (
-                <p>No upcoming events.</p>
-              )}
-            </ul>
-            {events.length > 3 && (
-              <Link to={`/organization/${organizationName}/events`} className="view-all-link">
-                View All Events
-              </Link>
-            )}
-          </div>
-            </div>
+    <div className="upcoming-events-box">
+  <h4>Upcoming Events</h4>
+  <ul>
+    {limitedEvents.length > 0 ? (
+      limitedEvents.map((event, index) => (
+        <li key={index} className="wadapman">
+          <Link
+            to={`/organization/${organizationName}/events/${event.title}`}
+            className="clickable-box"
+          >
+            <span>{event.title}</span>
+          </Link>
+        </li>
+      ))
+    ) : (
+      <p>No upcoming events.</p>
+    )}
+  </ul>
+  {events.length > 3 && (
+    <Link
+      to={`/organization/${organizationName}/events`}
+      className="view-all-link"
+    >
+      View All Events
+    </Link>
+  )}
+</div>
+
+
+  </div>
+
           </div>
         </div>
       </div>

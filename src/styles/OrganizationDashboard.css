@@ -1,51 +1,19 @@
 
 
-/* Main Layout */
-.organization-announcements-page {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-.organization-announcements-container {
-  display: flex;
-  flex-wrap: wrap;
-  padding: 20px;
-}
-
-
-
-.sidebar-section h3 {
-  color: #2c3e50;
-  font-size: 22px;
-  margin-bottom: 20px;
-}
-
-/* Organization Announcements Content */
-.organization-announcements-content {
-  flex-grow: 1;
-}
-
-/* Dashboard Header */
-.dashboard-organization-header {
-  background-color: #ffffff;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
 /* Background Image Section */
 .dashboard-background-image-container {
   position: relative;
   height: 300px;
+  width: 100%;
   background-size: cover;
   background-position: center;
   border-radius: 10px;
   margin-bottom: 20px;
+}
+
+.dashboard-background-image-container {
+  width: 100%;
+  position: relative;
 }
 
 .dashboard-org-cover {
@@ -53,50 +21,58 @@
   height: 100%;
   background-size: cover;
   background-position: center;
-  border-radius: 10px;
+  border-radius: 0 0 10px 10px;
 }
 
-/* Profile Info Section */
 .dashboard-org-profile-container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  align-items: flex-start; /* Align items to the left */
+  justify-content: flex-start; /* Ensure horizontal content aligns to the left */
+  gap: 20px; /* Add space between the profile and name */
+  margin-top: -100px; /* Keep your original offset */
   padding: 20px;
-  background-color: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  flex-wrap: wrap; /* For responsiveness on smaller screens */
 }
 
 .dashboard-org-profile {
-  width: 100px;
-  height: 100px;
-  object-fit: cover;
+  width: 150px;
+  height: 150px;
   border-radius: 50%;
-  margin-bottom: 10px;
-  border: 4px solid #ffffff;
+  border: 3px solid white;
+  object-fit: cover;
+
 }
 
-.dashboard-organization-details h1 {
-  font-size: 24px;
-  margin: 0;
-  color: #2c3e50;
+.dashboard-org-details {
+
+  text-align: left;
+  padding: 10px 20px;
+  font-size: 1rem;
+  color: #000000;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+
 }
 
-.dashboard-organization-details p {
-  font-size: 16px;
-  color: #7f8c8d;
-  text-align: center;
-  margin-top: 5px;
+.dashboard-organization-name {
+  font-size: 15px;
+  font-weight: bold;
+  margin-top: 80px;
+  color: #000000;
+  text-align: left; /* Ensure text inside is left-aligned */
 }
+
 
 /* Right Sidebar Section */
 .dashboard-right-section {
-  width: 300px;
+  width: 350px;
   padding: 20px;
   background-color: #ffffff;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   border-radius: 10px;
   margin-left: auto;
+  max-height: 620px;
 }
 
 /* Section Boxes */
@@ -129,6 +105,7 @@
   margin-bottom: 10px;
 }
 
+/* List Items */
 .todo-box ul, .announcements-box ul, .upcoming-events-box ul {
   list-style-type: none;
   padding: 0;
@@ -150,25 +127,24 @@
 }
 
 /* Links */
+.todo-box ul li a, .announcements-box ul li a, .upcoming-events-box ul li a {
+  color: #2c3e50; /* Ensure links are not blue */
+  text-decoration: none;
+}
+
+.todo-box ul li a:hover, .announcements-box ul li a:hover, .upcoming-events-box ul li a:hover {
+  text-decoration: underline;
+}
+/* Links */
+/* View All Links */
 .view-all-link {
-  color: #3498db;
+  color: #000000; /* Black for 'View All' links */
   font-size: 14px;
   text-decoration: none;
 }
 
 .view-all-link:hover {
   text-decoration: underline;
-}
-
-/* Notification Badge */
-.notification-badge {
-  display: inline-block;
-  background-color: #e74c3c;
-  color: white;
-  padding: 2px 6px;
-  font-size: 12px;
-  border-radius: 50%;
-  margin-left: 10px;
 }
 
 /* Responsive Design */
