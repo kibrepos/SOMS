@@ -1,22 +1,25 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { firestore } from "../../services/firebaseConfig";
-import { doc, getDoc, updateDoc, collection, getDocs } from "firebase/firestore";
-import "../../styles/EventsEdit.css";
-import { arrayUnion } from "firebase/firestore";
+import { firestore, storage } from "../../services/firebaseConfig";
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  collection,
+  getDocs,
+} from "firebase/firestore";
+import "../../styles/CreateEvent.css"; // Shared CSS for styling
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Header from "../../components/Header";
 import StudentPresidentSidebar from "./StudentPresidentSidebar";
-import { showToast } from '../../components/toast';
-
 
 interface Event {
   title: string;
   description: string;
   eventDates: { startDate: string; endDate: string }[];
   imageUrl: string;
-  eventHead: string; // This will store the selected user's ID
+  eventHead: string;
   venue: string;
-  createdAt: any;
 }
 
 interface User {
@@ -29,259 +32,306 @@ const EditEvent: React.FC = () => {
     organizationName: string;
     eventId: string;
   }>();
-
   const navigate = useNavigate();
   const [eventDetails, setEventDetails] = useState<Event | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [users, setUsers] = useState<User[]>([]); // Store fetched users
-  const [loadingUsers, setLoadingUsers] = useState<boolean>(true); // Loading state for users
-  const [eventHead, setEventHead] = useState<string | null>(null); // Event head (president or officer)
-  const [isModalOpen, setIsModalOpen] = useState(false); // Manage modal visibility
-  const handleSelectEventHead = (id: string) => {
-    setEventHead(id);
-    setIsModalOpen(false); // Close the modal after selection
-  };
-  
   const [organizationData, setOrganizationData] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-useEffect(() => {
-  const fetchOrganizationData = async () => {
-    if (!organizationName) return;
-
-    try {
-      const orgRef = doc(firestore, "organizations", organizationName);
-      const orgDoc = await getDoc(orgRef);
-      if (orgDoc.exists()) {
-        setOrganizationData(orgDoc.data());
-      } else {
-        console.error("Organization not found");
-      }
-    } catch (error) {
-      console.error("Error fetching organization data:", error);
-    }
-  };
-
-  fetchOrganizationData();
-}, [organizationName]);
-
-
-
-  const handleSave = async () => {
-    if (!organizationName || !eventId || !eventDetails) return;
-
-    const eventRef = doc(firestore, "events", organizationName, "event", eventId);
-
-    try {
-      await updateDoc(eventRef, {
-        ...eventDetails,
-        eventDates: arrayUnion(...eventDetails.eventDates), // Ensure proper handling of array fields
-      });
-      showToast("Event updated successfully");
-
-      window.history.back(); // Navigate to the previous page
-    } catch (error) {
-      
-      console.error("Error updating event:", error);
-      showToast("Error updating event");
-    }
-  };
-
-  const handleCancel = () => {
-    window.history.back(); // Cancel and navigate back to the previous page
-  };
-
-  // Fetch event details and users (to select from for Event Head)
+  // Fetch event details
   useEffect(() => {
     const fetchEventDetails = async () => {
-      if (!organizationName || !eventId) {
-        console.error("Missing organizationName or eventId");
-        setLoading(false);
-        return;
-      }
-  
-      try {
-        const eventRef = doc(firestore, "events", organizationName, "event", eventId);
+      if (organizationName && eventId) {
+        const eventRef = doc(
+          firestore,
+          "events",
+          organizationName,
+          "event",
+          eventId
+        );
         const eventDoc = await getDoc(eventRef);
-  
         if (eventDoc.exists()) {
           const eventData = eventDoc.data() as Event;
           setEventDetails(eventData);
-          
-          // Set the event head to the current event's eventHead
-          setEventHead(eventData.eventHead);
-        } else {
-          console.error("Event not found");
+          setImagePreview(eventData.imageUrl || null); // Load existing image preview
         }
-      } catch (error) {
-        console.error("Error fetching event details:", error);
-      } finally {
-        setLoading(false);
       }
     };
-  
 
-    const fetchUsers = async () => {
-      if (!organizationName) return;
-
-      try {
-        const usersRef = collection(firestore, "users"); // Assume users are in 'users' collection
-        const usersSnapshot = await getDocs(usersRef);
-        const usersList = usersSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          name: doc.data().name, // Assuming the user document has a 'name' field
-        }));
-        setUsers(usersList);
-      } catch (error) {
-        console.error("Error fetching users:", error);
-      } finally {
-        setLoadingUsers(false);
+    const fetchOrganizationData = async () => {
+      if (organizationName) {
+        const orgRef = doc(firestore, "organizations", organizationName);
+        const orgDoc = await getDoc(orgRef);
+        if (orgDoc.exists()) {
+          setOrganizationData(orgDoc.data());
+        }
       }
     };
 
     fetchEventDetails();
-    fetchUsers();
+    fetchOrganizationData();
   }, [organizationName, eventId]);
 
-  if (loading || loadingUsers) return <p>Loading event details...</p>;
+  const handleSave = async () => {
+    if (!organizationName || !eventId || !eventDetails) return;
 
-  if (!eventDetails) return <p>Event not found. Please check the event ID.</p>;
+    const eventRef = doc(
+      firestore,
+      "events",
+      organizationName,
+      "event",
+      eventId
+    );
+
+    try {
+      // Upload new image if changed
+      let imageUrl = eventDetails.imageUrl;
+      if (imageFile) {
+        const imageRef = ref(
+          storage,
+          `organizations/${organizationName}/Events/${eventId}/eventBG`
+        );
+        await uploadBytes(imageRef, imageFile);
+        imageUrl = await getDownloadURL(imageRef);
+      }
+
+      await updateDoc(eventRef, {
+        ...eventDetails,
+        imageUrl, // Updated image URL
+      });
+
+      alert("Event updated successfully");
+      navigate(`/organization/${organizationName}/events`);
+    } catch (error) {
+      console.error("Error updating event:", error);
+      alert("Failed to update event");
+    }
+  };
+
+  const handleCancel = () => navigate(-1);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+    }
+  };
+
+  const handleSelectEventHead = (id: string) => {
+    if (eventDetails) {
+      setEventDetails({ ...eventDetails, eventHead: id });
+    }
+    setIsModalOpen(false);
+  };
+
+  if (!eventDetails) return <p>Loading...</p>;
 
   return (
-    <div className="event-view-container">
+    <div className="organization-dashboard-wrapper">
       <Header />
       <div className="dashboard-container">
         <div className="sidebar-section">
           <StudentPresidentSidebar />
         </div>
-        <div className="event-content">
-          <h2>Edit Event</h2>
-          <form className="event-form">
-            {/* Event Title */}
-            <div className="form-group">
-              <label>Event Title</label>
-              <input
-                type="text"
-                value={eventDetails.title}
-                onChange={(e) => setEventDetails({ ...eventDetails, title: e.target.value })}
-              />
-            </div>
-  
-            {/* Event Description */}
-            <div className="form-group">
-              <label>Description</label>
-              <textarea
-                value={eventDetails.description}
-                onChange={(e) => setEventDetails({ ...eventDetails, description: e.target.value })}
-              />
-            </div>
-  
-            {/* Event Dates */}
-            <div className="form-group">
-              <label>Event Dates</label>
-              {eventDetails.eventDates.map((date, index) => (
-                <div key={index} className="event-date-group">
+        
+        <div className="main-content">
+        <div className="header-container">
+            <h1 className="headtitle">Edit event</h1>
+          
+          </div>
+          <div className="FESTANOBRAZIL">
+            <form className="CCC-create-event-form">
+              <div className="CCC-form-left">
+                <div className="CCC-create-event-form-group">
+                  <label className="CCC-create-event-label">Event Title</label>
                   <input
-                    type="datetime-local"
-                    value={date.startDate ? date.startDate.substring(0, 16) : ""}
-                    onChange={(e) => {
-                      const newEventDates = [...eventDetails.eventDates];
-                      newEventDates[index].startDate = e.target.value;
-                      setEventDetails({ ...eventDetails, eventDates: newEventDates });
-                    }}
-                  />
-                  to
-                  <input
-                    type="datetime-local"
-                    value={date.endDate ? date.endDate.substring(0, 16) : ""}
-                    onChange={(e) => {
-                      const newEventDates = [...eventDetails.eventDates];
-                      newEventDates[index].endDate = e.target.value;
-                      setEventDetails({ ...eventDetails, eventDates: newEventDates });
-                    }}
+                    type="text"
+                    value={eventDetails.title}
+                    onChange={(e) =>
+                      setEventDetails({
+                        ...eventDetails,
+                        title: e.target.value,
+                      })
+                    }
+                    className="CCC-create-event-input"
                   />
                 </div>
-              ))}
-            </div>
-  
-            {/* Venue */}
-            <div className="form-group">
-              <label>Venue</label>
-              <input
-                type="text"
-                value={eventDetails.venue}
-                onChange={(e) => setEventDetails({ ...eventDetails, venue: e.target.value })}
-              />
-            </div>
-  
-            {/* Event Head Selection */}
-            <div className="form-group">
-              <label htmlFor="eventHead" className="create-event-label">Select Event Head</label>
-              <button type="button" onClick={() => setIsModalOpen(true)} className="dropdown-toggle">
-                {eventHead ? 
-                  organizationData?.president?.id === eventHead ? 
-                    organizationData?.president?.name : 
-                    organizationData?.officers.find((officer: any) => officer.id === eventHead)?.name
-                  : "Select Event Head"
-                }
+                <div className="CCC-create-event-form-group">
+                  <label className="CCC-create-event-label">Description</label>
+                  <textarea
+                    value={eventDetails.description}
+                    onChange={(e) =>
+                      setEventDetails({
+                        ...eventDetails,
+                        description: e.target.value,
+                      })
+                    }
+                    className="CCC-create-event-textarea"
+                  />
+                </div>
+                <div className="CCC-create-event-form-group">
+                  <label className="CCC-create-event-label">Venue</label>
+                  <input
+                    type="text"
+                    value={eventDetails.venue}
+                    onChange={(e) =>
+                      setEventDetails({ ...eventDetails, venue: e.target.value })
+                    }
+                    className="CCC-create-event-input"
+                  />
+                </div>
+                <div className="CCC-date-time-section">
+                  {eventDetails.eventDates.map((date, index) => (
+                    <div key={index} className="CCC-date-time-group">
+                      <label className="CCC-create-event-label">
+                        Start Date & Time (Day {index + 1})
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={date.startDate.substring(0, 16)}
+                        onChange={(e) => {
+                          const updatedDates = [...eventDetails.eventDates];
+                          updatedDates[index].startDate = e.target.value;
+                          setEventDetails({
+                            ...eventDetails,
+                            eventDates: updatedDates,
+                          });
+                        }}
+                        className="CCC-create-event-input"
+                      />
+                      <label className="CCC-create-event-label">
+                        End Date & Time (Day {index + 1})
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={date.endDate.substring(0, 16)}
+                        onChange={(e) => {
+                          const updatedDates = [...eventDetails.eventDates];
+                          updatedDates[index].endDate = e.target.value;
+                          setEventDetails({
+                            ...eventDetails,
+                            eventDates: updatedDates,
+                          });
+                        }}
+                        className="CCC-create-event-input"
+                      />
+                    </div>
+                  ))}
+                </div>
+             
+              </div>
+
+              <div className="CCC-form-right">
+                <div className="CCC-create-event-form-group">
+                  <label className="CCC-create-event-label">
+                    Upload Event Image
+                  </label>
+                  <div className="CCC-image-upload">
+                    <img
+                      src={imagePreview || "https://via.placeholder.com/150"}
+                      alt="Event"
+                      className="CCC-uploaded-image"
+                    />
+                    <input
+                      type="file"
+                      onChange={handleImageChange}
+                      className="CCC-create-event-input"
+                      accept="image/*"
+                    />
+                  </div>
+                </div>
+                <div className="CCC-create-event-form-group">
+                  <label className="CCC-create-event-label">
+                    Select Event Head
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(true)}
+                    className="CCC-dropdown-toggle"
+                  >
+                    {organizationData?.president?.id === eventDetails.eventHead
+                      ? organizationData?.president?.name
+                      : organizationData?.officers.find(
+                          (officer: any) =>
+                            officer.id === eventDetails.eventHead
+                        )?.name || "Select Event Head"}
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            <div className="CCC-buttons">
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="CCC-cancel-btn"
+              >
+                Cancel
               </button>
-            </div>
-  
-            {/* Save and Cancel Buttons */}
-            <div className="button-group">
-              <button type="button" onClick={handleSave}>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="CCC-create-event-submit-btn"
+              >
                 Save Changes
               </button>
-              <button type="button" onClick={handleCancel}>
-                Cancel Changes
-              </button>
-            </div>
-          </form>
-        </div>
-  
-        {/* Modal for Event Head Selection */}
-        {isModalOpen && (
-          <div className="modal">
-            <div className="modal-content">
-              <h3>Select Event Head</h3>
-              <div>
-                {/* President Selection */}
-                <div
-                  className="dropdown-item"
-                  onClick={() => handleSelectEventHead(organizationData?.president?.id)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <img
-                    src={organizationData?.president?.profilePicUrl || "default-profile.png"}
-                    alt="President"
-                    className="dropdown-profile-pic"
-                  />
-                  {organizationData?.president?.name} (President)
-                </div>
-  
-                {/* Officer Selection */}
-                {organizationData?.officers?.map((officer: any) => (
-                  <div
-                    key={officer.id}
-                    className="dropdown-item"
-                    onClick={() => handleSelectEventHead(officer.id)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <img
-                      src={officer.profilePicUrl || "default-profile.png"}
-                      alt={officer.name}
-                      className="dropdown-profile-pic"
-                    />
-                    {officer.name} ({officer.role})
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => setIsModalOpen(false)} className="close-modal-btn">Close</button>
             </div>
           </div>
-        )}
+
+          {isModalOpen && (
+            <div className="CCC-modal">
+              <div className="CCC-modal-content">
+                <h3>Select Event Head</h3>
+                <div>
+                  <div
+                    className="CCC-dropdown-item"
+                    onClick={() =>
+                      handleSelectEventHead(organizationData?.president?.id)
+                    }
+                  >
+                    <img
+                      src={
+                        organizationData?.president?.profilePicUrl ||
+                        "default-profile.png"
+                      }
+                      alt="President"
+                      className="CCC-dropdown-profile-pic"
+                    />
+                    {organizationData?.president?.name} (President)
+                  </div>
+                  {organizationData?.officers?.map((officer: any) => (
+                    <div
+                      key={officer.id}
+                      className="CCC-dropdown-item"
+                      onClick={() => handleSelectEventHead(officer.id)}
+                    >
+                      <img
+                        src={
+                          officer.profilePicUrl || "default-profile.png"
+                        }
+                        alt={officer.name}
+                        className="CCC-dropdown-profile-pic"
+                      />
+                      {officer.name} ({officer.role})
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="CCC-close-modal-btn"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
-}
+};
 
 export default EditEvent;

@@ -23,6 +23,7 @@ const CreateEvent: React.FC = () => {
   const [venue, setVenue] = useState(""); // Venue or Platform for the event
   const [organizationData, setOrganizationData] = useState<any>(null); // Organization data (officers, president)
   const [isModalOpen, setIsModalOpen] = useState(false); // Manage modal visibility
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const navigate = useNavigate();
   const auth = getAuth();
 
@@ -63,12 +64,17 @@ const CreateEvent: React.FC = () => {
 
   // Handle image file selection
  // Function to handle file input change
-const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+ const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   if (e.target.files && e.target.files[0]) {
     const file = e.target.files[0];
     setImageFile(file);
+
+    // Generate a preview URL for the selected file
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
   }
 };
+
 
 // Upload the image to Firebase Storage and get the download URL
 const handleImageUpload = async (eventName: string) => {
@@ -180,147 +186,199 @@ const handleImageUpload = async (eventName: string) => {
     setEventHead(id);
     setIsModalOpen(false); // Close the modal after selection
   };
-
   return (
     <div className="organization-dashboard-wrapper">
-      <Header />
-      <div className="dashboard-container">
-        <div className="sidebar-section">{getSidebarComponent()}</div>
+    <Header />
+    <div className="dashboard-container">
+    <div className="sidebar-section">{getSidebarComponent()}</div>
         <div className="main-content">
-          <h2 className="create-event-title">Create Event for {organizationName}</h2>
-          <form onSubmit={handleCreateEvent} className="create-event-form">
-            <div className="create-event-form-group">
-              <label htmlFor="eventTitle" className="create-event-label">Event Title</label>
-              <input
-                type="text"
-                id="eventTitle"
-                value={eventTitle}
-                onChange={(e) => setEventTitle(e.target.value)}
-                className="create-event-input"
-                required
-              />
-            </div>
-
-            <div className="create-event-form-group">
-              <label htmlFor="eventDescription" className="create-event-label">Event Description</label>
-              <textarea
-                id="eventDescription"
-                value={eventDescription}
-                onChange={(e) => setEventDescription(e.target.value)}
-                className="create-event-textarea"
-                required
-              />
-            </div>
-
-            {eventDates.map((date, index) => (
-              <div key={index} className="create-event-form-group">
-                <label htmlFor={`startDate-${index}`} className="create-event-label">Start Date & Time (Day {index + 1})</label>
+        <div className="header-container">
+            <h1 className="headtitle">Create new Event</h1>
+          
+          </div>
+          <div className="FESTANOBRAZIL">
+          <form onSubmit={handleCreateEvent} className="CCC-create-event-form">
+            <div className="CCC-form-left">
+              <div className="CCC-create-event-form-group">
+                <label htmlFor="eventTitle" className="CCC-create-event-label">Event Title</label>
                 <input
-                  type="datetime-local"
-                  id={`startDate-${index}`}
-                  value={date.startDate}
-                  onChange={(e) => handleDateChange(index, "startDate", e.target.value)}
-                  className="create-event-input"
+                  type="text"
+                  id="eventTitle"
+                  value={eventTitle}
+                  onChange={(e) => setEventTitle(e.target.value)}
+                  className="CCC-create-event-input"
                   required
                 />
-                <label htmlFor={`endDate-${index}`} className="create-event-label">End Date & Time (Day {index + 1})</label>
-                <input
-                  type="datetime-local"
-                  id={`endDate-${index}`}
-                  value={date.endDate}
-                  onChange={(e) => handleDateChange(index, "endDate", e.target.value)}
-                  className="create-event-input"
-                  required
-                />
-                {eventDates.length > 1 && (
-                  <button type="button" onClick={() => handleRemoveDateRange(index)} className="remove-date-btn">Remove Date</button>
-                )}
               </div>
-            ))}
-
-            <button type="button" onClick={handleAddDateRange} className="add-date-btn">Add Date</button>
-
-            <div className="create-event-form-group">
-              <label htmlFor="imageFile" className="create-event-label">Upload Event Image</label>
-              <input
-                type="file"
-                id="imageFile"
-                onChange={handleImageChange}
-                className="create-event-input"
-                accept="image/*"
-              />
+              <div className="CCC-create-event-form-group">
+                <label htmlFor="eventDescription" className="CCC-create-event-label">Event Description</label>
+                <textarea
+                  id="eventDescription"
+                  value={eventDescription}
+                  onChange={(e) => setEventDescription(e.target.value)}
+                  className="CCC-create-event-textarea"
+                  required
+                />
+              </div>
+              <div className="CCC-create-event-form-group">
+                <label htmlFor="venue" className="CCC-create-event-label">Venue/Platform</label>
+                <input
+                  type="text"
+                  id="venue"
+                  value={venue}
+                  onChange={(e) => setVenue(e.target.value)}
+                  className="CCC-create-event-input"
+                  required
+                />
+              </div>
+              <div className="CCC-date-time-section">
+                {eventDates.map((date, index) => (
+                  <div key={index} className="CCC-date-time-group">
+                    <label htmlFor={`startDate-${index}`} className="CCC-create-event-label">
+                      Start Date & Time (Day {index + 1})
+                    </label>
+                    <input
+                      type="datetime-local"
+                      id={`startDate-${index}`}
+                      value={date.startDate}
+                      onChange={(e) => handleDateChange(index, "startDate", e.target.value)}
+                      className="CCC-create-event-input"
+                      required
+                    />
+                    <label htmlFor={`endDate-${index}`} className="CCC-create-event-label">
+                      End Date & Time (Day {index + 1})
+                    </label>
+                    <input
+                      type="datetime-local"
+                      id={`endDate-${index}`}
+                      value={date.endDate}
+                      onChange={(e) => handleDateChange(index, "endDate", e.target.value)}
+                      className="CCC-create-event-input"
+                      required
+                    />
+                    {eventDates.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDateRange(index)}
+                        className="CCC-remove-date-btn"
+                      >
+                        Remove Date
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button type="button" onClick={handleAddDateRange} className="CCC-add-date-btn">
+                  Add Date
+                </button>
+              </div>
+  
+           
             </div>
-
-            <div className="create-event-form-group">
-  <label htmlFor="eventHead" className="create-event-label">Select Event Head</label>
-  <button type="button" onClick={() => setIsModalOpen(true)} className="dropdown-toggle">
-    {eventHead ? 
-      organizationData?.president?.id === eventHead ? 
-        organizationData?.president?.name : 
-        organizationData?.officers.find((officer: any) => officer.id === eventHead)?.name
-      : "Select Event Head"
-    }
-  </button>
+  
+            <div className="CCC-form-right">
+              <div className="CCC-create-event-form-group">
+                <label htmlFor="imageFile" className="CCC-create-event-label">Upload Event Image</label>
+                <div className="CCC-image-upload">
+  <img
+    src={imagePreview || "https://via.placeholder.com/150"}
+    alt="Event"
+    className="CCC-uploaded-image"
+  />
+  <input
+    type="file"
+    id="imageFile"
+    onChange={handleImageChange}
+    className="CCC-create-event-input"
+    accept="image/*"
+  />
 </div>
 
-
-            {/* Modal for selecting event head */}
-            {isModalOpen && (
-              <div className="modal">
-                <div className="modal-content">
-                  <h3>Select Event Head</h3>
-                  <div>
-                    <div
-                      className="dropdown-item"
-                      onClick={() => handleSelectEventHead(organizationData?.president?.id)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <img
-                        src={organizationData?.president?.profilePicUrl || "default-profile.png"}
-                        alt="President"
-                        className="dropdown-profile-pic"
-                      />
-                      {organizationData?.president?.name} (President)
-                    </div>
-                    {organizationData?.officers?.map((officer: any) => (
+              </div>
+  
+              <div className="CCC-create-event-form-group">
+                <label htmlFor="eventHead" className="CCC-create-event-label">Select Event Head</label>
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(true)}
+                  className="CCC-dropdown-toggle"
+                >
+                  {eventHead
+                    ? organizationData?.president?.id === eventHead
+                      ? organizationData?.president?.name
+                      : organizationData?.officers.find((officer: any) => officer.id === eventHead)?.name
+                    : "Select Event Head"}
+                </button>
+              </div>
+  
+              {isModalOpen && (
+                <div className="CCC-modal">
+                  <div className="CCC-modal-content">
+                    <h3>Select Event Head</h3>
+                    <div>
                       <div
-                        key={officer.id}
-                        className="dropdown-item"
-                        onClick={() => handleSelectEventHead(officer.id)}
-                        style={{ cursor: 'pointer' }}
+                        className="CCC-dropdown-item"
+                        onClick={() => handleSelectEventHead(organizationData?.president?.id)}
+                        style={{ cursor: "pointer" }}
                       >
                         <img
-                          src={officer.profilePicUrl || "default-profile.png"}
-                          alt={officer.name}
-                          className="dropdown-profile-pic"
+                          src={organizationData?.president?.profilePicUrl || "default-profile.png"}
+                          alt="President"
+                          className="CCC-dropdown-profile-pic"
                         />
-                        {officer.name} ({officer.role})
+                        {organizationData?.president?.name} (President)
                       </div>
-                    ))}
+                      {organizationData?.officers?.map((officer: any) => (
+                        <div
+                          key={officer.id}
+                          className="CCC-dropdown-item"
+                          onClick={() => handleSelectEventHead(officer.id)}
+                          style={{ cursor: "pointer" }}
+                        >
+                          <img
+                            src={officer.profilePicUrl || "default-profile.png"}
+                            alt={officer.name}
+                            className="CCC-dropdown-profile-pic"
+                          />
+                          {officer.name} ({officer.role})
+                        </div>
+                      ))}
+                    </div>
+                    <button onClick={() => setIsModalOpen(false)} className="CCC-close-modal-btn">
+                      Close
+                    </button>
                   </div>
-                  <button onClick={() => setIsModalOpen(false)} className="close-modal-btn">Close</button>
                 </div>
-              </div>
-            )}
-
-            <div className="create-event-form-group">
-              <label htmlFor="venue" className="create-event-label">Venue/Platform</label>
-              <input
-                type="text"
-                id="venue"
-                value={venue}
-                onChange={(e) => setVenue(e.target.value)}
-                className="create-event-input"
-                required
-              />
+              )}
+   <div className="CCC-buttons">
+   <button
+    type="submit"
+    className="CCC-create-event-submit-btn"
+  >
+    Create Event
+  </button>
+  <button
+    type="button"
+    className="CCC-cancel-btn"
+    onClick={() => navigate(-1)} // Cancel navigation
+  >
+    Cancel
+  </button>
+ 
+</div>
+     
             </div>
-
-            <button type="submit" className="create-event-submit-btn">Create Event</button>
+            
           </form>
+         
+
         </div>
+        
       </div>
     </div>
+    </div>
   );
+  
+  
 };
 
 export default CreateEvent;

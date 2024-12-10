@@ -6,6 +6,8 @@ import Header from "../../components/Header";
 import StudentPresidentSidebar from "./StudentPresidentSidebar";
 import StudentOfficerSidebar from "./StudentOfficerSidebar";
 import StudentMemberSidebar from "./StudentMemberSidebar";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faMapMarkerAlt, faCalendarAlt } from '@fortawesome/free-solid-svg-icons'
 import "../../styles/EventsManagement.css";
 
 interface Event {
@@ -30,8 +32,41 @@ const EventsManagement: React.FC = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [organizationData, setOrganizationData] = useState<any>(null);
-  const navigate = useNavigate();
+  const [viewType, setViewType] = useState<"active" | "archived">("active"); // Toggle between Active and Archived
+const [activeView, setActiveView] = useState<"upcoming" | "ongoing" | "completed">("upcoming"); // Tabs within Active
+const [archivedEvents, setArchivedEvents] = useState<Event[]>([]); // Store archived events
+const [searchTerm, setSearchTerm] = useState<string>(""); // Search term state
 
+
+  const navigate = useNavigate();
+  useEffect(() => {
+    const fetchArchivedEvents = async () => {
+      if (!organizationName) return;
+  
+      try {
+        const archivedEventsRef = collection(
+          firestore,
+          `events/${organizationName}/archivedEvents`
+        );
+        const querySnapshot = await getDocs(archivedEventsRef);
+  
+        const events: Event[] = querySnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            ...data,
+            createdAt: data.createdAt?.toDate(), // Convert Firestore timestamp to JS Date
+          } as Event;
+        });
+  
+        setArchivedEvents(events);
+      } catch (error) {
+        console.error("Error fetching archived events:", error);
+      }
+    };
+  
+    fetchArchivedEvents();
+  }, [organizationName]);
+  
   useEffect(() => {
     const fetchEvents = async () => {
       if (!organizationName) return;
@@ -133,106 +168,113 @@ const EventsManagement: React.FC = () => {
         return null;
     }
   };
- const formatEventDates = (dates: EventDate[]): JSX.Element => {
-    if (dates.length === 1) {
-      // Single date range: no "Day 1"
-      const startDate = new Date(dates[0].startDate);
-      const endDate = new Date(dates[0].endDate);
-  
-      if (startDate.toDateString() === endDate.toDateString()) {
-        // Same-day event
-        return (
-          <div>
-            {startDate.toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}{" "}
-            - {startDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })} to{" "}
-            {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
-          </div>
-        );
-      } else {
-        // Event spans multiple days
-        return (
-          <div>
-            {startDate.toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}{" "}
-            - {startDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })} to{" "}
-            {endDate.toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}{" "}
-            - {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
-          </div>
-        );
-      }
-    } else {
-      // Multiple date ranges: include "Day X" with bold styling
-      return (
-        <>
-          {dates.map((date: EventDate, idx: number) => {
-            const startDate = new Date(date.startDate);
-            const endDate = new Date(date.endDate);
-  
-            if (startDate.toDateString() === endDate.toDateString()) {
-              // Same-day event
-              return (
-                <div key={idx}>
-                  <strong>Day {idx + 1}:</strong>{" "}
-                  {startDate.toLocaleDateString(undefined, {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}{" "}
-                  - {startDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}{" "}
-                  to {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
-                </div>
-              );
-            } else {
-              // Event spans multiple days
-              return (
-                <div key={idx}>
-                  <strong>Day {idx + 1}:</strong>{" "}
-                  {startDate.toLocaleDateString(undefined, {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}{" "}
-                  - {startDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}{" "}
-                  to {endDate.toLocaleDateString(undefined, {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}{" "}
-                  - {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
-                </div>
-              );
-            }
-          })}
-        </>
-      );
-    }
+
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value); // Keeps the search term as entered (case-sensitive)
   };
   
+  const filterEvents = (events: Event[]) =>
+    events.filter((event) =>
+      event.title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  
+    const formatEventDates = (dates: EventDate[]): JSX.Element => {
+      if (dates.length === 1) {
+        // Single date range: no "Day 1"
+        const startDate = new Date(dates[0].startDate);
+        const endDate = new Date(dates[0].endDate);
+    
+        if (startDate.toDateString() === endDate.toDateString()) {
+          // Same-day event
+          return (
+            <span>
+              {startDate.toLocaleDateString(undefined, {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}{" "}
+              - {startDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })} to{" "}
+              {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
+            </span>
+          );
+        } else {
+          // Event spans multiple days
+          return (
+            <span>
+              {startDate.toLocaleDateString(undefined, {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}{" "}
+              - {startDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })} to{" "}
+              {endDate.toLocaleDateString(undefined, {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}{" "}
+              - {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
+            </span>
+          );
+        }
+      } else {
+        // Multiple date ranges: include "Day X" with bold styling, and each day on a new line
+        return (
+          <>
+            {dates.map((date: EventDate, idx: number) => {
+              const startDate = new Date(date.startDate);
+              const endDate = new Date(date.endDate);
+    
+              if (startDate.toDateString() === endDate.toDateString()) {
+                // Same-day event
+                return (
+                  <div key={idx}>
+                    <strong>Day {idx + 1}:</strong>{" "}
+                    {startDate.toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}{" "}
+                    - {startDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}{" "}
+                    to {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
+                  </div>
+                );
+              } else {
+                // Event spans multiple days
+                return (
+                  <div key={idx}>
+                    <strong>Day {idx + 1}:</strong>{" "}
+                    {startDate.toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}{" "}
+                    - {startDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}{" "}
+                    to {endDate.toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}{" "}
+                    - {endDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "numeric" })}
+                  </div>
+                );
+              }
+            })}
+          </>
+        );
+      }
+    };
 
-
-
+    
   return (
     <div className="organization-dashboard-wrapper">
       <Header />
       <div className="dashboard-container">
         <div className="sidebar-section">{getSidebarComponent()}</div>
         <div className="main-content">
-        <div className="header-container">
-          <h1 className="headtitle">
-            Events
-          </h1>
-          {(userRole === "president" || userRole === "officer") && (
+          <div className="header-container">
+            <h1 className="headtitle">Events</h1>
+            {/* Only President and Officers can see the Create Event button */}
+            {(userRole === "president" || userRole === "officer") && (
               <button
                 className="create-new-btn"
                 onClick={() =>
@@ -242,89 +284,201 @@ const EventsManagement: React.FC = () => {
                 + Create Event
               </button>
             )}
-       </div>
-       <div className="event-section">
-  <h3>Upcoming Events</h3>
-  {upcomingEvents.length === 0 ? (
-    <p>No upcoming events.</p>
-  ) : (
-    <ul className="event-list">
-      {upcomingEvents.map((event, index) => (
-        <li
-          key={index}
-          className="event-item"
-          onClick={() =>
-            navigate(`/organization/${organizationName}/events/${encodeURIComponent(event.title)}`)
-          }
-          style={{ cursor: "pointer" }} // Visual indicator for clickable items
-        >
-          <img src={event.imageUrl} alt={event.title} className="event-image" />
-          <h4>{event.title}</h4>
-          <p>{event.description}</p>
-          <p><strong>Venue:</strong> {event.venue}</p>
-          <p><strong>Date:</strong> {formatEventDates(event.eventDates)}</p>
-        </li>
-      ))}
-    </ul>
+          </div>
+  
+          {/* Top Buttons for Active and Archived */}
+          {(userRole === "president" || userRole === "officer") && (
+            <div className="top-buttons">
+              <button
+                className={`top-btn ${viewType === "active" ? "active" : ""}`}
+                onClick={() => setViewType("active")}
+              >
+                Active
+              </button>
+              <button
+                className={`top-btn ${viewType === "archived" ? "active" : ""}`}
+                onClick={() => setViewType("archived")}
+              >
+                Archived
+              </button>
+            </div>
+          )}
+       
+       <input
+  type="text"
+  className="tksks-search-input"
+  placeholder="Search events..."
+  value={searchTerm}
+  onChange={handleSearch}
+/>
+
+<div className="WAZAP-event-section-wrapper">
+  {/* Upcoming Events Section */}
+  {viewType === "active" && (
+    <div className="WAZAP-event-section">
+      <h3>Upcoming Events</h3>
+      {upcomingEvents.length === 0 ? (
+        <p>No upcoming events.</p>
+      ) : (
+        <ul className="WAZAP-event-list">
+          {filterEvents(upcomingEvents).map((event, index) => (
+            <li
+              key={index}
+              className="WAZAP-event-item"
+              onClick={() =>
+                navigate(
+                  `/organization/${organizationName}/events/${encodeURIComponent(
+                    event.title
+                  )}`
+                )
+              }
+            >
+              <img
+                src={event.imageUrl || "https://via.placeholder.com/800x400"}
+                alt={event.title}
+                className="WAZAP-event-image"
+              />
+              <h3>{event.title}</h3>
+       
+              <p>
+                <FontAwesomeIcon icon={faMapMarkerAlt} className="WAZAP-icon" />
+                {event.venue}
+              </p>
+              <p>
+                <FontAwesomeIcon icon={faCalendarAlt} className="WAZAP-icon" />
+                {formatEventDates(event.eventDates)}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <h3>Ongoing Events</h3>
+      {ongoingEvents.length === 0 ? (
+        <p>No ongoing events.</p>
+      ) : (
+        <ul className="WAZAP-event-list">
+          {filterEvents(ongoingEvents).map((event, index) => (
+            <li
+              key={index}
+              className="WAZAP-event-item"
+              onClick={() =>
+                navigate(
+                  `/organization/${organizationName}/events/${encodeURIComponent(
+                    event.title
+                  )}`
+                )
+              }
+            >
+              <img
+                src={event.imageUrl || "https://via.placeholder.com/800x400"}
+                alt={event.title}
+                className="WAZAP-event-image"
+              />
+            <h3>{event.title}</h3>
+  
+              <p>
+                <FontAwesomeIcon icon={faMapMarkerAlt} className="WAZAP-icon" />
+                {event.venue}
+              </p>
+              <p>
+                <FontAwesomeIcon icon={faCalendarAlt} className="WAZAP-icon" />
+                {formatEventDates(event.eventDates)}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <h3>Completed Events</h3>
+      {completedEvents.length === 0 ? (
+        <p>No completed events.</p>
+      ) : (
+        <ul className="WAZAP-event-list">
+          {filterEvents(completedEvents).map((event, index) => (
+            <li
+              key={index}
+              className="WAZAP-event-item"
+              onClick={() =>
+                navigate(
+                  `/organization/${organizationName}/events/${encodeURIComponent(
+                    event.title
+                  )}`
+                )
+              }
+            >
+              <img
+                src={event.imageUrl || "https://via.placeholder.com/800x400"}
+                alt={event.title}
+                className="WAZAP-event-image"
+              />
+              <h3>{event.title}</h3>
+  
+              <p>
+                <FontAwesomeIcon icon={faMapMarkerAlt} className="WAZAP-icon" />
+                {event.venue}
+              </p>
+              <p>
+                <FontAwesomeIcon icon={faCalendarAlt} className="WAZAP-icon" />
+                {formatEventDates(event.eventDates)}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )}
+
+  {/* Archived Events Section */}
+  {viewType === "archived" && (
+    <div className="WAZAP-event-section">
+      {archivedEvents.length === 0 ? (
+        <p>No archived events found.</p>
+      ) : (
+        <ul className="WAZAP-event-list">
+          {filterEvents(archivedEvents).map((event, index) => (
+            <li
+              key={index}
+              className="WAZAP-event-item"
+              onClick={() =>
+                navigate(
+                  `/organization/${organizationName}/archived-events/${encodeURIComponent(
+                    event.title
+                  )}`
+                )
+              }
+            >
+              <img
+                src={event.imageUrl || "https://via.placeholder.com/800x400"}
+                alt={event.title}
+                className="WAZAP-event-image"
+              />
+           <h3>{event.title}</h3>
+            
+              <p>
+                <FontAwesomeIcon icon={faMapMarkerAlt} className="WAZAP-icon" />
+                {event.venue}
+              </p>
+              <p>
+                <FontAwesomeIcon icon={faCalendarAlt} className="WAZAP-icon" />
+                {formatEventDates(event.eventDates)}
+              </p>
+
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )}
 </div>
 
-<div className="event-section">
-  <h3>Ongoing Events</h3>
-  {ongoingEvents.length === 0 ? (
-    <p>No ongoing events.</p>
-  ) : (
-    <ul className="event-list">
-      {ongoingEvents.map((event, index) => (
-        <li
-          key={index}
-          className="event-item"
-          onClick={() =>
-            navigate(`/organization/${organizationName}/events/${encodeURIComponent(event.title)}`)
-          }
-          style={{ cursor: "pointer" }}
-        >
-          <img src={event.imageUrl} alt={event.title} className="event-image" />
-          <h4>{event.title}</h4>
-          <p>{event.description}</p>
-          <p><strong>Venue:</strong> {event.venue}</p>
-          <p><strong>Date:</strong> {formatEventDates(event.eventDates)}</p>
-        </li>
-      ))}
-    </ul>
-  )}
-</div>
 
-<div className="event-section">
-  <h3>Completed Events</h3>
-  {completedEvents.length === 0 ? (
-    <p>No completed events.</p>
-  ) : (
-    <ul className="event-list">
-      {completedEvents.map((event, index) => (
-        <li
-          key={index}
-          className="event-item"
-          onClick={() =>
-            navigate(`/organization/${organizationName}/events/${encodeURIComponent(event.title)}`)
-          }
-          style={{ cursor: "pointer" }}
-        >
-          <img src={event.imageUrl} alt={event.title} className="event-image" />
-          <h4>{event.title}</h4>
-          <p>{event.description}</p>
-          <p><strong>Venue:</strong> {event.venue}</p>
-          <p><strong>Date:</strong> {formatEventDates(event.eventDates)}</p>
-        </li>
-      ))}
-    </ul>
-  )}
-</div>
-
-        </div>
       </div>
     </div>
+    </div>
   );
+  
+  
 };
 
 export default EventsManagement;

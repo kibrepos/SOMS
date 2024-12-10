@@ -197,7 +197,8 @@
 /* Inputs and Textareas */
 .altask-input,
 .altask-textarea,
-.altask-date-input {
+.altask-date-input,
+.altask-event-dropdown {
   border: 1px solid #ccc;
   border-radius: 5px;
   padding: 10px;

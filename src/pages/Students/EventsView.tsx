@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Navigate, useParams } from "react-router-dom";
-import {  collection, query, where, getDocs, doc, getDoc, onSnapshot, addDoc, updateDoc, setDoc} from "firebase/firestore";
+import {  collection, query, where, getDocs, doc, getDoc, onSnapshot, addDoc, updateDoc, setDoc,deleteDoc} from "firebase/firestore";
 import { firestore, auth } from "../../services/firebaseConfig";
 import Header from "../../components/Header";
 import StudentPresidentSidebar from "./StudentPresidentSidebar";
@@ -10,7 +10,7 @@ import "../../styles/EventView.css";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck,faClock, faTimes  } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
-
+import { showToast } from '../../components/toast';
 
 
 
@@ -143,10 +143,7 @@ const [attendanceOverview, setAttendanceOverview] = useState<Attendance[]>([]);
   
     return () => unsubscribe();
   }, [organizationName, eventId]);
-  const handleBackButtonClick = () => {
-    history.back(); // Navigate back to the previous page
-  };
-
+ 
 // Define handleEditEventButtonClick inside the component so it has access to the navigate function
 const handleEditEventButtonClick = (eventId: string, organizationName: string) => {
   navigate(`/Organization/${organizationName}/edit-event/${eventId}`); // Navigate to the event edit page
@@ -180,6 +177,102 @@ const fetchAttendanceData = async (dayIndex: number) => {
 
   return null;
 };
+const isEventCompleted = (): boolean => {
+  if (!eventDetails || !eventDetails.eventDates) return false;
+
+  // Get the latest endDate from the eventDates
+  const lastEventDate = eventDetails.eventDates.reduce((latest, current) => {
+    return new Date(latest.endDate) > new Date(current.endDate) ? latest : current;
+  });
+
+  // Compare the lastEventDate's endDate with the current time
+  const now = new Date();
+  return new Date(lastEventDate.endDate) < now;
+};
+
+
+const handleArchiveEvent = async (eventId: string, organizationName: string) => {
+  try {
+    const eventRef = doc(firestore, `events/${organizationName}/event/${eventId}`);
+    const archivedEventRef = doc(firestore, `events/${organizationName}/archivedEvents/${eventId}`);
+
+    // Fetch the event details
+    const eventSnapshot = await getDoc(eventRef);
+    if (!eventSnapshot.exists()) {
+      console.error("Event not found in Firestore.");
+      return;
+    }
+
+    // Get the event data
+    const eventData = eventSnapshot.data();
+
+    // Save the event to the "archivedEvents" collection
+    await setDoc(archivedEventRef, eventData);
+
+    // Copy the attendance subcollection
+    const attendanceRef = collection(firestore, `events/${organizationName}/event/${eventId}/attendance`);
+    const attendanceSnapshot = await getDocs(attendanceRef);
+    const attendancePromises = attendanceSnapshot.docs.map((attendanceDoc) =>
+      setDoc(
+        doc(
+          firestore,
+          `events/${organizationName}/archivedEvents/${eventId}/attendance/${attendanceDoc.id}`
+        ),
+        attendanceDoc.data()
+      )
+    );
+    await Promise.all(attendancePromises);
+
+    // Copy the forum subcollection
+    const forumRef = collection(firestore, `events/${organizationName}/event/${eventId}/forum`);
+    const forumSnapshot = await getDocs(forumRef);
+    const forumPromises = forumSnapshot.docs.map((forumDoc) =>
+      setDoc(
+        doc(
+          firestore,
+          `events/${organizationName}/archivedEvents/${eventId}/forum/${forumDoc.id}`
+        ),
+        forumDoc.data()
+      )
+    );
+    await Promise.all(forumPromises);
+
+    // Copy associated tasks to "archivedTasks"
+    const tasksRef = collection(firestore, `tasks/${organizationName}/AllTasks`);
+    const tasksQuery = query(tasksRef, where("event", "==", eventId));
+    const tasksSnapshot = await getDocs(tasksQuery);
+
+    const taskArchivePromises = tasksSnapshot.docs.map((taskDoc) =>
+      setDoc(
+        doc(
+          firestore,
+          `tasks/${organizationName}/archivedTasks/${taskDoc.id}` // Copy to archivedTasks
+        ),
+        taskDoc.data()
+      )
+    );
+    await Promise.all(taskArchivePromises);
+
+    // Delete original tasks from "AllTasks"
+    const taskDeletePromises = tasksSnapshot.docs.map((taskDoc) =>
+      deleteDoc(doc(firestore, `tasks/${organizationName}/AllTasks/${taskDoc.id}`))
+    );
+    await Promise.all(taskDeletePromises);
+
+    // Delete the original event document
+    await deleteDoc(eventRef);
+
+    console.log("Event archived and associated tasks moved to archivedTasks successfully.");
+
+    // Navigate to events page and show success message
+    showToast("Event archived successfully.", "success");
+    navigate(`/organization/${organizationName}/events`);
+  } catch (error) {
+    console.error("Error archiving event:", error);
+    showToast("Failed to archive the event. Please try again.", "error");
+  }
+};
+
 
 
 const handleSaveAttendance = async (
@@ -772,12 +865,32 @@ const handleSaveAttendance = async (
         <div className="main-content">
        
 
-        <button className="back-button" onClick={handleBackButtonClick}>Return</button>
-        <button onClick={() => eventId && organizationName ? handleEditEventButtonClick(eventId, organizationName) : console.error('eventId or organizationName is missing')}>
-        Edit Event 
-        </button>
+
+     
+
+
+
           <div className="header-container">
             <h1 className="headtitle">{eventDetails.title}</h1>
+            
+            {isEventCompleted() && (
+  <button
+    className="archive-event-btn"
+    onClick={() =>
+      eventId && organizationName
+        ? handleArchiveEvent(eventId, organizationName)
+        : console.error("eventId or organizationName is missing")
+    }
+  >
+    Archive Event
+  </button>
+)}
+
+
+            <button onClick={() => eventId && organizationName ? handleEditEventButtonClick(eventId, organizationName) : console.error('eventId or organizationName is missing')}  className="create-new-btn">
+        Edit Event 
+        </button>
+        
           </div>
 
           <div className="event-picture-section">
@@ -797,13 +910,17 @@ const handleSaveAttendance = async (
                   <button onClick={() => handleOpenAttendanceModal(idx)}>
                     Manage Attendance
                   </button>
+                  
                 ) : (
                   <p>Attendance available after this day ends.</p>
                 )}
               </div>
+              
             ))}
           </div>
-
+          <button onClick={() => setShowRSVPResponsesModal(true)} className="view-rsvp-responses-button">
+    View RSVP Responses
+  </button>
           {showAttendanceModal && modalDayIndex !== null && (
             <AttendanceModal
               attendees={[
@@ -954,6 +1071,7 @@ const handleSaveAttendance = async (
   <div className="modal-overlay">
   <div className="modal-content">
     <h3>Edit RSVP</h3>
+    
     <table>
       <thead>
         <tr>
@@ -1015,9 +1133,7 @@ const handleSaveAttendance = async (
 
 <div className="rsvp-section">
   <h3>Participation Status</h3>
-  <button onClick={() => setShowRSVPResponsesModal(true)} className="view-rsvp-responses-button">
-    View RSVP Responses
-  </button>
+ 
   {eventDetails?.eventDates.map((date, idx) => {
     const userRSVP = rsvps.find((rsvp) => rsvp.userId === currentUser?.uid);
     const dayResponse = userRSVP?.responses?.find((r) => r.dayIndex === idx);
@@ -1043,15 +1159,12 @@ const handleSaveAttendance = async (
 </div>
 
 
-
-
-
-
             </div>
           </div>
 
           <div className="event-forum">
             <h3>Event Forum</h3>
+            
             <div className="forum-messages">
               {messages.map((message) => (
                 <div
