@@ -162,10 +162,44 @@ const handleImageUpload = async (eventName: string) => {
   };
 
   const handleDateChange = (index: number, field: "startDate" | "endDate", value: string) => {
+    const now = new Date().toISOString();
     const updatedEventDates = [...eventDates];
     updatedEventDates[index][field] = value;
+  
+    // Ensure start date and end date are not in the past
+    if (value < now) {
+      alert("Date and time cannot be in the past.");
+      return;
+    }
+  
+    // Ensure end date is not earlier than start date
+    const startDate = updatedEventDates[index].startDate;
+    const endDate = updatedEventDates[index].endDate;
+    if (startDate && endDate && endDate < startDate) {
+      alert("End date cannot be earlier than start date.");
+      return;
+    }
+  
+    // Ensure no overlap with previous or subsequent days
+    if (index > 0) {
+      const prevEndDate = updatedEventDates[index - 1].endDate;
+      if (prevEndDate && startDate && startDate < prevEndDate) {
+        alert(`Start date for Day ${index + 1} cannot overlap with the previous day's end date.`);
+        return;
+      }
+    }
+  
+    if (index < updatedEventDates.length - 1) {
+      const nextStartDate = updatedEventDates[index + 1].startDate;
+      if (endDate && nextStartDate && endDate > nextStartDate) {
+        alert(`End date for Day ${index + 1} cannot overlap with the next day's start date.`);
+        return;
+      }
+    }
+  
     setEventDates(updatedEventDates);
   };
+  
 
   // Sidebar component based on user role
   const getSidebarComponent = () => {
@@ -238,24 +272,26 @@ const handleImageUpload = async (eventName: string) => {
                       Start Date & Time (Day {index + 1})
                     </label>
                     <input
-                      type="datetime-local"
-                      id={`startDate-${index}`}
-                      value={date.startDate}
-                      onChange={(e) => handleDateChange(index, "startDate", e.target.value)}
-                      className="CCC-create-event-input"
-                      required
-                    />
+  type="datetime-local"
+  id={`startDate-${index}`}
+  value={date.startDate}
+  min={new Date().toISOString().slice(0, 16)} // Restrict to current or future dates
+  onChange={(e) => handleDateChange(index, "startDate", e.target.value)}
+  className="CCC-create-event-input"
+  required
+/>
                     <label htmlFor={`endDate-${index}`} className="CCC-create-event-label">
                       End Date & Time (Day {index + 1})
                     </label>
                     <input
-                      type="datetime-local"
-                      id={`endDate-${index}`}
-                      value={date.endDate}
-                      onChange={(e) => handleDateChange(index, "endDate", e.target.value)}
-                      className="CCC-create-event-input"
-                      required
-                    />
+  type="datetime-local"
+  id={`endDate-${index}`}
+  value={date.endDate}
+  min={date.startDate || new Date().toISOString().slice(0, 16)} // End date can't be earlier than start date
+  onChange={(e) => handleDateChange(index, "endDate", e.target.value)}
+  className="CCC-create-event-input"
+  required
+/>
                     {eventDates.length > 1 && (
                       <button
                         type="button"

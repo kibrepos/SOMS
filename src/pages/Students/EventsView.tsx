@@ -89,6 +89,20 @@ const EventsView: React.FC = () => {
   const [showAttendanceOverview, setShowAttendanceOverview] = useState(false);
 const [attendanceOverview, setAttendanceOverview] = useState<Attendance[]>([]);
   const navigate = useNavigate(); // Call useNavigate at the top of the component
+  const getStatusClass = (status: string): string => {
+    switch (status) {
+      case "Attending":
+        return "attending";
+      case "Maybe":
+        return "maybe";
+      case "Not Attending":
+        return "not-attending";
+      default:
+        return "no-response"; // Gray for no response
+    }
+  };
+  
+  
 
   useEffect(() => {
   if (!organizationName || !eventId) return;
@@ -855,6 +869,9 @@ const handleSaveAttendance = async (
   if (!eventDetails)
     return <p>Event not found in the database. Please check the event name.</p>;
 
+  if (isEventCompleted() && window.location.pathname.includes("edit-event")) {
+    return <Navigate to={`/organization/${organizationName}/events`} replace />;
+  }
   //MAIN RETURN CODE RETURNHERE
   return (
     <div className="event-view-wrapper">
@@ -863,11 +880,7 @@ const handleSaveAttendance = async (
         
         <div className="sidebar-section">{getSidebarComponent()}</div>
         <div className="main-content">
-       
-
-
-     
-
+      
 
 
           <div className="header-container">
@@ -875,7 +888,7 @@ const handleSaveAttendance = async (
             
             {isEventCompleted() && (
   <button
-    className="archive-event-btn"
+  className="create-new-btn"
     onClick={() =>
       eventId && organizationName
         ? handleArchiveEvent(eventId, organizationName)
@@ -887,9 +900,19 @@ const handleSaveAttendance = async (
 )}
 
 
-            <button onClick={() => eventId && organizationName ? handleEditEventButtonClick(eventId, organizationName) : console.error('eventId or organizationName is missing')}  className="create-new-btn">
-        Edit Event 
-        </button>
+{!isEventCompleted() && (
+  <button
+    onClick={() =>
+      eventId && organizationName
+        ? handleEditEventButtonClick(eventId, organizationName)
+        : console.error("eventId or organizationName is missing")
+    }
+    className="create-new-btn"
+  >
+    Edit Event
+  </button>
+)}
+
         
           </div>
 
@@ -900,27 +923,7 @@ const handleSaveAttendance = async (
               className="event-picture"
             />
           </div>
-
-          <div className="event-details-card">
-            <h3>Attendance</h3>
-            {eventDetails?.eventDates.map((date, idx) => (
-              <div key={idx}>
-                <p>Day {idx + 1}: {new Date(date.startDate).toDateString()}</p>
-                {new Date() > new Date(date.endDate) ? (
-                  <button onClick={() => handleOpenAttendanceModal(idx)}>
-                    Manage Attendance
-                  </button>
-                  
-                ) : (
-                  <p>Attendance available after this day ends.</p>
-                )}
-              </div>
-              
-            ))}
-          </div>
-          <button onClick={() => setShowRSVPResponsesModal(true)} className="view-rsvp-responses-button">
-    View RSVP Responses
-  </button>
+        
           {showAttendanceModal && modalDayIndex !== null && (
             <AttendanceModal
               attendees={[
@@ -947,6 +950,7 @@ const handleSaveAttendance = async (
             />
           )}
 
+      <div className="content-container">
           <div className="event-details-card">
             <div className="event-details-left">
               <h3>Event Name</h3>
@@ -999,7 +1003,6 @@ const handleSaveAttendance = async (
         )}
 {/* RSVP Responses Modal */}
 {/* RSVP Responses Modal */}
-{/* RSVP Responses Modal */}
 {showRSVPResponsesModal && (
   <div className="rsvp-responses-modal-overlay">
     <div className="rsvp-responses-modal-content">
@@ -1007,52 +1010,71 @@ const handleSaveAttendance = async (
       <table className="rsvp-responses-table">
         <thead>
           <tr>
+            <th>Profile</th>
             <th>Name</th>
-            <th>Role</th>
-            {/* Create headers for each event day */}
+       
             {eventDetails?.eventDates.map((date, idx) => (
               <th key={idx}>Day {idx + 1}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {/* Loop through all members, officers, and president */}
-          {/* First, categorize users into those who responded and those who did not */}
           {[...organizationData?.officers, ...organizationData?.members, organizationData?.president]
             .sort((userA, userB) => {
-              // Get RSVP response for both users
               const rsvpA = rsvps.find((rsvp) => rsvp.userId === userA.id);
               const rsvpB = rsvps.find((rsvp) => rsvp.userId === userB.id);
-              
-              // Check if user A and user B have given a response
-              const statusA = rsvpA ? rsvpA.responses.some((r) => r.status !== "No response yet") : false;
-              const statusB = rsvpB ? rsvpB.responses.some((r) => r.status !== "No response yet") : false;
-              
-              // Sort attending/maybe/not attending first, then no response at the bottom
-              if (statusA && !statusB) return -1;
-              if (!statusA && statusB) return 1;
-              return 0;
+            
+              const getStatusPriority = (status: string): number => {
+                switch (status) {
+                  case "Attending":
+                    return 1; // Highest priority
+                  case "Maybe":
+                    return 2;
+                  case "Not Attending":
+                    return 3;
+                  default:
+                    return 4; // No Response
+                }
+              };
+            
+              // Get the highest priority status for each user across all event days
+              const priorityA = rsvpA
+                ? Math.min(
+                    ...rsvpA.responses.map((response) =>
+                      getStatusPriority(response.status || "No response")
+                    )
+                  )
+                : 4; // Default to "No Response" priority if no RSVP
+            
+              const priorityB = rsvpB
+                ? Math.min(
+                    ...rsvpB.responses.map((response) =>
+                      getStatusPriority(response.status || "No response")
+                    )
+                  )
+                : 4; // Default to "No Response" priority if no RSVP
+            
+              return priorityA - priorityB;
             })
-            .sort((userA, userB) => {
-              // Prioritize President and Officers first (Attending), then Members
-              if (userA.role === "President" || userA.role === "Officer") return -1;
-              if (userB.role === "President" || userB.role === "Officer") return 1;
-              return 0;
-            })
+            
             .map((user: any) => {
-              // Find the RSVP response for the user
               const rsvp = rsvps.find((rsvp) => rsvp.userId === user.id);
-              
               return (
                 <tr key={user.id}>
+                  <td>
+                    <img
+                      src={user.profilePicUrl || "https://via.placeholder.com/50"}
+                      alt={user.name}
+                      className="profile-pickoa"
+                    />
+                  </td>
                   <td>{user.name}</td>
-                  <td>{user.role || "Member"}</td>
-                  {/* Loop through all event days and display RSVP status */}
+            
                   {eventDetails?.eventDates.map((_, dayIdx) => {
                     const userResponse = rsvp?.responses.find(response => response.dayIndex === dayIdx);
-                    const status = userResponse ? userResponse.status : "No response yet";  // Default response if none
-                    
-                    return <td key={dayIdx}>{status}</td>;  {/* Display the status for each day */}
+                    const status = userResponse ? userResponse.status : "No response yet";
+
+                    return <td key={dayIdx}>{status}</td>;
                   })}
                 </tr>
               );
@@ -1068,100 +1090,143 @@ const handleSaveAttendance = async (
 
 
 {showRSVPModal && (
-  <div className="modal-overlay">
-  <div className="modal-content">
-    <h3>Edit RSVP</h3>
-    
-    <table>
-      <thead>
-        <tr>
-          <th>Day</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {eventDetails?.eventDates.map((_, idx) => {
-          const existingResponse = responses.find((r) => r.dayIndex === idx);
+  <div className="EVXD-modal-overlay">
+    <div className="EVXD-modal-content">
+      <h3>Edit RSVP</h3>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Day</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {eventDetails?.eventDates.map((_, idx) => {
+            const existingResponse = responses.find((r) => r.dayIndex === idx);
 
-          return (
-            <tr key={idx}>
-              <td>Day {idx + 1}</td>
-              <td>
-                <select
-                  value={existingResponse?.status || "No response"}
-                  onChange={(e) => {
-                    const newStatus = e.target.value;
+            return (
+              <tr key={idx}>
+                <td>Day {idx + 1}</td>
+                <td>
+                  <select
+                    value={existingResponse?.status || "No response"}
+                    onChange={(e) => {
+                      const newStatus = e.target.value;
 
-                    // Update the `responses` state correctly
-                    setResponses((prevResponses) => {
-                      const updatedResponses = [...prevResponses];
-                      const responseIndex = updatedResponses.findIndex(
-                        (r) => r.dayIndex === idx
-                      );
+                      // Update the `responses` state correctly
+                      setResponses((prevResponses) => {
+                        const updatedResponses = [...prevResponses];
+                        const responseIndex = updatedResponses.findIndex(
+                          (r) => r.dayIndex === idx
+                        );
 
-                      if (responseIndex >= 0) {
-                        // Update existing response
-                        updatedResponses[responseIndex].status = newStatus;
-                      } else {
-                        // Add new response
-                        updatedResponses.push({ dayIndex: idx, status: newStatus });
-                      }
+                        if (responseIndex >= 0) {
+                          // Update existing response
+                          updatedResponses[responseIndex].status = newStatus;
+                        } else {
+                          // Add new response
+                          updatedResponses.push({ dayIndex: idx, status: newStatus });
+                        }
 
-                      return updatedResponses;
-                    });
-                  }}
-                >
-                  <option value="Attending">Attending</option>
-                  <option value="Maybe">Maybe</option>
-                  <option value="Not Attending">Not Attending</option>
-                </select>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-    <button onClick={() => setShowRSVPModal(false)}>Cancel</button>
-    <button onClick={handleRSVP}>Save</button>
+                        return updatedResponses;
+                      });
+                    }}
+                  >
+                    <option value="Attending">Attending</option>
+                    <option value="Maybe">Maybe</option>
+                    <option value="Not Attending">Not Attending</option>
+                  </select>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <button className="EVXD-cancel-button" onClick={() => setShowRSVPModal(false)}>Cancel</button>
+      <button className="EVXD-save-button" onClick={handleRSVP}>Save</button>
+    </div>
   </div>
-</div>
-
 )}
 
-
-
-
-<div className="rsvp-section">
-  <h3>Participation Status</h3>
- 
-  {eventDetails?.eventDates.map((date, idx) => {
-    const userRSVP = rsvps.find((rsvp) => rsvp.userId === currentUser?.uid);
-    const dayResponse = userRSVP?.responses?.find((r) => r.dayIndex === idx);
-
-    return (
-      <div key={idx} className="rsvp-day">
+            </div>
+            
+       
+          </div>
+          
+          <div className="event-side-cards">
+  <div className="card-left">
+    <h3>Attendance</h3>
+    {eventDetails?.eventDates.map((date, idx) => (
+      <div key={idx}>
         <p>
-          <strong>Day {idx + 1}:</strong> {new Date(date.startDate).toDateString()}
+          Day {idx + 1}: {new Date(date.startDate).toDateString()}
         </p>
-        <p>
-          <strong>Status:</strong> {dayResponse ? dayResponse.status : "No response"}
-        </p>
+        {new Date() > new Date(date.endDate) ? (
+          <button onClick={() => handleOpenAttendanceModal(idx)}>
+            Manage Attendance
+          </button>
+        ) : (
+          <p>Attendance available after this day ends.</p>
+        )}
       </div>
-    );
-  })}
+    ))}
+  </div>
+  <button onClick={() => setShowRSVPResponsesModal(true)} className="view-rsvp-responses-button">
+    View RSVP Responses
+  </button>
+  <div className="card-right">
+    
+  <h3>Participation Status</h3>
+<div className="rsvp-section">
+  {eventDetails?.eventDates.length === 1 ? (
+    <div className="rsvp-single-day">
+      <span
+        className={`rsvp-status-label ${getStatusClass(
+          rsvps.find((rsvp) => rsvp.userId === currentUser?.uid)?.responses[0]?.status || "No response"
+        )}`}
+      >
+        {rsvps.find((rsvp) => rsvp.userId === currentUser?.uid)?.responses[0]?.status || "No response"}
+      </span>
+    </div>
+  ) : (
+    eventDetails?.eventDates.map((_, idx) => {
+      const userRSVP = rsvps.find((rsvp) => rsvp.userId === currentUser?.uid);
+      const dayResponse = userRSVP?.responses?.find((r) => r.dayIndex === idx);
 
-  {/* Only show the edit button if RSVP data can be edited */}
+      return (
+        <div key={idx} className="rsvp-day">
+          <p>
+            <strong>Day {idx + 1}:</strong>{" "}
+            <span
+              className={`rsvp-status-label ${getStatusClass(
+                dayResponse?.status || "No response"
+              )}`}
+            >
+              {dayResponse?.status || "No response"}
+            </span>
+          </p>
+        </div>
+      );
+    })
+  )}
+  
   {dickeditable && !showAttendanceModal && (
-    <button onClick={handleOpenRSVPModal} className="edit-rsvp-button">
-      Edit RSVP
-    </button>
+    <div className="rsvp-actions">
+      <button onClick={handleOpenRSVPModal} className="create-new-btn">
+        Edit RSVP
+      </button>
+    </div>
   )}
 </div>
 
 
-            </div>
-          </div>
 
+  </div>
+  
+</div>
+</div>
+        
           <div className="event-forum">
             <h3>Event Forum</h3>
             

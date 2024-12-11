@@ -31,22 +31,33 @@
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
+
+
   
+  .content-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+
   .event-details-card {
     display: flex;
-    flex-direction: row;
-    gap: 20px;
+    flex: 2;
+    justify-content: space-between;
     background: #fff;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px; /* Adds vertical space between cards */
+    margin-bottom: 20px;
   }
   
   
   .event-details-left,
   .event-details-right {
     flex: 1;
+    max-width: 500px; /* Ensure both sides have a minimum width */
   }
   
   .event-details-left h3,
@@ -56,12 +67,14 @@
     color: #333;
   }
   
-  .event-details-left p,
-  .event-details-right p {
-    font-size: 1rem;
-    margin-bottom: 15px;
-    color: #666;
-  }
+.event-details-left p,
+.event-details-right p {
+  font-size: 1rem;
+  margin-bottom: 15px;
+  color: #666;
+  word-wrap: break-word; /* Ensure long words break into a new line */
+  overflow-wrap: break-word; /* Support for older browsers */
+}
   
   .event-details-left {
     border-right: 1px solid #ddd;
@@ -223,7 +236,7 @@
 /* Container for all messages */
 .forum-messages {
   max-height: 500px;
-  min-height: 150px;
+  height: 500px;
   overflow-y: auto;
   padding: 10px;
   background-color: #f9f9f9;
@@ -383,40 +396,80 @@
 
 
 
+/* Style for the button */
+/* Style for the button */
 .view-rsvp-responses-button {
-  padding: 10px 20px;
-  background-color: #4CAF50;
-  color: white;
+  margin-left: 55px; /* Pushes the button to the right */
+  margin-bottom: 20px; /* Adds space at the bottom of the button */
+  background-color: #3498db; /* Primary color */
+  color: #ffffff;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
   border: none;
+  border-radius: 5px;
   cursor: pointer;
-  font-size: 16px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  text-align: center; /* Ensures text is centered */
 }
 
+/* Hover effect */
 .view-rsvp-responses-button:hover {
-  background-color: #45a049;
+  background-color: #2980b9; /* Darker shade of blue */
+
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3); /* Enhance the shadow */
 }
 
+
+
+
+/* Modal Overlay */
 .rsvp-responses-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6); /* Dark overlay */
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
+  z-index: 1000;
 }
 
+/* Modal Content */
 .rsvp-responses-modal-content {
-  background-color: white;
-  padding: 20px;
-  border-radius: 5px;
-  width: 80%;
-  max-width: 600px;
-  overflow-y: auto;
+  background: #ffffff;
+  padding: 1.5rem;
+  border-radius: 10px;
+  width: 80%; /* Reduced width for a smaller modal */
+  max-width: 700px; /* Adjust maximum width */
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.3s ease-out;
+  overflow-y: hidden; /* Prevent vertical scrolling for the modal itself */
+  max-height: 85vh; /* Reduce height slightly */
+  display: flex;
+  flex-direction: column; /* Ensure proper layout with header and table */
 }
 
+/* Modal Header */
+.rsvp-responses-modal-content h3 {
+  font-size: 1.5rem;
+  color: #333333;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+/* Table Wrapper */
+.rsvp-responses-table-wrapper {
+  flex: 1;
+  overflow-y: auto; /* Enable scrolling for the table */
+  max-height: 70vh; /* Adjust the height to make the table scrollable */
+  border: 1px solid #ddd; /* Add a subtle border around the table wrapper */
+  border-radius: 5px;
+}
+
+/* Table */
 .rsvp-responses-table {
   width: 100%;
   border-collapse: collapse;
@@ -424,26 +477,280 @@
 
 .rsvp-responses-table th,
 .rsvp-responses-table td {
-  padding: 10px;
-  text-align: left;
+  text-align: center;
+  padding: 0.5rem; /* Reduced padding for smaller rows */
   border: 1px solid #ddd;
 }
 
+.rsvp-responses-table th {
+  background-color: #f4f4f4;
+  color: #555;
+  font-weight: bold;
+  font-size: 0.9rem; /* Slightly smaller font size */
+}
+
+.rsvp-responses-table td {
+  color: #666;
+  font-size: 0.85rem; /* Slightly smaller font size */
+}
+
+/* Actions */
 .rsvp-responses-modal-actions {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
+  text-align: center;
+  margin-top: 1rem;
 }
 
 .rsvp-responses-modal-actions button {
-  padding: 10px 20px;
-  background-color: #f44336;
-  color: white;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9rem; /* Slightly smaller font size */
   border: none;
+  border-radius: 5px;
   cursor: pointer;
-  font-size: 16px;
+  background-color: #db3434; /* Primary button color */
+  color: #ffffff;
+  transition: background-color 0.3s ease, transform 0.3s ease;
 }
 
 .rsvp-responses-modal-actions button:hover {
-  background-color: #e53935;
+  background-color: #2980b9;
+  transform: scale(1.05);
 }
+
+/* Profile Picture */
+.profile-pickoa {
+  width: 40px; /* Reduced size for smaller table rows */
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #ddd;
+}
+
+/* Base RSVP Status Styling */
+.rsvp-status {
+  font-weight: bold;
+  padding: 0.5rem;
+  border-radius: 5px;
+  text-align: center;
+}
+
+/* Specific Status Colors */
+.rsvp-status.attending {
+  color: #ffffff;
+  background-color: #27ae60; /* Green for Attending */
+}
+
+.rsvp-status.not-attending {
+  color: #ffffff;
+  background-color: #e74c3c; /* Red for Not Attending */
+}
+
+.rsvp-status.maybe {
+  color: #ffffff;
+  background-color: #f39c12; /* Orange for Maybe */
+}
+
+.rsvp-status.no-response {
+  color: #ffffff;
+  background-color: #7f8c8d; /* Gray for No Response */
+}
+
+
+
+
+
+
+
+
+
+
+/* Flex container for aligning cards */
+.card-container {
+  display: flex; /* Enable flex layout */
+  flex-direction: column; /* Stack cards vertically */
+  justify-content: flex-start; /* Align items to the top */
+  align-items: flex-end; /* Align items to the right */
+  margin-top: 16px; /* Add some spacing at the top */
+}
+
+/* Styling for each card */
+.card-left, .card-right {
+  background-color: #ffffff; /* Light background for the cards */
+ 
+  border-radius: 8px; /* Rounded corners */
+  padding: 16px; /* Space inside the cards */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+  width: 300px; /* Fixed width for the cards */
+  margin-bottom: 16px; /* Space between the cards */
+}
+
+/* Headers inside cards */
+.card-left h3, .card-right h3 {
+  font-size: 1..2rem; /* Larger font size for headers */
+  color: #333; /* Darker color for headers */
+  margin-bottom: 12px; /* Add space below headers */
+}
+
+/* Buttons inside cards */
+.card-left button, .card-right button {
+  background-color: #007bff; /* Blue button background */
+  color: white; /* White text */
+  border: none; /* Remove borders */
+  padding: 8px 16px; /* Add padding */
+  border-radius: 4px; /* Rounded corners */
+  cursor: pointer; /* Pointer cursor on hover */
+  font-size: 0.9rem; /* Adjust font size */
+  margin-top: 8px; /* Add some spacing above buttons */
+}
+
+/* Button hover effect */
+.card-left button:hover, .card-right button:hover {
+  background-color: #0056b3; /* Darker blue on hover */
+}
+
+
+
+
+/* Container for RSVP */
+.rsvp-single-day,
+.rsvp-day {
+  margin: 5px 0; /* Reduced margin */
+  font-size: 0.9rem; /* Smaller font size */
+  font-weight: bold;
+}
+
+/* Specific style for the status label */
+.rsvp-status-label {
+  display: inline-block;
+  padding: 5px 15px; /* Padding to match the button-like appearance */
+  border-radius: 20px; /* Fully rounded edges */
+  text-align: center;
+  font-size: 0.85rem; /* Adjusted font size */
+  font-weight: bold;
+  color: white; /* Default text color for statuses */
+}
+
+/* Colors for each status */
+.rsvp-status-label.no-response {
+  background-color: gray;
+}
+
+.rsvp-status-label.attending {
+  background-color: green;
+}
+
+.rsvp-status-label.maybe {
+  background-color: rgb(255, 153, 0);
+  
+}
+
+.rsvp-status-label.not-attending {
+  background-color: red;
+}
+
+
+
+
+/* Modal Overlay */
+.EVXD-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Modal Content */
+.EVXD-modal-content {
+  background: #ffffff;
+  padding: 2rem;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Header */
+.EVXD-modal-content h3 {
+  font-size: 1.5rem;
+  color: #333333;
+  margin-bottom: 1rem;
+}
+
+/* Table */
+.EVXD-modal-content table {
+  width: 100%;
+  margin-bottom: 1.5rem;
+  border-collapse: collapse;
+}
+
+.EVXD-modal-content th,
+.EVXD-modal-content td {
+  text-align: left;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+}
+
+.EVXD-modal-content th {
+  background-color: #f4f4f4;
+  color: #555;
+  font-weight: bold;
+}
+
+.EVXD-modal-content td {
+  color: #666;
+}
+
+.EVXD-modal-content select {
+  padding: 0.5rem;
+  font-size: 1rem;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Buttons */
+.EVXD-cancel-button,
+.EVXD-save-button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.EVXD-cancel-button {
+  background-color: #e74c3c;
+  color: #ffffff;
+  margin-right: 1rem;
+}
+
+.EVXD-cancel-button:hover {
+  background-color: #c0392b;
+}
+
+.EVXD-save-button {
+  background-color: #2ecc71;
+  color: #ffffff;
+}
+
+.EVXD-save-button:hover {
+  background-color: #27ae60;
+}
+
+
+
+
+
+
+
+
+

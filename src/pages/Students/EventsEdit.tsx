@@ -5,8 +5,7 @@ import {
   doc,
   getDoc,
   updateDoc,
-  collection,
-  getDocs,
+  
 } from "firebase/firestore";
 import "../../styles/CreateEvent.css"; // Shared CSS for styling
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -72,10 +71,79 @@ const EditEvent: React.FC = () => {
     fetchEventDetails();
     fetchOrganizationData();
   }, [organizationName, eventId]);
-
+  const handleDateChange = (index: number, field: "startDate" | "endDate", value: string) => {
+    const now = new Date().toISOString();
+    const updatedDates = [...eventDetails!.eventDates];
+    updatedDates[index][field] = value;
+  
+    // Ensure no past dates
+    if (value < now) {
+      alert("Date and time cannot be in the past.");
+      return;
+    }
+  
+    // Ensure end date is not earlier than start date
+    const startDate = updatedDates[index].startDate;
+    const endDate = updatedDates[index].endDate;
+    if (startDate && endDate && endDate < startDate) {
+      alert("End date cannot be earlier than start date.");
+      return;
+    }
+  
+    // Ensure no overlaps
+    if (index > 0) {
+      const prevEndDate = updatedDates[index - 1].endDate;
+      if (prevEndDate && startDate && startDate < prevEndDate) {
+        alert(`Start date for Day ${index + 1} cannot overlap with the previous day's end date.`);
+        return;
+      }
+    }
+    if (index < updatedDates.length - 1) {
+      const nextStartDate = updatedDates[index + 1].startDate;
+      if (endDate && nextStartDate && endDate > nextStartDate) {
+        alert(`End date for Day ${index + 1} cannot overlap with the next day's start date.`);
+        return;
+      }
+    }
+  
+    const updatedEventDetails = { ...eventDetails!, eventDates: updatedDates };
+    setEventDetails(updatedEventDetails);
+  };
+  
+  const handleAddDateRange = () => {
+    if (eventDetails) {
+      const updatedDates = [
+        ...eventDetails.eventDates,
+        { startDate: "", endDate: "" },
+      ];
+      setEventDetails({ ...eventDetails, eventDates: updatedDates });
+    }
+  };
+  
+  const handleRemoveDateRange = (index: number) => {
+    if (eventDetails) {
+      const updatedDates = eventDetails.eventDates.filter((_, i) => i !== index);
+      setEventDetails({ ...eventDetails, eventDates: updatedDates });
+    }
+  };
+  
   const handleSave = async () => {
     if (!organizationName || !eventId || !eventDetails) return;
-
+  
+    // Validate all fields
+    if (
+      !eventDetails.title ||
+      !eventDetails.description ||
+      !eventDetails.venue ||
+      eventDetails.eventDates.some(
+        (date) => !date.startDate || !date.endDate
+      ) ||
+      !eventDetails.eventHead
+    ) {
+      alert("All fields must be filled out.");
+      return;
+    }
+  
     const eventRef = doc(
       firestore,
       "events",
@@ -83,7 +151,7 @@ const EditEvent: React.FC = () => {
       "event",
       eventId
     );
-
+  
     try {
       // Upload new image if changed
       let imageUrl = eventDetails.imageUrl;
@@ -95,12 +163,12 @@ const EditEvent: React.FC = () => {
         await uploadBytes(imageRef, imageFile);
         imageUrl = await getDownloadURL(imageRef);
       }
-
+  
       await updateDoc(eventRef, {
         ...eventDetails,
         imageUrl, // Updated image URL
       });
-
+  
       alert("Event updated successfully");
       navigate(`/organization/${organizationName}/events`);
     } catch (error) {
@@ -108,6 +176,7 @@ const EditEvent: React.FC = () => {
       alert("Failed to update event");
     }
   };
+  
 
   const handleCancel = () => navigate(-1);
 
@@ -136,11 +205,10 @@ const EditEvent: React.FC = () => {
         <div className="sidebar-section">
           <StudentPresidentSidebar />
         </div>
-        
+  
         <div className="main-content">
-        <div className="header-container">
-            <h1 className="headtitle">Edit event</h1>
-          
+          <div className="header-container">
+            <h1 className="headtitle">Edit Event</h1>
           </div>
           <div className="FESTANOBRAZIL">
             <form className="CCC-create-event-form">
@@ -184,46 +252,64 @@ const EditEvent: React.FC = () => {
                   />
                 </div>
                 <div className="CCC-date-time-section">
-                  {eventDetails.eventDates.map((date, index) => (
-                    <div key={index} className="CCC-date-time-group">
-                      <label className="CCC-create-event-label">
-                        Start Date & Time (Day {index + 1})
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={date.startDate.substring(0, 16)}
-                        onChange={(e) => {
-                          const updatedDates = [...eventDetails.eventDates];
-                          updatedDates[index].startDate = e.target.value;
-                          setEventDetails({
-                            ...eventDetails,
-                            eventDates: updatedDates,
-                          });
-                        }}
-                        className="CCC-create-event-input"
-                      />
-                      <label className="CCC-create-event-label">
-                        End Date & Time (Day {index + 1})
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={date.endDate.substring(0, 16)}
-                        onChange={(e) => {
-                          const updatedDates = [...eventDetails.eventDates];
-                          updatedDates[index].endDate = e.target.value;
-                          setEventDetails({
-                            ...eventDetails,
-                            eventDates: updatedDates,
-                          });
-                        }}
-                        className="CCC-create-event-input"
-                      />
-                    </div>
-                  ))}
-                </div>
-             
-              </div>
+  {eventDetails.eventDates.map((date, index) => (
+    <div key={index} className="CCC-date-time-group">
+      <label className="CCC-create-event-label">
+        Start Date & Time (Day {index + 1})
+      </label>
+      <input
+        type="datetime-local"
+        value={
+          date.startDate
+            ? new Date(date.startDate).toISOString().slice(0, 16)
+            : ""
+        }
+        min={new Date().toISOString().slice(0, 16)} // Prevent past dates
+        onChange={(e) => handleDateChange(index, "startDate", e.target.value)}
+        className="CCC-create-event-input"
+        required
+      />
+      <label className="CCC-create-event-label">
+        End Date & Time (Day {index + 1})
+      </label>
+      <input
+        type="datetime-local"
+        value={
+          date.endDate
+            ? new Date(date.endDate).toISOString().slice(0, 16)
+            : ""
+        }
+        min={
+          date.startDate
+            ? new Date(date.startDate).toISOString().slice(0, 16)
+            : new Date().toISOString().slice(0, 16)
+        } // Ensure end date is after start date
+        onChange={(e) => handleDateChange(index, "endDate", e.target.value)}
+        className="CCC-create-event-input"
+        required
+      />
+      {eventDetails.eventDates.length > 1 && (
+        <button
+          type="button"
+          onClick={() => handleRemoveDateRange(index)}
+          className="CCC-remove-date-btn"
+        >
+          Remove Day
+        </button>
+      )}
+    </div>
+  ))}
+  <button
+    type="button"
+    onClick={handleAddDateRange}
+    className="CCC-add-date-btn"
+  >
+    Add Day
+  </button>
+</div>
 
+              </div>
+  
               <div className="CCC-form-right">
                 <div className="CCC-create-event-form-group">
                   <label className="CCC-create-event-label">
@@ -262,7 +348,7 @@ const EditEvent: React.FC = () => {
                 </div>
               </div>
             </form>
-
+  
             <div className="CCC-buttons">
               <button
                 type="button"
@@ -280,7 +366,7 @@ const EditEvent: React.FC = () => {
               </button>
             </div>
           </div>
-
+  
           {isModalOpen && (
             <div className="CCC-modal">
               <div className="CCC-modal-content">
@@ -309,9 +395,7 @@ const EditEvent: React.FC = () => {
                       onClick={() => handleSelectEventHead(officer.id)}
                     >
                       <img
-                        src={
-                          officer.profilePicUrl || "default-profile.png"
-                        }
+                        src={officer.profilePicUrl || "default-profile.png"}
                         alt={officer.name}
                         className="CCC-dropdown-profile-pic"
                       />
@@ -332,6 +416,8 @@ const EditEvent: React.FC = () => {
       </div>
     </div>
   );
+  
+  
 };
 
 export default EditEvent;
