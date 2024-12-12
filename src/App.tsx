@@ -37,6 +37,7 @@ import EventsEdit from './pages/Students/EventsEdit';
 import AdminEventsManagement from './pages/Admins/AdminEventsManagement';
 import AdminUserManagement from './pages/Admins/AdminUserManagement';
 import AdminReportingAnalytics from './pages/Admins/AdminReportingAnalytics';
+import NotFound from './pages/NotFound';
 
 
 const App: React.FC = () => {
@@ -122,7 +123,8 @@ const App: React.FC = () => {
           <Route path="/Admin/UserManagement" element={<AdminUserManagement/>} />
           <Route path="/Admin/ReportingAnalytics" element={<AdminReportingAnalytics/>} />
 
-         
+         {/* Catch-all Route for 404 Page */}
+         <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
       </Router>
