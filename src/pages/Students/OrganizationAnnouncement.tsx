@@ -6,7 +6,9 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSync,faTrash,faFileAlt, faFilePdf, faFileWord, faFilePowerpoint, faFileExcel   } from '@fortawesome/free-solid-svg-icons';
 import Header from '../../components/Header';
-import StudentPresidentSidebar from './StudentPresidentSidebar';
+import StudentPresidentSidebar from './StudentPresidentSidebar'; 
+import StudentOfficerSidebar from './StudentOfficerSidebar'; 
+import StudentMemberSidebar from './StudentMemberSidebar'; 
 import '../../styles/OrganizationAnnouncement.css';
 
 type OrganizationData = {
@@ -65,6 +67,7 @@ const [currentUserProfilePic, setCurrentUserProfilePic] = useState<string>("");
 const [isSending, setIsSending] = useState(false);
 const [selectedAnnouncementDetails, setSelectedAnnouncementDetails] = useState<any>(null);
 const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+const [role, setRole] = useState<string>('');
 
 const fetchStudentData = async () => {
   const user = auth.currentUser;
@@ -284,7 +287,49 @@ useEffect(() => {
     setIsDetailsModalOpen(false);
     setSelectedAnnouncementDetails(null);
   };
+  useEffect(() => {
+    const fetchRole = async () => {
+      try {
+        if (organizationName && auth.currentUser) {
+          const orgDocRef = doc(firestore, 'organizations', organizationName);
+          const orgDoc = await getDoc(orgDocRef);
   
+          if (orgDoc.exists()) {
+            const orgData = orgDoc.data();
+            const userId = auth.currentUser.uid;
+  
+            if (orgData.president?.id === userId) {
+              setRole('president');
+            } else if (orgData.officers?.some((officer: any) => officer.id === userId)) {
+              setRole('officer');
+            } else if (orgData.members?.some((member: any) => member.id === userId)) {
+              setRole('member');
+            } else {
+              setRole('guest');
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user role:", error);
+        setRole('guest');
+      }
+    };
+  
+    fetchRole();
+  }, [organizationName]);
+  
+  const renderSidebar = () => {
+    switch (role) {
+      case 'president':
+        return <StudentPresidentSidebar />;
+      case 'officer':
+        return <StudentOfficerSidebar />;
+      case 'member':
+        return <StudentMemberSidebar />;
+      default:
+        return null; // Or render a default/empty sidebar for guests
+    }
+  };
 
   const handleAddAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -396,7 +441,7 @@ useEffect(() => {
     <div className="organization-announcements-page">
       <Header />
       <div className="organization-announcements-container">
-  <StudentPresidentSidebar />
+      {renderSidebar()}
   <div className="organization-announcements-content">
   <div className="header-container">
   <h1 className="headtitle">Announcements</h1>
@@ -523,9 +568,15 @@ useEffect(() => {
     <button onClick={resetFilters} className="organization-announcements-reset-button">
     <FontAwesomeIcon icon={faSync} /> Reset
   </button>
-  <button onClick={handleDeleteSelected} className="organization-announcements-delete-button" disabled={selectedAnnouncements.length === 0}>
+  {role !== 'member' && (
+    <button
+      onClick={handleDeleteSelected}
+      className="organization-announcements-delete-button"
+      disabled={selectedAnnouncements.length === 0}
+    >
       <FontAwesomeIcon icon={faTrash} />
     </button>
+  )}
 
 </div>
 

@@ -70,6 +70,8 @@ const App: React.FC = () => {
             <Route path="/Organization/:organizationName/create-event" element={<CreateEvent />} />
             <Route path="/Organization/:organizationName/events/:eventName" element={<EventsView />} />
             <Route  path="/Organization/:organizationName/announcements" element={<OrganizationAnnouncement />} />
+            <Route path="/Organization/:organizationName/manage-members" element={<ManageMembers />} />
+            <Route path="/Organization/:organizationName/manage-committees" element={<ManageCommittees />} />
           </Route>
 
            {/* Officer Routes */}
@@ -80,8 +82,6 @@ const App: React.FC = () => {
          {/* President Routes */}
         <Route element={<ProtectedOrgRoute requiredRole="president" />}>
           <Route path="/Organization/:organizationName/settings" element={<OrganizationSettings />} />
-          <Route path="/Organization/:organizationName/manage-members" element={<ManageMembers />} />
-          <Route path="/Organization/:organizationName/manage-committees" element={<ManageCommittees />} />
           <Route path="/Organization/:organizationName/Alltasks" element={<TaskManagement />} />
           <Route path="/Organization/:organizationName/activity-logs" element={<OrganizationActivityLogs />} />
 

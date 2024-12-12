@@ -649,15 +649,17 @@ const filteredFiles = [...files]
         <button onClick={navigateUp} disabled={!currentPath} title="Go Back">
             <FontAwesomeIcon icon={faArrowLeft} />
         </button>
-        <select
-            className="OrgResour-input-select"
-            value={folderType}
-            onChange={(e) => setFolderType(e.target.value as 'public' | 'private')}
-            disabled={role === 'member' && folderType === 'private'}
-        >
-            <option value="public">Public Folder</option>
-            {role !== 'member' && <option value="private">Private Folder</option>}
-        </select>
+        {role !== 'member' && (
+  <select
+    className="OrgResour-input-select"
+    value={folderType}
+    onChange={(e) => setFolderType(e.target.value as 'public' | 'private')}
+  >
+    <option value="public">Public Folder</option>
+    {role !== 'member' && <option value="private">Private Folder</option>}
+  </select>
+)}
+
         <input
             type="text"
             placeholder="Search files..."

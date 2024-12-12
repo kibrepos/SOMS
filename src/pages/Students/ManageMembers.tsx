@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, getDoc,getDocs,updateDoc,collection,setDoc,arrayUnion  } from 'firebase/firestore';
-import { firestore } from '../../services/firebaseConfig';
+import { firestore,auth } from '../../services/firebaseConfig';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
 import { v4 as uuidv4 } from 'uuid';
 import Header from '../../components/Header'; 
-import StudentPresidentSidebar from './StudentPresidentSidebar'; 
+import StudentPresidentSidebar from "./StudentPresidentSidebar";
+import StudentOfficerSidebar from "./StudentOfficerSidebar";
+import StudentMemberSidebar from "./StudentMemberSidebar";
 import '../../styles/ManageMembers.css'; 
 
 interface Member {
@@ -67,6 +69,49 @@ const [invitedStudents, setInvitedStudents] = useState<string[]>([]);
 const [availableStudents, setAvailableStudents] = useState<Member[]>([]);
 const openInviteModal = () => setIsInviteModalOpen(true);
 const closeInviteModal = () => setIsInviteModalOpen(false);
+const [role, setRole] = useState<string>('');
+useEffect(() => {
+  const fetchRole = async () => {
+    if (!organizationName) return;
+
+    try {
+      const orgDocRef = doc(firestore, 'organizations', organizationName);
+      const orgDoc = await getDoc(orgDocRef);
+
+      if (orgDoc.exists()) {
+        const orgData = orgDoc.data();
+        const userId = auth.currentUser?.uid;
+
+        if (orgData.president?.id === userId) {
+          setRole('president');
+        } else if (orgData.officers.some((officer: any) => officer.id === userId)) {
+          setRole('officer');
+        } else if (orgData.members.some((member: any) => member.id === userId)) {
+          setRole('member');
+        } else {
+          setRole('guest');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+    }
+  };
+
+  fetchRole();
+}, [organizationName]);
+const renderSidebar = () => {
+  switch (role) {
+    case 'president':
+      return <StudentPresidentSidebar />;
+    case 'officer':
+      return <StudentOfficerSidebar />;
+    case 'member':
+      return <StudentMemberSidebar />;
+    default:
+      return null; // No sidebar for guests
+  }
+};
+
 useEffect(() => {
   const fetchAvailableStudents = async () => {
     try {
@@ -538,18 +583,24 @@ const handleKick = async () => {
       <Header />
       <div className="MM-container">
         <div className="MM-sidebar-section">
-          <StudentPresidentSidebar />
+        {renderSidebar()}
         </div>
         <div className="MM-main-content">
         <div className="header-container">
-        <h1 className="headtitle">Manage Members</h1>
-            <button className="create-new-btn" onClick={goToManageCommittees}>
-              Manage Committees
-            </button>
+        <h1 className="headtitle">Organization Members</h1>
+        <button
+  className="create-new-btn"
+  onClick={goToManageCommittees}
+>
+  {role === 'member' ? 'View Committees' : 'Manage Committees'}
+</button>
+
           
 
           </div>
-          <button onClick={() => setIsInviteModalOpen(true)}>Invite a member</button>
+          {role !== 'member' && (
+  <button onClick={() => setIsInviteModalOpen(true)}>Invite a member</button>
+)}
           {isInviteModalOpen && (
   <div className="MM-modal-overlay">
     <div className="MM-modal-content">
@@ -622,7 +673,7 @@ const handleKick = async () => {
                   <th>Name</th>
                   <th>Role</th>
                   <th>Email</th>
-                  <th>Actions</th>
+                  {role !== 'member' && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -632,18 +683,20 @@ const handleKick = async () => {
     <td>{organizationData.president.name}</td>
     <td>President</td>
     <td>{organizationData.president.email}</td>
-    <td></td> {/* No actions for President */}
+    {role !== 'member' && <td></td>}
   </tr>
 
   {/* Officers Table */}
-  {organizationData.officers
-    .sort((a, b) => (a.role === 'Vice President' ? -1 : 1)) // Vice President first
-    .map((officer) => (
-      <tr key={officer.id}>
-        <td>{renderProfilePic(officer.profilePicUrl)}</td>
-        <td>{officer.name}</td>
-        <td>{officer.role}</td>
-        <td>{officer.email}</td>
+ {/* Officers Table */}
+{organizationData.officers
+  .sort((a, b) => (a.role === 'Vice President' ? -1 : 1)) // Vice President first
+  .map((officer) => (
+    <tr key={officer.id}>
+      <td>{renderProfilePic(officer.profilePicUrl)}</td>
+      <td>{officer.name}</td>
+      <td>{officer.role}</td>
+      <td>{officer.email}</td>
+      {role !== 'member' && (
         <td>
           {/* No actions for Vice President */}
           {officer.role !== 'Vice President' ? (
@@ -661,9 +714,11 @@ const handleKick = async () => {
             <div></div> /* No actions for Vice President */
           )}
         </td>
-      </tr>
-    ))}
+      )}
+    </tr>
+  ))}
 </tbody>
+
 
             </table>
           </div>
@@ -677,33 +732,39 @@ const handleKick = async () => {
                   <th>Profile</th>
                   <th>Name</th>
                   <th>Email</th>
-                  <th>Actions</th>
+                  {role !== 'member' && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {organizationData.members.map((member) => (
-                  <tr key={member.id}>
-                    <td>{renderProfilePic(member.profilePicUrl)}</td>
-                    <td>{member.name}</td>
-                    <td>{member.email}</td>
-                    <td>
-  <div className={`MM-dropdown ${openDropdown === member.id ? 'open' : ''}`}>
-    <button className="MM-action-btn" onClick={() => toggleDropdown(member.id)}>
-      Action
-    </button>
-    <div className="MM-dropdown-content">
-    <button onClick={() => openPromoteModal(member)}>Promote</button>
-      <button onClick={() => openKickModal(member.id, member.name)}>Kick</button>
-    </div>
-  </div>
-</td>
-
-
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+  {organizationData.members.map((member) => (
+    <tr key={member.id}>
+      <td>{renderProfilePic(member.profilePicUrl)}</td>
+      <td>{member.name}</td>
+      <td>{member.email}</td>
+      {role !== 'member' && (
+        <td>
+          <div className={`MM-dropdown ${openDropdown === member.id ? 'open' : ''}`}>
+            <button className="MM-action-btn" onClick={() => toggleDropdown(member.id)}>
+              Action
+            </button>
+            <div className="MM-dropdown-content">
+              <button onClick={() => openPromoteModal(member)}>Promote</button>
+              <button onClick={() => openKickModal(member.id, member.name)}>Kick</button>
+            </div>
           </div>
+        </td>
+      )}
+    </tr>
+  ))}
+</tbody>
+
+            </table>
+
+
+          </div>
+
+
+          
           {isPromoteModalOpen && selectedMember && (
           <div className="MM-modal-overlay">
             <div className="MM-modal-content">
