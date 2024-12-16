@@ -1,144 +1,142 @@
-//TEMPLATE LANG TO THIS IS NOT FULLY FUNCTIONAL
-
 import React, { useState, useEffect } from 'react';
 import { firestore } from '../../services/firebaseConfig';
-import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 
 const AdminEventsManagement: React.FC = () => {
-  const [events, setEvents] = useState<any[]>([]); // Store events data
-  const [newEvent, setNewEvent] = useState({ title: '', description: '', date: '', location: '' });
-  const [editingEvent, setEditingEvent] = useState<any>(null); // Store data of event being edited
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
+  const [events, setEvents] = useState<any[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch all organizations
+  const fetchOrganizations = async () => {
+    setLoading(true);
+    try {
+      const orgCollection = collection(firestore, 'organizations');
+      const orgSnapshot = await getDocs(orgCollection);
+      const orgList = orgSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setOrganizations(orgList);
+    } catch (error) {
+      console.error('Error fetching organizations:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch events for a selected organization
+  const fetchEvents = async (orgName: string) => {
+    setLoading(true);
+    try {
+      const eventsCollection = collection(firestore, `events/${orgName}/event`);
+      const eventsSnapshot = await getDocs(eventsCollection);
+      const eventList = eventsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setEvents(eventList);
+      setSelectedOrg(orgName);
+      setSelectedEvent(null);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchEvents();
+    fetchOrganizations();
   }, []);
-
-  // Fetch events from Firestore
-  const fetchEvents = async () => {
-    try {
-      const eventsCollection = collection(firestore, 'events');
-      const eventSnapshot = await getDocs(eventsCollection);
-      const eventsList = eventSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setEvents(eventsList);
-    } catch (err) {
-      console.error("Error fetching events:", err);
-    }
-  };
-
-  // Handle form submission for adding or editing events
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (editingEvent) {
-      // Edit event
-      const eventDoc = doc(firestore, 'events', editingEvent.id);
-      await updateDoc(eventDoc, newEvent);
-      setEditingEvent(null); // Reset editing state
-    } else {
-      // Add new event
-      await addDoc(collection(firestore, 'events'), newEvent);
-    }
-
-    // Reset new event state and fetch updated events
-    setNewEvent({ title: '', description: '', date: '', location: '' });
-    fetchEvents();
-  };
-
-  // Handle delete event
-  const handleDelete = async (id: string) => {
-    try {
-      const eventDoc = doc(firestore, 'events', id);
-      await deleteDoc(eventDoc);
-      fetchEvents(); // Fetch updated events list
-    } catch (err) {
-      console.error("Error deleting event:", err);
-    }
-  };
-
-  // Handle edit event
-  const handleEdit = (event: any) => {
-    setEditingEvent(event);
-    setNewEvent({ title: event.title, description: event.description, date: event.date, location: event.location });
-  };
 
   return (
     <div className="admin-events-management">
-      <h2>Manage Events</h2>
-      
-      {/* Event Form for Add/Edit */}
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label>Event Title</label>
-          <input 
-            type="text" 
-            value={newEvent.title} 
-            onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })} 
-            required 
-          />
-        </div>
-        <div className="form-group">
-          <label>Event Description</label>
-          <textarea 
-            value={newEvent.description} 
-            onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })} 
-            required 
-          />
-        </div>
-        <div className="form-group">
-          <label>Event Date</label>
-          <input 
-            type="date" 
-            value={newEvent.date} 
-            onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })} 
-            required 
-          />
-        </div>
-        <div className="form-group">
-          <label>Event Location</label>
-          <input 
-            type="text" 
-            value={newEvent.location} 
-            onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })} 
-            required 
-          />
-        </div>
-        <button type="submit">{editingEvent ? 'Update Event' : 'Add Event'}</button>
-      </form>
-      
-      {/* Events List */}
-      <div className="events-list">
-        <table>
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Description</th>
-              <th>Date</th>
-              <th>Location</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.length > 0 ? (
-              events.map((event) => (
-                <tr key={event.id}>
-                  <td>{event.title}</td>
-                  <td>{event.description}</td>
-                  <td>{event.date}</td>
-                  <td>{event.location}</td>
-                  <td>
-                    <button onClick={() => handleEdit(event)}>Edit</button>
-                    <button onClick={() => handleDelete(event.id)}>Delete</button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={5}>No events found.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <h2>Admin Events Management</h2>
+
+      {/* 1. Organization List */}
+      {!selectedOrg && !selectedEvent && (
+        <>
+          <h3>Organizations</h3>
+          {loading ? (
+            <p>Loading organizations...</p>
+          ) : (
+            <ul>
+              {organizations.map((org) => (
+                <li key={org.id}>
+                  <span>{org.id}</span>
+                  <button onClick={() => fetchEvents(org.id)}>View Events</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+
+      {/* 2. Event List */}
+      {selectedOrg && !selectedEvent && (
+        <>
+          <h3>Events for Organization: {selectedOrg}</h3>
+          <button onClick={() => setSelectedOrg(null)}>Back to Organizations</button>
+          {loading ? (
+            <p>Loading events...</p>
+          ) : events.length > 0 ? (
+            <ul>
+              {events.map((event) => (
+                <li key={event.id}>
+                  <span>{event.title || 'No Title'}</span>
+                  <button onClick={() => setSelectedEvent(event)}>View Details</button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No events found for this organization.</p>
+          )}
+        </>
+      )}
+
+      {/* 3. Event Details */}
+      {selectedEvent && (
+        <>
+          <h3>Event Details</h3>
+          <p><strong>Title:</strong> {selectedEvent.title || 'N/A'}</p>
+          <p><strong>Description:</strong> {selectedEvent.description || 'N/A'}</p>
+          <p><strong>Venue:</strong> {selectedEvent.venue || 'N/A'}</p>
+          <p><strong>Event Head:</strong> {selectedEvent.eventHead || 'N/A'}</p>
+          <p><strong>Created By:</strong> {selectedEvent.createdBy || 'N/A'}</p>
+          <p>
+            <strong>Created At:</strong>{' '}
+            {selectedEvent.createdAt?.toDate
+              ? selectedEvent.createdAt.toDate().toLocaleString()
+              : selectedEvent.createdAt || 'N/A'}
+          </p>
+          {/* Display event dates */}
+          {selectedEvent.eventDates && (
+            <div>
+              <strong>Event Dates:</strong>
+              <ul>
+                {selectedEvent.eventDates.map((date: any, index: number) => (
+                  <li key={index}>
+                    Start: {new Date(date.startDate).toLocaleString()} | End: {new Date(date.endDate).toLocaleString()}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {/* Display image */}
+          {selectedEvent.imageUrl && (
+            <div>
+              <strong>Event Image:</strong>
+              <br />
+              <img
+                src={selectedEvent.imageUrl}
+                alt="Event"
+                style={{ width: '300px', marginTop: '10px' }}
+              />
+            </div>
+          )}
+          <br />
+          <button onClick={() => setSelectedEvent(null)}>Back to Events</button>
+        </>
+      )}
     </div>
   );
 };
