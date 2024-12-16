@@ -1,5 +1,7 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState, ReactNode } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate,useLocation } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'; 
+import { faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
 import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import ProtectedOrgRoute from './components/ProtectedOrgRoute';
@@ -38,14 +40,19 @@ import AdminEventsManagement from './pages/Admins/AdminEventsManagement';
 import AdminUserManagement from './pages/Admins/AdminUserManagement';
 import AdminReportingAnalytics from './pages/Admins/AdminReportingAnalytics';
 import NotFound from './pages/NotFound';
-
+import { signOut } from 'firebase/auth';
+import { auth } from './services/firebaseConfig';
 
 const App: React.FC = () => {
+  
+
   return (
     <>
-      <div id="toast-container" className="toast-container"></div>
-    <Router>
-      <Routes>
+
+<Router>
+      <InactivityHandler>
+        <div id="toast-container" className="toast-container"></div>
+        <Routes>
         {/* Redirect root path to /login */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
@@ -54,6 +61,7 @@ const App: React.FC = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/Createaccount/student" element={<SignupStudent />} />
           <Route path="/Createaccount/faculty" element={<SignupFaculty />} />
+          <Route path="*" element={<NotFound />} />
           </Route>
 
         {/* Private Routes */}
@@ -123,11 +131,107 @@ const App: React.FC = () => {
           <Route path="/Admin/UserManagement" element={<AdminUserManagement/>} />
           <Route path="/Admin/ReportingAnalytics" element={<AdminReportingAnalytics/>} />
 
-         {/* Catch-all Route for 404 Page */}
-         <Route path="*" element={<NotFound />} />
+     
+       
           </Route>
         </Routes>
+        </InactivityHandler>
       </Router>
+    </>
+  );
+};
+interface InactivityHandlerProps {
+  children: ReactNode;
+}
+
+
+const InactivityHandler: React.FC<InactivityHandlerProps> = ({ children }) => {
+  const timer = useRef<NodeJS.Timeout | null>(null);
+  const warningTimer = useRef<NodeJS.Timeout | null>(null);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const location = useLocation();
+  const publicRoutes = ['/login', '/Createaccount/student', '/Createaccount/faculty', '/not-found'];
+  const isPublicRoute = publicRoutes.includes(location.pathname);
+
+  const resetTimer = () => {
+    if (isPublicRoute) return; // Skip logout functionality on public routes
+    clearTimers();
+
+    // Start warning timer (e.g., show modal after 30 minutes - 30 seconds)
+    warningTimer.current = setTimeout(() => {
+      setShowWarningModal(true);
+
+      // Start logout timer (e.g., log out after 30 seconds of showing warning)
+      timer.current = setTimeout(() => {
+        handleLogout();
+      }, 30 * 1000); // 30 seconds
+    }, 30 * 60 * 1000 - 30 * 1000); // 30 minutes - 30 seconds
+    
+  };
+
+  const clearTimers = () => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+    }
+    if (warningTimer.current) {
+      clearTimeout(warningTimer.current);
+    }
+  };
+
+  const handleActivity = () => {
+    resetTimer();
+    setShowWarningModal(false); // Close warning modal if the user interacts
+  };
+
+  const handleLogout = () => {
+    signOut(auth)
+      .then(() => {
+        window.location.href = '/login'; // Redirect to login page after logout
+      })
+      .catch((error) => {
+        console.error('Error logging out:', error);
+      });
+  };
+
+  const handleStayLoggedIn = () => {
+    setShowWarningModal(false); // Close warning modal
+    resetTimer(); // Reset inactivity timer
+  };
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+
+    resetTimer();
+
+    return () => {
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+
+      clearTimers();
+    };
+  }, [location.pathname]);
+
+  return (
+    <>
+    {showWarningModal && !isPublicRoute && ( 
+  <div className="logout-warning-modal-overlay">
+    <div className="logout-warning-modal-content">
+      {/* Warning Icon */}
+      <FontAwesomeIcon
+        icon={faExclamationTriangle}
+        size="4x"
+        style={{ color: 'red', marginBottom: '20px' }}
+      />
+      <h3>Warning: Inactivity Detected</h3>
+      <p>You will be logged out in 30 seconds due to inactivity.</p>
+      <button onClick={handleStayLoggedIn}>Stay Logged In</button>
+    </div>
+  </div>
+)}
+      {children}
     </>
   );
 };
