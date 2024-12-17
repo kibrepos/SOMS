@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import {  collection, query, where, getDocs, doc, getDoc, onSnapshot, addDoc, updateDoc, setDoc,deleteDoc} from "firebase/firestore";
+import * as XLSX from "xlsx";
 import { firestore, auth } from "../../services/firebaseConfig";
 import Header from "../../components/Header";
 import StudentPresidentSidebar from "./StudentPresidentSidebar";
+
 import StudentOfficerSidebar from "./StudentOfficerSidebar";
 import StudentMemberSidebar from "./StudentMemberSidebar";
 import "../../styles/EventView.css";
@@ -88,6 +90,13 @@ const EventsView: React.FC = () => {
   const [showRSVPResponsesModal, setShowRSVPResponsesModal] = useState(false); 
   const [attendanceSaved, setAttendanceSaved] = useState<boolean>(false);
 const [attendanceOverview, setAttendanceOverview] = useState<Attendance[]>([]);
+const [attendees, setAttendees] = useState<{ fullName: string; section: string }[]>([]);
+const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
+const [showAttendeesModal, setShowAttendeesModal] = useState(false);
+
+
+
+
 const canInteractWithAttendance = (dayIndex: number): boolean => {
   if (!eventDetails || !eventDetails.eventDates[dayIndex]) return false;
 
@@ -162,6 +171,10 @@ const canSaveAttendance = (): boolean => {
   fetchAllAttendanceData();
 }, [organizationName, eventId]);
 
+
+
+
+
   useEffect(() => {
     if (!organizationName || !eventId) return;
   
@@ -204,6 +217,46 @@ const isEventCompleted = (): boolean => {
   return new Date(lastEventDate.endDate) < now;
 };
 
+
+const handleCloseAttendeesModal = () => {
+  setShowAttendeesModal(false);
+  setSelectedDayIndex(null);
+};
+
+const renderAttendeesModal = () => {
+  return (
+    <div className="rsvp-responses-modal-overlay">
+      <div className="rsvp-responses-modal-content">
+        <h3>Attendees for Day {selectedDayIndex! + 1}</h3>
+        {attendees.length > 0 ? (
+          <table className="rsvp-responses-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Full Name</th>
+                <th>Section</th>
+              </tr>
+            </thead>
+            <tbody>
+              {attendees.map((attendee, idx) => (
+                <tr key={idx}>
+                  <td>{idx + 1}</td>
+                  <td>{attendee.fullName}</td>
+                  <td>{attendee.section}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p>No attendees found for this day.</p>
+        )}
+        <div className="rsvp-responses-modal-actions">
+          <button onClick={handleCloseAttendeesModal}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const handleArchiveEvent = async (eventId: string, organizationName: string) => {
   try {
@@ -332,6 +385,73 @@ const handleSaveAttendance = async (
 };
 
 
+const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (event) => {
+    const data = event.target?.result;
+    if (!data) return;
+
+    const workbook = XLSX.read(data, { type: "binary" });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const parsedData = XLSX.utils.sheet_to_json(sheet, { header: ["fullName", "section"] });
+
+    if (selectedDayIndex !== null && organizationName && eventId) {
+      const attendeesRef = doc(
+        firestore,
+        "events",
+        decodeURIComponent(organizationName),
+        "event",
+        decodeURIComponent(eventId),
+        "attendees",
+        `day-${selectedDayIndex}` // Store attendees by day
+      );
+
+      await setDoc(attendeesRef, { attendees: parsedData });
+      console.log("Attendees uploaded successfully!");
+      showToast("Attendees uploaded successfully.", "success");
+    }
+  };
+
+  reader.readAsBinaryString(file);
+};
+
+const handleViewAttendees = async (dayIndex: number) => {
+  if (!organizationName || !eventId) return;
+
+  const attendeesRef = doc(
+    firestore,
+    "events",
+    decodeURIComponent(organizationName),
+    "event",
+    decodeURIComponent(eventId),
+    "attendees",
+    `day-${dayIndex}`
+  );
+
+  const attendeesDoc = await getDoc(attendeesRef);
+
+  if (attendeesDoc.exists()) {
+    setAttendees(attendeesDoc.data()?.attendees || []);
+    setSelectedDayIndex(dayIndex);
+  } else {
+    setAttendees([]);
+    showToast("No attendees found for this day.", "error");
+  }
+};
+
+const canUpload = (dayIndex: number): boolean => {
+  if (!eventDetails) return false;
+
+  const currentDate = new Date();
+  const eventDay = eventDetails.eventDates[dayIndex];
+  const endDate = new Date(eventDay.endDate);
+
+  return currentDate > endDate; // Allow upload only after the day ends
+};
 
 
 
@@ -1143,9 +1263,23 @@ const handleSaveAttendance = async (
        
           </div>
           
+
+          <div className="event-details-card">
+
+
+
+
+          </div>
+
+
+
+
+
+          
           <div className="event-side-cards">
           <div className="card-left">
-  <h3>Attendance</h3>
+          
+  <h3>Attendance for Organization members</h3>
   {eventDetails?.eventDates.some((_, dayIndex) => canInteractWithAttendance(dayIndex) || isEventCompleted()) ? (
     eventDetails?.eventDates.map((_, dayIndex) => {
       const isDayActive = canInteractWithAttendance(dayIndex) || isEventCompleted();
@@ -1164,10 +1298,65 @@ const handleSaveAttendance = async (
     })
   ) : (
     <p style={{ color: "gray", fontSize: "small" }}>
-      Attendance details will be available during the event schedule.
+      Attendance details will be available after the event schedule.
     </p>
   )}
 </div>
+
+
+<div className="card-left">
+<h3>Attendees</h3>
+  {eventDetails?.eventDates.map((date, index) => {
+    const isDayCompleted = canUpload(index); // Check if the day is completed
+    return (
+      <div key={index}>
+        {isDayCompleted ? (
+          <>
+            <p>
+              Day {index + 1}:{" "}
+
+            </p>
+            {/* Upload Button */}
+            <button
+              onClick={() => {
+                setSelectedDayIndex(index);
+                document.getElementById("fileInput")?.click(); // Trigger file explorer
+              }}
+            >
+              Upload Attendees
+            </button>
+
+            {/* View Button */}
+            <button
+              onClick={() => {
+                handleViewAttendees(index);
+                setShowAttendeesModal(true); // Open modal
+              }}
+            >
+              View Attendees
+            </button>
+          </>
+        ) : (
+          <p style={{ color: "gray", fontSize: "small" }}>
+            Attendees will be available after the event schedule
+          </p>
+        )}
+      </div>
+    );
+  })}
+
+  {/* Hidden File Input */}
+  <input
+    type="file"
+    id="fileInput"
+    accept=".xlsx, .xls"
+    style={{ display: "none" }} // Hidden by default
+    onChange={handleFileUpload}
+  />
+</div>
+
+
+            {showAttendeesModal && renderAttendeesModal()}
 
 
 
@@ -1219,6 +1408,7 @@ const handleSaveAttendance = async (
 
 
 )}
+
 {userRole !== "member" && ( 
   <div className="card-left">
     <button
