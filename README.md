@@ -1,7 +1,5 @@
 # SOMS Project Developer Repo
 
-## SOMS PROJECT NAMEN ITO IPPRIVATE KO ITO IN THE FUTURE
-
 ## How to Install
 
 Type niyo to sa terminal/CMD prompt:
