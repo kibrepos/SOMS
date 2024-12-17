@@ -5,7 +5,7 @@ import * as XLSX from "xlsx";
 import { firestore, auth } from "../../services/firebaseConfig";
 import Header from "../../components/Header";
 import StudentPresidentSidebar from "./StudentPresidentSidebar";
-
+import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
 import StudentOfficerSidebar from "./StudentOfficerSidebar";
 import StudentMemberSidebar from "./StudentMemberSidebar";
 import "../../styles/EventView.css";
@@ -93,6 +93,9 @@ const [attendanceOverview, setAttendanceOverview] = useState<Attendance[]>([]);
 const [attendees, setAttendees] = useState<{ fullName: string; section: string }[]>([]);
 const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
 const [showAttendeesModal, setShowAttendeesModal] = useState(false);
+const [qrLink, setQrLink] = useState<string>(""); // Current QR code link
+const [newQrLink, setNewQrLink] = useState<string>(""); // Input for new link
+
 
 
 
@@ -170,7 +173,84 @@ const canSaveAttendance = (): boolean => {
 
   fetchAllAttendanceData();
 }, [organizationName, eventId]);
+useEffect(() => {
+  const fetchQrLink = async () => {
+    if (!organizationName || !eventName) {
+      console.error("Missing organizationName or eventName.");
+      showToast("Invalid organization or event. Please try again.", "error");
+      return;
+    }
 
+    try {
+      console.log("Fetching QR link for:", { organizationName, eventName });
+
+      // Use Firestore collection reference to find the event document by name
+      const eventsRef = collection(
+        firestore,
+        "events",
+        decodeURIComponent(organizationName),
+        "event"
+      );
+
+      // Query by title to find the event
+      const querySnapshot = await getDocs(
+        query(eventsRef, where("title", "==", decodeURIComponent(eventName)))
+      );
+
+      if (!querySnapshot.empty) {
+        const eventDoc = querySnapshot.docs[0]; // Retrieve the first matching document
+        const data = eventDoc.data();
+
+        console.log("Event data fetched successfully:", data);
+
+        setQrLink(data?.qrLink || ""); // Update the QR link
+        setEventId(eventDoc.id); // Save event ID for later use
+      } else {
+        console.error("Event document not found for the given name.");
+        showToast("Event not found. Please check the event name.", "error");
+        setQrLink(""); // Reset the QR link
+      }
+    } catch (error) {
+      console.error("Error fetching QR link:", error);
+      showToast("Failed to load event details. Please try again later.", "error");
+      setQrLink(""); // Reset the QR link
+    }
+  };
+
+  fetchQrLink();
+}, [organizationName, eventName]);
+
+
+const saveQrLink = async () => {
+  if (!organizationName || !eventId) {
+    console.error("Missing organizationName or eventId.");
+    return;
+  }
+
+  try {
+    const eventDocRef = doc(
+      firestore,
+      "events",
+      decodeURIComponent(organizationName),
+      "event",
+      eventId // Use the saved event ID
+    );
+
+    await setDoc(
+      eventDocRef,
+      { qrLink: newQrLink }, // Save the new QR link
+      { merge: true } // Merge with existing data
+    );
+
+    // Update local state
+    setQrLink(newQrLink);
+    setNewQrLink("");
+    showToast("QR code link updated successfully!", "success");
+  } catch (error) {
+    console.error("Error saving QR link:", error);
+    showToast("Failed to update QR code link. Please try again.", "error");
+  }
+};
 
 
 
@@ -1267,6 +1347,28 @@ const canUpload = (dayIndex: number): boolean => {
           <div className="event-details-card">
 
 
+          <div className="qr-code-section">
+  <h3>QR Code</h3>
+
+  {qrLink ? (
+    <>
+      <QRCodeCanvas value={qrLink} size={200} /> {/* QR Code component */}
+      <p>Current QR Code Link: {qrLink}</p>
+    </>
+  ) : (
+    <p>No QR code link has been set yet.</p>
+  )}
+
+  <div className="qr-code-input">
+    <input
+      type="text"
+      placeholder="Enter new QR code link"
+      value={newQrLink}
+      onChange={(e) => setNewQrLink(e.target.value)}
+    />
+    <button onClick={saveQrLink}>Update QR Code</button>
+  </div>
+</div>
 
 
           </div>
