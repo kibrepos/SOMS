@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { auth, firestore } from '../services/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 import { authStateListener } from '../services/auth';
@@ -10,8 +10,9 @@ interface PrivateRouteProps {
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
   const [user, setUser] = useState<any>(null);
-  const [userRole, setUserRole] = useState<string | null>(null); // User role state
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<{ code: number; message: string } | null>(null);
 
   useEffect(() => {
     const unsubscribe = authStateListener((currentUser) => {
@@ -20,6 +21,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
         // Fetch user role based on UID
         fetchUserRole(currentUser.uid);
       } else {
+        setError({ code: 401, message: 'You must be logged in to access this page.' });
         setLoading(false);
       }
     });
@@ -28,17 +30,14 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
 
   const fetchUserRole = async (uid: string) => {
     try {
-      // Check if the user is a student
       let userDoc = await getDoc(doc(firestore, 'students', uid));
       if (userDoc.exists()) {
         setUserRole('student');
       } else {
-        // Check if the user is faculty
         userDoc = await getDoc(doc(firestore, 'faculty', uid));
         if (userDoc.exists()) {
           setUserRole('faculty');
         } else {
-          // Check if the user is an admin
           userDoc = await getDoc(doc(firestore, 'admin', uid));
           if (userDoc.exists()) {
             setUserRole('admin');
@@ -47,18 +46,53 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
       }
     } catch (error) {
       console.error('Error fetching user role: ', error);
+      setError({ code: 500, message: 'An error occurred while checking your access.' });
     }
     setLoading(false);
   };
 
   if (loading) return <p>Loading...</p>;
 
-  // Redirect if user is not logged in or role doesn't match
-  if (!user || userRole !== requiredRole) {
-    return <Navigate to="/login" replace />;
+  // Display error if the user is not logged in or has the wrong role
+  if (error || userRole !== requiredRole) {
+    const errorCode = error?.code || 403;
+    const errorMessage =
+      error?.message || `You are not authorized to access this ${requiredRole} page.`;
+
+    return (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          flexDirection: 'column',
+          fontFamily: 'Arial, sans-serif',
+          textAlign: 'center',
+        }}
+      >
+        <h1 style={{ fontSize: '3rem', color: '#D9534F' }}>{errorCode} - Forbidden</h1>
+        <p style={{ fontSize: '1.2rem', color: '#6C757D' }}>{errorMessage}</p>
+        <button
+          onClick={() => window.history.back()}
+          style={{
+            textDecoration: 'none',
+            backgroundColor: '#007BFF',
+            color: 'white',
+            padding: '10px 20px',
+            borderRadius: '5px',
+            border: 'none',
+            cursor: 'pointer',
+            marginTop: '20px',
+          }}
+        >
+          Go Back
+        </button>
+      </div>
+    );
   }
 
-  return <Outlet />; // If the user has the correct role, render the requested page
+  return <Outlet />;
 };
 
 export default PrivateRoute;

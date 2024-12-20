@@ -8,7 +8,6 @@ import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
 import { v4 as uuidv4 } from 'uuid';
 import Header from '../../components/Header'; 
 import StudentPresidentSidebar from "./StudentPresidentSidebar";
-import StudentOfficerSidebar from "./StudentOfficerSidebar";
 import StudentMemberSidebar from "./StudentMemberSidebar";
 import '../../styles/ManageMembers.css'; 
 
@@ -104,7 +103,7 @@ const renderSidebar = () => {
     case 'president':
       return <StudentPresidentSidebar />;
     case 'officer':
-      return <StudentOfficerSidebar />;
+      return <StudentPresidentSidebar  />;
     case 'member':
       return <StudentMemberSidebar />;
     default:

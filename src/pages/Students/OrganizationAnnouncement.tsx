@@ -7,7 +7,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSync,faTrash,faFileAlt, faFilePdf, faFileWord, faFilePowerpoint, faFileExcel   } from '@fortawesome/free-solid-svg-icons';
 import Header from '../../components/Header';
 import StudentPresidentSidebar from './StudentPresidentSidebar'; 
-import StudentOfficerSidebar from './StudentOfficerSidebar'; 
 import StudentMemberSidebar from './StudentMemberSidebar'; 
 import '../../styles/OrganizationAnnouncement.css';
 
@@ -323,7 +322,7 @@ useEffect(() => {
       case 'president':
         return <StudentPresidentSidebar />;
       case 'officer':
-        return <StudentOfficerSidebar />;
+        return <StudentPresidentSidebar  />;
       case 'member':
         return <StudentMemberSidebar />;
       default:

@@ -5,10 +5,9 @@ import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 import Header from '../../components/Header';
 import StudentPresidentSidebar from './StudentPresidentSidebar';
-import StudentOfficerSidebar from './StudentOfficerSidebar';
 import StudentMemberSidebar from './StudentMemberSidebar';
 import '../../styles/OrganizationDashboard.css';
-import OrganizationSidebar from './OrganizationSidebar';
+
 
 interface Task {
   id: string;
@@ -218,7 +217,7 @@ const OrganizationDashboard: React.FC = () => {
   if (userRole === 'president') {
     SidebarComponent = <StudentPresidentSidebar />;
   } else if (userRole === 'officer') {
-    SidebarComponent = <StudentOfficerSidebar />;
+    SidebarComponent = <StudentPresidentSidebar  />;
   } else if (userRole === 'member') {
     SidebarComponent = <StudentMemberSidebar />;
   }

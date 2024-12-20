@@ -62,7 +62,7 @@ const App: React.FC = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/Createaccount/student" element={<SignupStudent />} />
           <Route path="/Createaccount/faculty" element={<SignupFaculty />} />
-          <Route path="*" element={<NotFound />} />
+    
           </Route>
 
         {/* Private Routes */}
@@ -70,6 +70,7 @@ const App: React.FC = () => {
           <Route path="/Student/dashboard" element={<StudentDashboard />} />
           <Route path="/Student/myprofile" element={<StudentProfile />} />
           <Route path="/messages" element={<Messenger />} />
+     
 
             {/* Shared Organization Routes */}
           <Route element={<ProtectedOrgRoute />}>
@@ -135,10 +136,11 @@ const App: React.FC = () => {
           <Route path="/Admin/EventsManagement" element={<AdminEventsManagement/>} />
           <Route path="/Admin/UserManagement" element={<AdminUserManagement/>} />
           <Route path="/Admin/ReportingAnalytics" element={<AdminReportingAnalytics/>} />
-
+       
      
        
           </Route>
+          <Route path="*" element={<NotFound />} />
         </Routes>
         </InactivityHandler>
       </Router>

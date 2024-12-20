@@ -8,7 +8,6 @@ import { faArrowLeft ,faFileAlt,faImage,faVideo,faFilePdf,faFileWord,faFilePower
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import Header from '../../components/Header';
 import StudentPresidentSidebar from './StudentPresidentSidebar'; 
-import StudentOfficerSidebar from './StudentOfficerSidebar'; 
 import StudentMemberSidebar from './StudentMemberSidebar'; 
 
 
@@ -559,7 +558,7 @@ const deleteFolderRecursively = async (folderPath: string) => {
       case 'president':
         return <StudentPresidentSidebar />;
       case 'officer':
-        return <StudentOfficerSidebar />;
+        return <StudentPresidentSidebar  />;
       case 'member':
         return <StudentMemberSidebar />;
       default:

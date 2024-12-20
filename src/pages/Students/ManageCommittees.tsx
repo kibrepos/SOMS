@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { firestore } from '../../services/firebaseConfig';
+import { firestore,auth } from '../../services/firebaseConfig';
 import Header from '../../components/Header';
 import StudentPresidentSidebar from './StudentPresidentSidebar';
+import StudentMemberSidebar from "./StudentMemberSidebar";
 import '../../styles/ManageCommittees.css';
 import { useParams } from 'react-router-dom';
 
@@ -73,8 +74,49 @@ const ManageCommittees: React.FC = () => {
   const { organizationName } = useParams<{ organizationName: string }>();
   const [organizationData, setOrganizationData] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
-  
+  const [role, setRole] = useState<string>('');
 
+  useEffect(() => {
+    const fetchRole = async () => {
+      if (!organizationName) return;
+  
+      try {
+        const orgDocRef = doc(firestore, 'organizations', organizationName);
+        const orgDoc = await getDoc(orgDocRef);
+  
+        if (orgDoc.exists()) {
+          const orgData = orgDoc.data();
+          const userId = auth.currentUser?.uid;
+  
+          if (orgData.president?.id === userId) {
+            setRole('president');
+          } else if (orgData.officers.some((officer: any) => officer.id === userId)) {
+            setRole('officer');
+          } else if (orgData.members.some((member: any) => member.id === userId)) {
+            setRole('member');
+          } else {
+            setRole('guest');
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user role:', error);
+      }
+    };
+  
+    fetchRole();
+  }, [organizationName]);
+  const renderSidebar = () => {
+    switch (role) {
+      case 'president':
+        return <StudentPresidentSidebar />;
+      case 'officer':
+        return <StudentPresidentSidebar  />;
+      case 'member':
+        return <StudentMemberSidebar />;
+      default:
+        return null; // No sidebar for guests
+    }
+  };
   const toggleDropdown = (id: string) => {
     setOpenDropdownId((prev) => (prev === id ? null : id));
   };
@@ -250,14 +292,16 @@ const ManageCommittees: React.FC = () => {
       <Header />
       <div className="MC-container">
         <div className="MC-sidebar-section">
-          <StudentPresidentSidebar />
+        {renderSidebar()}
         </div>
         <div className="MC-main-content">
         <div className="header-container">
         <h1 className="headtitle">Manage Committees</h1>
-            <button className="create-new-btn" onClick={openCreateCommitteeModal}>
-              Create New Committee
-            </button>
+        {(role === 'president' || role === 'officer') && (
+        <button className="create-new-btn" onClick={openCreateCommitteeModal}>
+          Create New Committee
+        </button>
+      )}
           </div>
 
           <div className="MC-table-wrapper">
@@ -300,7 +344,7 @@ const ManageCommittees: React.FC = () => {
           </div>
 
        {/* Create Committee Modal */}
-{isCreateCommitteeModalOpen && (
+{isCreateCommitteeModalOpen && (role === 'president' || role === 'officer') && (
   <div className="custom-modal-overlay">
     <div className="custom-modal-content create-committee-modal">
       <button className="modal-close-btn" onClick={closeCreateCommitteeModal}>×</button>

@@ -6,7 +6,6 @@ import { firestore, auth } from "../../services/firebaseConfig";
 import Header from "../../components/Header";
 import StudentPresidentSidebar from "./StudentPresidentSidebar";
 import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
-import StudentOfficerSidebar from "./StudentOfficerSidebar";
 import StudentMemberSidebar from "./StudentMemberSidebar";
 import "../../styles/EventView.css";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -581,7 +580,7 @@ const handleViewAttendees = async (dayIndex: number) => {
       case "president":
         return <StudentPresidentSidebar />;
       case "officer":
-        return <StudentOfficerSidebar />;
+        return <StudentPresidentSidebar  />;
       case "member":
         return <StudentMemberSidebar />;
       default:

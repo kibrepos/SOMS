@@ -1,6 +1,5 @@
-// components/ProtectedOrgRoute.tsx
 import React, { useEffect, useState } from 'react';
-import { Outlet, Navigate, useParams, useNavigate } from 'react-router-dom'; // Use navigate for redirects
+import { Outlet, useParams } from 'react-router-dom';
 import { getAuth } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { firestore } from '../services/firebaseConfig';
@@ -15,27 +14,24 @@ const ProtectedOrgRoute: React.FC<{ requiredRole?: 'president' | 'officer' | 'me
 }) => {
   const { organizationName } = useParams(); // Get the org name from the URL
   const [loading, setLoading] = useState(true); // Track loading state
-  const [isAuthorized, setIsAuthorized] = useState<boolean>(false); // Track if user is authorized
-  const [userRole, setUserRole] = useState<UserRole | null>(null); // Track the user's role
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null); // Track if user is authorized
+  const [error, setError] = useState<{ code: number; message: string } | null>(null); // Track error messages
   const auth = getAuth();
-  const navigate = useNavigate(); // Use navigate for redirects
 
   useEffect(() => {
     const checkAccess = async () => {
       const user = auth.currentUser;
       if (!user) {
-        setIsAuthorized(false); // User not logged in
+        setError({ code: 401, message: 'You must be logged in to access this page.' });
         setLoading(false);
-        navigate('/login'); // Redirect to login if not authenticated
         return;
       }
 
       try {
         const orgDoc = await getDoc(doc(firestore, 'organizations', organizationName!));
         if (!orgDoc.exists()) {
-          setIsAuthorized(false); // Organization does not exist
+          setError({ code: 404, message: 'The organization does not exist.' });
           setLoading(false);
-          navigate('/Student/dashboard'); // Redirect if org doesn't exist
           return;
         }
 
@@ -44,8 +40,8 @@ const ProtectedOrgRoute: React.FC<{ requiredRole?: 'president' | 'officer' | 'me
 
         // Check if the organization is archived
         if (status === 'archived') {
+          setError({ code: 403, message: 'The organization is archived and cannot be accessed.' });
           setLoading(false);
-          navigate('/Student/dashboard', { replace: true }); // Redirect to Student Dashboard
           return;
         }
 
@@ -59,38 +55,71 @@ const ProtectedOrgRoute: React.FC<{ requiredRole?: 'president' | 'officer' | 'me
           role = { role: 'member', id: user.uid };
         }
 
-        // If the user doesn't belong to the organization, deny access
         if (!role) {
-          setIsAuthorized(false);
+          setError({ code: 403, message: 'You are not authorized to access this organization.' });
           setLoading(false);
-          navigate('/Student/dashboard', { replace: true }); // Redirect if not a member
           return;
         }
 
-        // Store the user's role
-        setUserRole(role);
-
         // Check if the user's role matches the required role for the route
         if (requiredRole && role.role !== requiredRole) {
-          setIsAuthorized(false); // User doesn't have the correct role
-        } else {
-          setIsAuthorized(true); // User is authorized
+          setError({ code: 403, message: 'You do not have the correct role to access this page.' });
+          setLoading(false);
+          return;
         }
+
+        setIsAuthorized(true); // User is authorized
       } catch (error) {
         console.error('Error checking role or membership:', error);
-        setIsAuthorized(false);
+        setError({ code: 500, message: 'An error occurred while checking your access.' });
       } finally {
         setLoading(false);
       }
     };
 
     checkAccess();
-  }, [auth, organizationName, requiredRole, navigate]);
+  }, [auth, organizationName, requiredRole]);
 
-  if (loading) return <div>Loading...</div>; // Show a loader while checking
+  if (loading) return <div>Loading...</div>;
 
-  // Redirect unauthorized users to the Student Dashboard
-  return isAuthorized ? <Outlet /> : <Navigate to="/Student/dashboard" replace />;
+  // If there is an error, show the error message instead of redirecting
+  if (error) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          flexDirection: 'column',
+          fontFamily: 'Arial, sans-serif',
+          textAlign: 'center',
+        }}
+      >
+        <h1 style={{ fontSize: '3rem', color: '#D9534F' }}>
+          {error.code} - {error.code === 401 ? 'Unauthorized' : 'Forbidden'}
+        </h1>
+        <p style={{ fontSize: '1.2rem', color: '#6C757D' }}>{error.message}</p>
+        <button
+          onClick={() => window.history.back()}
+          style={{
+            textDecoration: 'none',
+            backgroundColor: '#007BFF',
+            color: 'white',
+            padding: '10px 20px',
+            borderRadius: '5px',
+            border: 'none',
+            cursor: 'pointer',
+            marginTop: '20px',
+          }}
+        >
+          Go Back
+        </button>
+      </div>
+    );
+  }
+
+  return isAuthorized ? <Outlet /> : null;
 };
 
 export default ProtectedOrgRoute;

@@ -5,7 +5,6 @@ import { getAuth } from "firebase/auth";
 import { useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/Header";
 import StudentPresidentSidebar from "./StudentPresidentSidebar";
-import StudentOfficerSidebar from "./StudentOfficerSidebar";
 import StudentMemberSidebar from "./StudentMemberSidebar";
 import "../../styles/CreateEvent.css";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Firebase Storage
@@ -207,7 +206,7 @@ const handleImageUpload = async (eventName: string) => {
       case "president":
         return <StudentPresidentSidebar />;
       case "officer":
-        return <StudentOfficerSidebar />;
+        return <StudentPresidentSidebar  />;
       case "member":
         return <StudentMemberSidebar />;
       default:

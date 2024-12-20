@@ -6,7 +6,6 @@ import { firestore } from '../../services/firebaseConfig';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import Header from '../../components/Header';
 import StudentPresidentSidebar from './StudentPresidentSidebar';
-import StudentOfficerSidebar from './StudentOfficerSidebar';
 import StudentMemberSidebar from './StudentMemberSidebar';
 import '../../styles/OrganizationReports.css';
 
@@ -30,7 +29,7 @@ const OrganizationReports: React.FC = () => {
   if (userRole === 'president') {
     SidebarComponent = <StudentPresidentSidebar />;
   } else if (userRole === 'officer') {
-    SidebarComponent = <StudentOfficerSidebar />;
+    SidebarComponent = <StudentPresidentSidebar  />;
   } else if (userRole === 'member') {
     SidebarComponent = <StudentMemberSidebar />;
   }

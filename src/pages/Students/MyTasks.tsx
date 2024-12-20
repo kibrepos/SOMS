@@ -6,7 +6,6 @@ import { getAuth, onAuthStateChanged, User } from "firebase/auth";
 import { useParams } from "react-router-dom";
 import Header from "../../components/Header";
 import StudentPresidentSidebar from "./StudentPresidentSidebar";
-import StudentOfficerSidebar from "./StudentOfficerSidebar";
 import StudentMemberSidebar from "./StudentMemberSidebar";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSync } from "@fortawesome/free-solid-svg-icons";
@@ -316,7 +315,7 @@ const fetchMyTasks = async () => {
       case "president":
         return <StudentPresidentSidebar />;
       case "officer":
-        return <StudentOfficerSidebar />;
+        return <StudentPresidentSidebar  />;
       case "member":
         return <StudentMemberSidebar />;
       default:

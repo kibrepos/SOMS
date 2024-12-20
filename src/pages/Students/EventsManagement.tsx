@@ -4,7 +4,6 @@ import { collection, getDocs, query, where, doc, getDoc } from "firebase/firesto
 import { useParams,useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import StudentPresidentSidebar from "./StudentPresidentSidebar";
-import StudentOfficerSidebar from "./StudentOfficerSidebar";
 import StudentMemberSidebar from "./StudentMemberSidebar";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMapMarkerAlt, faCalendarAlt } from '@fortawesome/free-solid-svg-icons'
@@ -161,7 +160,7 @@ const [searchTerm, setSearchTerm] = useState<string>(""); // Search term state
       case "president":
         return <StudentPresidentSidebar />;
       case "officer":
-        return <StudentOfficerSidebar />;
+        return <StudentPresidentSidebar  />;
       case "member":
         return <StudentMemberSidebar />;
       default:
