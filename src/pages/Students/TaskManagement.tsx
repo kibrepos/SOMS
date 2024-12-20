@@ -1016,28 +1016,29 @@ useEffect(() => {
 
 
 
-          <label className="altask-label">Start Date & Time</label>
-  <div className="altask-date-time-input">
-
-    <input
+<label className="altask-label">Start Date & Time</label>
+<div className="altask-date-time-input">
+  <input
     type="datetime-local"
     value={newTaskStartDate}
     onChange={(e) => setNewTaskStartDate(e.target.value)}
     required
     className="altask-date-input"
     placeholder={formattedNow}
+    min={new Date().toISOString().slice(0, 16)} // Disable past dates
   />
 </div>
 
 <label className="altask-label">Due Date & Time</label>
 <div className="altask-date-time-input">
-<input
+  <input
     type="datetime-local"
     value={newTaskDueDate}
     onChange={(e) => setNewTaskDueDate(e.target.value)}
     required
     className="altask-date-input"
     placeholder={formattedNow}
+    min={newTaskStartDate || new Date().toISOString().slice(0, 16)} // Ensure it's after the start date
   />
 </div>
 
@@ -1370,30 +1371,32 @@ useEffect(() => {
             </select>
 
 
-          <label className="altask-label">Start Date & Time</label>
-          <div className="altask-date-time-input">
-
-<input
-type="datetime-local"
-value={newTaskStartDate}
-onChange={(e) => setNewTaskStartDate(e.target.value)}
-required
-className="altask-date-input"
-placeholder={formattedNow}
-/>
+            <label className="altask-label">Start Date & Time</label>
+<div className="altask-date-time-input">
+  <input
+    type="datetime-local"
+    value={newTaskStartDate}
+    onChange={(e) => setNewTaskStartDate(e.target.value)}
+    required
+    className="altask-date-input"
+    placeholder={formattedNow}
+    min={new Date().toISOString().slice(0, 16)} // Disable past dates
+  />
 </div>
 
 <label className="altask-label">Due Date & Time</label>
 <div className="altask-date-time-input">
-<input
-type="datetime-local"
-value={newTaskDueDate}
-onChange={(e) => setNewTaskDueDate(e.target.value)}
-required
-className="altask-date-input"
-placeholder={formattedNow}
-/>
+  <input
+    type="datetime-local"
+    value={newTaskDueDate}
+    onChange={(e) => setNewTaskDueDate(e.target.value)}
+    required
+    className="altask-date-input"
+    placeholder={formattedNow}
+    min={newTaskStartDate || new Date().toISOString().slice(0, 16)} // Ensure it's after the start date
+  />
 </div>
+
 
             <label className="altask-label">Assign to:</label>
             <div className="altask-assign-to-section">

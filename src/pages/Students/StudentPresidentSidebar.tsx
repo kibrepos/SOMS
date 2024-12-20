@@ -81,7 +81,12 @@ const StudentPresidentSidebar: React.FC = () => {
   >
     <FontAwesomeIcon icon={faUsers} /> Manage Members
   </NavLink>
-        <NavLink to={`/Organization/${organizationName}/Alltasks`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
+        <NavLink to={`/Organization/${organizationName}/Alltasks`} className={({ isActive })  =>
+      `student-sidebar-navlink ${
+        isActive || location.pathname.includes('mytasks') ? 'student-active-link' : ''
+      }`
+    }
+  >
           <FontAwesomeIcon icon={faTasks} /> Task Management
         </NavLink>
         <NavLink to={`/Organization/${organizationName}/events`}className={({ isActive }) =>

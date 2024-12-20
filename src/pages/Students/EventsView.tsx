@@ -109,16 +109,13 @@ const confirmArchiveEvent = () => {
 
 
 const canInteractWithAttendance = (dayIndex: number): boolean => {
-  if (!eventDetails || !eventDetails.eventDates[dayIndex]) return false;
+  if (!eventDetails) return false;
 
-  const currentDateTime = new Date(); // Current date and time
-  const { startDate, endDate } = eventDetails.eventDates[dayIndex]; // Get start and end times of the event day
+  const currentDate = new Date();
+  const eventDay = eventDetails.eventDates[dayIndex];
+  const endDate = new Date(eventDay.endDate);
 
-  const startTime = new Date(startDate); // Convert startDate to Date object
-  const endTime = new Date(endDate); // Convert endDate to Date object
-
-  // Check if the current time is between the event's start and end times
-  return currentDateTime >= startTime && currentDateTime <= endTime;
+  return currentDate > endDate; // Allow upload only after the day ends
 };
 
 const canSaveAttendance = (): boolean => {
@@ -1433,24 +1430,27 @@ const canUpload = (dayIndex: number): boolean => {
 
           <div className="card-left">
   <h3>Attendance for Organization Members</h3>
-  {eventDetails?.eventDates.some((_, dayIndex) => canInteractWithAttendance(dayIndex) || isEventCompleted()) ? (
-    eventDetails?.eventDates.map((_, dayIndex) => (
-      <div key={dayIndex} className="attendance-day">
-        <span className="day-label">Day {dayIndex + 1}</span>
-        <button
-          className="view-button"
-          onClick={() => handleOpenAttendanceModal(dayIndex)}
-        >
-          {userRole === "member" ? "View" : "Edit"}
-        </button>
-      </div>
-    ))
-  ) : (
-    <div className="attendance-day inactive">
-      <p className="inactive-text">Attendance details will be available after the event schedule.</p>
+  {eventDetails?.eventDates.map((_, dayIndex) => (
+    <div key={dayIndex} className="attendance-day">
+      {canUpload(dayIndex) || canInteractWithAttendance(dayIndex) ? (
+        <>
+          <span className="day-label">Day {dayIndex + 1}</span>
+          <button
+            className="view-button"
+            onClick={() => handleOpenAttendanceModal(dayIndex)}
+          >
+            {userRole === "member" ? "View" : "Edit"}
+          </button>
+        </>
+      ) : (
+        <p className="inactive-text">
+          Attendance details will be available after the event schedule.
+        </p>
+      )}
     </div>
-  )}
+  ))}
 </div>
+
 
 {/* Attendees Section */}
 <div className="card-left">
