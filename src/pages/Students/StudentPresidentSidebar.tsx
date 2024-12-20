@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {faChartLine, faUsers, faObjectGroup, faTasks,faCalendarAlt,faBullhorn,faChartBar,faClipboardList,faCog,faFolderOpen,faTools ,} from '@fortawesome/free-solid-svg-icons';
+import {faChartLine, faUsers, faTasks,faCalendarAlt,faBullhorn,faChartBar,faClipboardList,faCog,faFolderOpen,faTools ,} from '@fortawesome/free-solid-svg-icons';
 import { useLocation,NavLink } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { getDownloadURL, ref } from 'firebase/storage';
@@ -84,9 +84,21 @@ const StudentPresidentSidebar: React.FC = () => {
         <NavLink to={`/Organization/${organizationName}/Alltasks`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
           <FontAwesomeIcon icon={faTasks} /> Task Management
         </NavLink>
-        <NavLink to={`/Organization/${organizationName}/events`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
+        <NavLink to={`/Organization/${organizationName}/events`}className={({ isActive }) =>
+`student-sidebar-navlink ${
+              isActive ||
+              location.pathname.includes(`create-event`) ||
+              location.pathname.includes(`edit-event`) ||
+              location.pathname.includes(`archived-events`)
+                ? 'student-active-link'
+                : ''
+            }`
+          }
+        >
           <FontAwesomeIcon icon={faCalendarAlt} /> Event Management
         </NavLink>
+
+
         <NavLink to={`/Organization/${organizationName}/announcements`} className={({ isActive }) => `student-sidebar-navlink ${isActive ? 'student-active-link' : ''}`}>
         <FontAwesomeIcon icon={faBullhorn} /> Announcements
         </NavLink>

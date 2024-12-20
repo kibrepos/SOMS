@@ -18,7 +18,9 @@
     overflow-y: auto; /* Enable vertical scrolling */
     height: 100%; /* Ensure it takes full available height */
   }
-  
+  .left-column{
+    min-width: 70%;
+  }
   .event-picture-section {
     margin-bottom: 20px;
     text-align: center;
@@ -39,7 +41,9 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 20px;
+    
   }
+  
 
 
   .event-details-card {
@@ -51,6 +55,8 @@
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     margin-bottom: 20px;
+ 
+  
   }
   
   
@@ -209,7 +215,19 @@
   background-color: #ff8282; /* Red for Absent */
 }
 
+.status-button.inactive {
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  color: gray;
+  cursor: not-allowed;
+}
 
+.archived-tag {
+  font-size: 0.8em;
+  font-weight: normal;
+  color: gray;
+  margin-left: 10px;
+}
 
 
 /* Modal Actions */
@@ -669,7 +687,58 @@
   background-color: #0056b3; /* Darker blue on hover */
 }
 
+.attendance-day {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+}
 
+/* Day Text */
+.attendance-day span {
+  font-size: 1rem;
+  color: #333;
+  font-weight: bold;
+}
+
+/* Buttons */
+.action-button {
+  padding: 8px 15px;
+  font-size: 0.9rem;
+  border-radius: 5px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.upload-button {
+  background-color: #28a745; /* Green */
+  color: #ffffff;
+}
+
+.upload-button:hover {
+  background-color: #218838;
+}
+
+.view-button {
+  background-color: #007bff; /* Blue */
+  color: #ffffff;
+}
+
+.view-button:hover {
+  background-color: #0056b3;
+}
+
+/* Inactive Text for Disabled Days */
+.inactive-text {
+  font-size: 0.9rem;
+  color: #999;
+  margin: 0;
+}
 
 
 /* Container for RSVP */
@@ -810,9 +879,77 @@
 
 
 
+.event-details-cardz {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
 
+.qr-code-container {
+  display: flex;
+  gap: 20px; /* Space between QR code and the right-side content */
+  align-items: center;
+  justify-content: flex-start; /* Align to the left */
+}
 
+.qr-code-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
 
+.qr-code-section h3 {
+  margin-bottom: 15px;
+  font-size: 1.5rem;
+  color: #333;
+}
 
+.qr-code-rightside {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 10px;
+}
 
+.qr-code-link {
+  font-size: 1rem;
+  color: #666;
+  margin: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width:400px; /* Constrain the link to a reasonable width */
+}
+
+.qr-code-input {
+  display: flex;
+  gap: 10px;
+  width: 100%; /* Ensures input and button are responsive */
+}
+
+.qr-code-input input {
+  padding: 10px;
+  font-size: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  flex: 1;
+  box-sizing: border-box;
+}
+
+.qr-code-input button {
+  padding: 10px 20px;
+  font-size: 1rem;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
 

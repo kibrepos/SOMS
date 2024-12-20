@@ -14,6 +14,7 @@ import ManageCommittees from './pages/Students/ManageCommittees';
 import CreateEvent from './pages/Students/CreateEvent';
 import EventsManagement from './pages/Students/EventsManagement';
 import EventsView from './pages/Students/EventsView';
+import ArchivedEventsView from './pages/Students/ArchivedEventsView';
 import TaskManagement from './pages/Students/TaskManagement';
 import MyTasks from './pages/Students/MyTasks';
 import OrganizationReports from './pages/Students/OrganizationReports';
@@ -83,10 +84,7 @@ const App: React.FC = () => {
             <Route path="/Organization/:organizationName/manage-committees" element={<ManageCommittees />} />
           </Route>
 
-           {/* Officer Routes */}
-           <Route element={<ProtectedOrgRoute requiredRole="officer" />}>
-          
-          </Route>
+  
 
          {/* President Routes */}
         <Route element={<ProtectedOrgRoute requiredRole="president" />}>
@@ -97,20 +95,27 @@ const App: React.FC = () => {
           <Route path="/Organization/:organizationName/report" element={<OrganizationReports />} />
 
           <Route path="/Organization/:organizationName/edit-event/:eventId" element={<EventsEdit />} />
+          <Route path="/Organization/:organizationName/archived-events/:eventName" element={<ArchivedEventsView />} />
       
         </Route>
 
          
+         {/* Officer Routes */}
+         <Route element={<ProtectedOrgRoute requiredRole="officer" />}>
+          
+          </Route>
+
 
           {/* Member Routes */}
           <Route element={<ProtectedOrgRoute requiredRole="member" />}>
          
           </Route>
 
+
+
+
+
           </Route>
-
-
-
           <Route element={<PrivateRoute requiredRole="faculty" />}>
           <Route path="/Faculty/dashboard" element={<FacultyDashboard />} />
           </Route>

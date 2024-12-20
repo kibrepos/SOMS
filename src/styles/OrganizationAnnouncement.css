@@ -12,13 +12,32 @@
   .organization-announcements-content {
     flex: 1;
     padding: 20px;
-    overflow-y: auto;
+    overflow-y: auto; /* Enable vertical scrolling */
     background-color: #ffffff;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     margin-left: 250px; /* Ensure content does not go under sidebar */
-    min-height: 100vh; /* Make it stretch to full height */
-  }
+    height: calc(100vh - 100px); /* Default to full viewport height with padding adjustment */
+}
+
+/* For smaller screens, reduce the margin and height dynamically */
+@media screen and (max-width: 768px) {
+    .organization-announcements-content {
+        margin-left: 0; /* Remove extra margin on small screens */
+        height: calc(100vh - 20px); /* Adjust for smaller heights */
+    }
+}
+
+/* Handle very small screens (mobile) */
+@media screen and (max-width: 480px) {
+    .organization-announcements-content {
+        padding: 10px;
+        height: calc(100vh - 10px); /* Maximize visible area on small screens */
+    }
+}
+
+
+  
   .organization-announcements-modal-overlay {
     position: fixed;
     top: 0;
