@@ -1,0 +1,64 @@
+/* General Layout */
+.admin-dashboard-content {
+    padding: 20px;
+  }
+  
+  h2, h3 {
+    color: #333;
+  }
+  
+  .events-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .event-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-bottom: 10px;
+  }
+  
+  .event-item:hover {
+    background-color: #f9f9f9;
+  }
+  
+  /* Buttons */
+  .view-button,
+  .back-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .view-button:hover,
+  .back-button:hover {
+    background-color: #0056b3;
+  }
+  
+  /* Event Details */
+  .event-details {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    background-color: #f9f9f9;
+  }
+  
+  .date-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .event-image {
+    width: 300px;
+    margin-top: 10px;
+    border-radius: 5px;
+  }
+  
