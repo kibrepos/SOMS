@@ -5,12 +5,12 @@ import { doc, getDoc } from 'firebase/firestore';
 import { firestore } from '../services/firebaseConfig';
 
 interface UserRole {
-  role: 'president' | 'officer' | 'member';
+  role: 'president' | 'officer' | 'member' | 'faculty';
   id: string;
 }
 
-const ProtectedOrgRoute: React.FC<{ requiredRole?: 'president' | 'officer' | 'member' }> = ({
-  requiredRole,
+const ProtectedOrgRoute: React.FC<{ requiredRoles?: ('president' | 'officer' | 'member' | 'faculty')[] }> = ({
+  requiredRoles,
 }) => {
   const { organizationName } = useParams(); // Get the org name from the URL
   const [loading, setLoading] = useState(true); // Track loading state
@@ -45,15 +45,19 @@ const ProtectedOrgRoute: React.FC<{ requiredRole?: 'president' | 'officer' | 'me
           return;
         }
 
-        // Determine the user's role in the organization
         let role: UserRole | null = null;
-        if (user.uid === president.id) {
-          role = { role: 'president', id: user.uid };
-        } else if (officers.some((officer: any) => officer.id === user.uid)) {
-          role = { role: 'officer', id: user.uid };
+
+        // Include president, officer, and faculty adviser as part of a unified group
+        if (
+          user.uid === president.id || // Check if user is the president
+          officers.some((officer: any) => officer.id === user.uid) || // Check if user is an officer
+          (data.facultyAdviser && user.uid === data.facultyAdviser.id) // Check if user is the faculty adviser
+        ) {
+          role = { role: 'officer', id: user.uid }; // Treat all as 'officer'
         } else if (members.some((member: any) => member.id === user.uid)) {
-          role = { role: 'member', id: user.uid };
+          role = { role: 'member', id: user.uid }; // Treat as member
         }
+        
 
         if (!role) {
           setError({ code: 403, message: 'You are not authorized to access this organization.' });
@@ -62,11 +66,12 @@ const ProtectedOrgRoute: React.FC<{ requiredRole?: 'president' | 'officer' | 'me
         }
 
         // Check if the user's role matches the required role for the route
-        if (requiredRole && role.role !== requiredRole) {
+        if (!role || (requiredRoles && !requiredRoles.includes(role.role))) {
           setError({ code: 403, message: 'You do not have the correct role to access this page.' });
           setLoading(false);
           return;
         }
+        
 
         setIsAuthorized(true); // User is authorized
       } catch (error) {
@@ -78,7 +83,7 @@ const ProtectedOrgRoute: React.FC<{ requiredRole?: 'president' | 'officer' | 'me
     };
 
     checkAccess();
-  }, [auth, organizationName, requiredRole]);
+  }, [auth, organizationName, requiredRoles]);
 
   if (loading) return <div>Loading...</div>;
 

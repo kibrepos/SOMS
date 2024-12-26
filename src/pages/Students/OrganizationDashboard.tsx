@@ -205,13 +205,9 @@ const OrganizationDashboard: React.FC = () => {
     }
   }, [organizationName]);
 
-  if (loading) {
-    return <div>Loading organization data...</div>;
-  }
+ 
 
-  if (!organizationData) {
-    return <div>No organization data found.</div>;
-  }
+  
 
   let SidebarComponent = null;
   if (userRole === 'president') {

@@ -87,32 +87,15 @@ const App: React.FC = () => {
 
   
 
-         {/* President Routes */}
-        <Route element={<ProtectedOrgRoute requiredRole="president" />}>
-          <Route path="/Organization/:organizationName/settings" element={<OrganizationSettings />} />
-          <Route path="/Organization/:organizationName/Alltasks" element={<TaskManagement />} />
-          <Route path="/Organization/:organizationName/activity-logs" element={<OrganizationActivityLogs />} />
-
-          <Route path="/Organization/:organizationName/report" element={<OrganizationReports />} />
-
-          <Route path="/Organization/:organizationName/edit-event/:eventId" element={<EventsEdit />} />
-          <Route path="/Organization/:organizationName/archived-events/:eventName" element={<ArchivedEventsView />} />
-      
-        </Route>
-
-         
-         {/* Officer Routes */}
-         <Route element={<ProtectedOrgRoute requiredRole="officer" />}>
-          
-          </Route>
-
-
-          {/* Member Routes */}
-          <Route element={<ProtectedOrgRoute requiredRole="member" />}>
-         
-          </Route>
-
-
+    {/* President and Officer Routes */}
+    <Route element={<ProtectedOrgRoute requiredRoles={['president', 'officer']} />}>
+  <Route path="/Organization/:organizationName/settings" element={<OrganizationSettings />} />
+  <Route path="/Organization/:organizationName/Alltasks" element={<TaskManagement />} />
+  <Route path="/Organization/:organizationName/activity-logs" element={<OrganizationActivityLogs />} />
+  <Route path="/Organization/:organizationName/report" element={<OrganizationReports />} />
+  <Route path="/Organization/:organizationName/edit-event/:eventId" element={<EventsEdit />} />
+  <Route path="/Organization/:organizationName/archived-events/:eventName" element={<ArchivedEventsView />} />
+</Route>
 
 
 

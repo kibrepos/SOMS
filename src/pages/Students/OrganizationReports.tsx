@@ -1,245 +1,264 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
-import { Pie, Bar } from 'react-chartjs-2';
-import { firestore } from '../../services/firebaseConfig';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import Header from '../../components/Header';
-import StudentPresidentSidebar from './StudentPresidentSidebar';
-import StudentMemberSidebar from './StudentMemberSidebar';
-import '../../styles/OrganizationReports.css';
-
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
-
-interface Params {
-  organizationName: string; // This will match the route parameter
-}
+import React, { useEffect, useState } from "react";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
+import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { firestore } from "../../services/firebaseConfig";
+import Header from "../../components/Header";
+import StudentPresidentSidebar from "./StudentPresidentSidebar";
+import "../../styles/OrganizationReports.css";
+import { Chart } from "chart.js/auto";
+import { useParams } from "react-router-dom";
 
 const OrganizationReports: React.FC = () => {
   const { organizationName } = useParams<{ organizationName: string }>();
-  const [organization, setOrganization] = useState<any>(null);
-  const [tasks, setTasks] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<string>('member'); // Default role set to 'member'
-
-  // Dynamically assign the Sidebar component based on user role
-  let SidebarComponent = null;
-  if (userRole === 'president') {
-    SidebarComponent = <StudentPresidentSidebar />;
-  } else if (userRole === 'officer') {
-    SidebarComponent = <StudentPresidentSidebar  />;
-  } else if (userRole === 'member') {
-    SidebarComponent = <StudentMemberSidebar />;
-  }
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [attendeesByDay, setAttendeesByDay] = useState<any>({});
+  const [attendanceByDay, setAttendanceByDay] = useState<any>({});
+  const [eventHead, setEventHead] = useState<string>("Loading...");
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchOrganizationData = async () => {
+    const fetchEvents = async () => {
+      if (!organizationName) return;
       try {
-        // Fetch organization details using the organization name from the URL params
-        const organizationRef = collection(firestore, 'organizations');
-        const q = query(organizationRef, where('name', '==', organizationName));
-        const orgSnapshot = await getDocs(q);
-
-        if (!orgSnapshot.empty) {
-          const orgData = orgSnapshot.docs[0].data();
-          setOrganization(orgData);
-
-          // Determine the user's role based on the committees data
-          const committees = orgData.committees || [];
-          const userId = 'yourUserId'; // Replace this with the actual user ID logic
-          let role = 'member'; // Default role
-          
-          // Check if the user is part of any committee and find their role
-          committees.forEach((committee: any) => {
-            if (committee.members && committee.members.includes(userId)) {
-              role = committee.role || 'member'; // Set the role
-            }
-          });
-
-          setUserRole(role);
-
-          // Now, fetch tasks and events related to this organization
-          fetchTasksAndEvents(orgData.name);
-        } else {
-          setError('Organization not found.');
-        }
-      } catch (err) {
-        console.error('Error fetching organization:', err);
-        setError('Failed to load organization data.');
-      }
-    };
-
-    const fetchTasksAndEvents = async (organizationName: string) => {
-      try {
-        // Fetch tasks related to the organization
-        const taskCollectionRef = collection(firestore, `tasks/${organizationName}/AllTasks`);
-        const taskSnapshot = await getDocs(taskCollectionRef);
-        const fetchedTasks: any[] = taskSnapshot.docs.map((doc) => doc.data());
-        setTasks(fetchedTasks);
-
-        // Fetch events related to the organization
-        const eventCollectionRef = collection(firestore, `events/${organizationName}/AllEvents`);
-        const eventSnapshot = await getDocs(eventCollectionRef);
-        const fetchedEvents: any[] = eventSnapshot.docs.map((doc) => doc.data());
+        const eventCollection = collection(
+          firestore,
+          `events/${organizationName}/event`
+        );
+        const eventSnapshot = await getDocs(eventCollection);
+        const fetchedEvents = eventSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
         setEvents(fetchedEvents);
-      } catch (err) {
-        console.error('Error fetching tasks and events:', err);
-        setError('Failed to load tasks and events.');
+      } catch (error) {
+        console.error("Error fetching events:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchOrganizationData();
-  }, [organizationName]); // Fetch again if the organizationName changes
+    const fetchTasks = async () => {
+      if (!organizationName) return;
+      try {
+        const taskCollection = collection(
+          firestore,
+          `tasks/${organizationName}/AllTasks`
+        );
+        const taskSnapshot = await getDocs(taskCollection);
+        const fetchedTasks = taskSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setTasks(fetchedTasks);
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+      }
+    };
+
+    fetchEvents();
+    fetchTasks();
+  }, [organizationName]);
+
+  useEffect(() => {
+    if (tasks.length > 0) {
+      const taskStatuses = tasks.reduce(
+        (acc: any, task: any) => {
+          acc[task.taskStatus] = (acc[task.taskStatus] || 0) + 1;
+          return acc;
+        },
+        { Started: 0, "In-Progress": 0, Completed: 0, Overdue: 0, Extended: 0 }
+      );
+
+      const ctx = document.getElementById("taskPieChart") as HTMLCanvasElement;
+      new Chart(ctx, {
+        type: "pie",
+        data: {
+          labels: Object.keys(taskStatuses),
+          datasets: [
+            {
+              label: "Task Status Distribution",
+              data: Object.values(taskStatuses),
+              backgroundColor: [
+                "#FF6384",
+                "#36A2EB",
+                "#FFCE56",
+                "#4BC0C0",
+                "#9966FF",
+              ],
+            },
+          ],
+        },
+      });
+    }
+  }, [tasks]);
+
+  const handleEventClick = async (event: any) => {
+    setSelectedEvent(event);
+    try {
+      // Fetch attendees
+      const attendeesCollection = collection(
+        firestore,
+        `events/${organizationName}/event/${event.id}/attendees`
+      );
+      const attendeesSnapshot = await getDocs(attendeesCollection);
+      const attendeesData: any = {};
+      attendeesSnapshot.docs.forEach((doc) => {
+        attendeesData[doc.id] = doc.data().attendees || [];
+      });
+      setAttendeesByDay(attendeesData);
+
+      // Fetch attendance
+      const attendanceCollection = collection(
+        firestore,
+        `events/${organizationName}/event/${event.id}/attendance`
+      );
+      const attendanceSnapshot = await getDocs(attendanceCollection);
+      const attendanceData: any = {};
+      attendanceSnapshot.docs.forEach((doc) => {
+        attendanceData[doc.id] = doc.data().attendees || [];
+      });
+      setAttendanceByDay(attendanceData);
+
+      // Fetch event head name from committees in organization
+      const committeesDoc = doc(firestore, `organizations/${organizationName}`);
+      const committeesSnapshot = await getDoc(committeesDoc);
+      const committeesData = committeesSnapshot.data()?.committees || [];
+      const committeeWithHead = committeesData.find(
+        (committee: any) => committee.head.id === event.eventHead
+      );
+      setEventHead(committeeWithHead?.head?.name || "N/A");
+    } catch (error) {
+      console.error("Error fetching event details:", error);
+    }
+  };
+
+  const handlePrintEventDetails = async () => {
+    const element = document.getElementById("event-details");
+    if (!element) return;
+
+    const canvas = await html2canvas(element);
+    const imgData = canvas.toDataURL("image/png");
+
+    const pdf = new jsPDF();
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`${selectedEvent.title}_Details.pdf`);
+  };
+
+  const handlePrintAttendees = async () => {
+    const element = document.getElementById("attendee-list");
+    if (!element) return;
+
+    const canvas = await html2canvas(element);
+    const imgData = canvas.toDataURL("image/png");
+
+    const pdf = new jsPDF();
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`${selectedEvent.title}_Attendees.pdf`);
+  };
 
   if (loading) return <div>Loading...</div>;
-  if (error) return <div>{error}</div>;
-
-  // Task Data Processing (Task Status and Completion)
-  const taskStatusCounts = tasks.reduce(
-    (acc, task) => {
-      acc[task.taskStatus] = (acc[task.taskStatus] || 0) + 1;
-      return acc;
-    },
-    { 'In-Progress': 0, 'Completed': 0, 'Overdue': 0, 'Started': 0, 'Extended': 0 }
-  );
-
-  const taskCompletionByDate = tasks.reduce((acc, task) => {
-    const dueDate = new Date(task.dueDate);
-    const dateString = dueDate.toLocaleDateString();
-    
-    if (!acc[dateString]) {
-      acc[dateString] = 0;
-    }
-
-    if (task.taskStatus === 'Completed') {
-      acc[dateString] += 1;
-    }
-    
-    return acc;
-  }, {});
-
-  // Event Data Processing (RSVP and Attendance)
-  const rsvpCounts = events.reduce(
-    (acc, event) => {
-      if (event.rsvpStatus) {
-        acc[event.rsvpStatus] = (acc[event.rsvpStatus] || 0) + 1;
-      }
-      return acc;
-    },
-    { Attending: 0, NotAttending: 0, Pending: 0 }
-  );
-
-  const attendanceByEvent = events.reduce((acc, event) => {
-    const eventDate = new Date(event.eventDate);
-    const dateString = eventDate.toLocaleDateString();
-    
-    if (!acc[dateString]) {
-      acc[dateString] = 0;
-    }
-
-    if (event.attendanceStatus === 'Confirmed') {
-      acc[dateString] += 1;
-    }
-    
-    return acc;
-  }, {});
-
-  // Pie chart data for task status distribution
-  const taskPieData = {
-    labels: ['In-Progress', 'Completed', 'Overdue', 'Started', 'Extended'],
-    datasets: [
-      {
-        label: 'Task Status Distribution',
-        data: [
-          taskStatusCounts['In-Progress'],
-          taskStatusCounts['Completed'],
-          taskStatusCounts['Overdue'],
-          taskStatusCounts['Started'],
-          taskStatusCounts['Extended'],
-        ],
-        backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#cc65fe', '#ff5733'],
-        hoverOffset: 4,
-      },
-    ],
-  };
-
-  // Bar chart data for task completion by date
-  const taskBarData = {
-    labels: Object.keys(taskCompletionByDate),
-    datasets: [
-      {
-        label: 'Completed Tasks by Date',
-        data: Object.values(taskCompletionByDate),
-        backgroundColor: 'rgba(75, 192, 192, 0.5)',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  // Pie chart data for RSVP status distribution
-  const rsvpPieData = {
-    labels: ['Attending', 'Not Attending', 'Pending'],
-    datasets: [
-      {
-        label: 'RSVP Distribution',
-        data: [
-          rsvpCounts['Attending'],
-          rsvpCounts['NotAttending'],
-          rsvpCounts['Pending'],
-        ],
-        backgroundColor: ['#FF9F40', '#FFCD56', '#FF5C8D'],
-        hoverOffset: 4,
-      },
-    ],
-  };
-
-  // Bar chart data for attendance by event date
-  const attendanceBarData = {
-    labels: Object.keys(attendanceByEvent),
-    datasets: [
-      {
-        label: 'Confirmed Attendance by Date',
-        data: Object.values(attendanceByEvent),
-        backgroundColor: 'rgba(153, 102, 255, 0.5)',
-        borderColor: 'rgba(153, 102, 255, 1)',
-        borderWidth: 1,
-      },
-    ],
-  };
 
   return (
-    <div className="organization-reports-page">
+    <div className="organization-announcements-page">
       <Header />
-      <div className="layout-container">
-        {SidebarComponent} {/* Sidebar is dynamically rendered based on user role */}
-        <div className="reports-container">
-          <h1>Organization Reports for {organizationName}</h1>
+      <div className="organization-announcements-container">
+        <div className="sidebar-section">
+          <StudentPresidentSidebar />
+        </div>
 
-          <div className="charts-container">
-            <div className="chart">
-              <h2>Task Status Distribution</h2>
-              <Pie data={taskPieData} />
-            </div>
+        <div className="organization-announcements-content">
+          <h1>Organization Reports</h1>
+          <div className="event-list">
+            <h2>Events</h2>
+            {events.map((event) => (
+              <div
+                key={event.id}
+                className="event-item"
+                onClick={() => handleEventClick(event)}
+              >
+                {event.title}
+              </div>
+            ))}
+          </div>
 
-            <div className="chart">
-              <h2>Task Completion Over Time</h2>
-              <Bar data={taskBarData} />
-            </div>
+          {selectedEvent && (
+            <div id="event-details">
+              <h2>Event Details</h2>
+              <p>
+                <strong>Title:</strong> {selectedEvent.title}
+              </p>
+              <p>
+                <strong>Description:</strong> {selectedEvent.description}
+              </p>
+              <p>
+                <strong>Venue:</strong> {selectedEvent.venue}
+              </p>
+              <p>
+                <strong>Event Head:</strong> {eventHead}
+              </p>
+              <p>
+                <strong>Dates:</strong>
+                <ul>
+                  {selectedEvent.eventDates.map((date: any, index: number) => (
+                    <li key={index}>
+                      {new Date(date.startDate).toLocaleString()} -{" "}
+                      {new Date(date.endDate).toLocaleString()}
+                    </li>
+                  ))}
+                </ul>
+              </p>
+              <button onClick={handlePrintEventDetails}>
+                Print Event Details
+              </button>
 
-            <div className="chart">
-              <h2>RSVP Status Distribution</h2>
-              <Pie data={rsvpPieData} />
-            </div>
+              <div id="attendee-list">
+  <h3>Attendees By Day</h3>
+  {Object.keys(attendeesByDay).map((day, index) => (
+    <div key={day}>
+      <h4>Day {index + 1}</h4>
+      <ul>
+        {attendeesByDay[day].map((attendee: any, idx: number) => (
+          <li key={idx}>
+            {attendee.fullName} - {attendee.section}
+          </li>
+        ))}
+      </ul>
+    </div>
+  ))}
+  <button onClick={handlePrintAttendees}>Print Attendees</button>
+</div>
 
-            <div className="chart">
-              <h2>Confirmed Attendance by Date</h2>
-              <Bar data={attendanceBarData} />
+<div id="attendance">
+  <h3>Attendance By Day</h3>
+  {Object.keys(attendanceByDay).map((day, index) => (
+    <div key={day}>
+      <h4>Day {index + 1}</h4>
+      <ul>
+        {attendanceByDay[day].map((record: any, idx: number) => (
+          <li key={idx}>
+            {record.name} - {record.role} - {record.status}
+          </li>
+        ))}
+      </ul>
+    </div>
+  ))}
+</div>
+
             </div>
+          )}
+
+          <div id="task-chart">
+            <h2>Task Status Distribution</h2>
+            <canvas id="taskPieChart" width="400" height="400"></canvas>
           </div>
         </div>
       </div>

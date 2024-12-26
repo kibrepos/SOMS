@@ -69,20 +69,20 @@ const [searchTerm, setSearchTerm] = useState<string>(""); // Search term state
   useEffect(() => {
     const fetchEvents = async () => {
       if (!organizationName) return;
-  
+    
       try {
         const eventsRef = collection(firestore, "events", organizationName, "event");
         const querySnapshot = await getDocs(eventsRef);
-  
+    
         const upcoming: Event[] = [];
         const ongoing: Event[] = [];
         const completed: Event[] = [];
-  
+    
         const currentDate = new Date();
-  
+    
         querySnapshot.forEach((doc) => {
           const eventData = doc.data() as Event;
-  
+    
           // Check event dates
           const isCompleted = eventData.eventDates.every(
             (date) => new Date(date.endDate) < currentDate
@@ -90,12 +90,26 @@ const [searchTerm, setSearchTerm] = useState<string>(""); // Search term state
           const isUpcoming = eventData.eventDates.every(
             (date) => new Date(date.startDate) > currentDate
           );
-          const isOngoing = eventData.eventDates.some(
-            (date) =>
-              new Date(date.startDate) <= currentDate &&
-              new Date(date.endDate) >= currentDate
-          );
-  
+          const isOngoing = eventData.eventDates.some((date, index, dates) => {
+            const startDate = new Date(date.startDate);
+            const endDate = new Date(date.endDate);
+    
+            // Check if the current date is within this event's date range
+            if (startDate <= currentDate && endDate >= currentDate) {
+              return true;
+            }
+    
+            // Check if there is a gap between consecutive dates
+            if (index < dates.length - 1) {
+              const nextStartDate = new Date(dates[index + 1].startDate);
+              if (endDate < currentDate && nextStartDate > currentDate) {
+                return true; // Current date falls in the vacant day
+              }
+            }
+    
+            return false;
+          });
+    
           if (isCompleted) {
             completed.push(eventData);
           } else if (isUpcoming) {
@@ -104,16 +118,17 @@ const [searchTerm, setSearchTerm] = useState<string>(""); // Search term state
             ongoing.push(eventData);
           }
         });
-  
+    
         setUpcomingEvents(upcoming);
         setOngoingEvents(ongoing);
         setCompletedEvents(completed);
-  
+    
         console.log("Ongoing Events:", ongoing); // Add logging to check
       } catch (error) {
         console.error("Error fetching events:", error);
       }
     };
+    
   
     fetchEvents();
   
