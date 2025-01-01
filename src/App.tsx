@@ -12,6 +12,7 @@ import OrganizationActivityLogs from './pages/Students/OrganizationActivityLogs'
 import ManageMembers from './pages/Students/ManageMembers';
 import ManageCommittees from './pages/Students/ManageCommittees';
 import CreateEvent from './pages/Students/CreateEvent';
+import EventReport from './pages/Students/EventReport';
 import EventsManagement from './pages/Students/EventsManagement';
 import EventsView from './pages/Students/EventsView';
 import ArchivedEventsView from './pages/Students/ArchivedEventsView';
@@ -95,6 +96,7 @@ const App: React.FC = () => {
   <Route path="/Organization/:organizationName/report" element={<OrganizationReports />} />
   <Route path="/Organization/:organizationName/edit-event/:eventId" element={<EventsEdit />} />
   <Route path="/Organization/:organizationName/archived-events/:eventName" element={<ArchivedEventsView />} />
+  <Route path="/Organization/:organizationName/report/:eventId" element={<EventReport />} />
 </Route>
 
 

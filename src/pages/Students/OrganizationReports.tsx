@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { firestore } from "../../services/firebaseConfig";
 import Header from "../../components/Header";
@@ -18,11 +17,37 @@ const OrganizationReports: React.FC = () => {
   const [eventHead, setEventHead] = useState<string>("Loading...");
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [organizationData, setOrganizationData] = useState<any | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate(); // Initialize navigate
+  const openModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
+
+  useEffect(() => {
+    const fetchOrganizationData = async () => {
+      if (!organizationName) return;
+      try {
+        const organizationDoc = doc(
+          firestore,
+          `organizations/${organizationName}`
+        );
+        const organizationSnapshot = await getDoc(organizationDoc);
+        setOrganizationData(organizationSnapshot.data() || {});
+      } catch (error) {
+        console.error("Error fetching organization data:", error);
+      }
+    };
+  
+    fetchOrganizationData();
+  }, [organizationName]);
+  
 
   useEffect(() => {
     const fetchEvents = async () => {
       if (!organizationName) return;
+    
       try {
+        // Fetch active events
         const eventCollection = collection(
           firestore,
           `events/${organizationName}/event`
@@ -30,15 +55,31 @@ const OrganizationReports: React.FC = () => {
         const eventSnapshot = await getDocs(eventCollection);
         const fetchedEvents = eventSnapshot.docs.map((doc) => ({
           id: doc.id,
+          isArchived: false, // Mark as active event
           ...doc.data(),
         }));
-        setEvents(fetchedEvents);
+    
+        // Fetch archived events
+        const archivedEventCollection = collection(
+          firestore,
+          `events/${organizationName}/archivedEvents`
+        );
+        const archivedEventSnapshot = await getDocs(archivedEventCollection);
+        const fetchedArchivedEvents = archivedEventSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          isArchived: true, // Mark as archived event
+          ...doc.data(),
+        }));
+    
+        // Combine active and archived events
+        setEvents([...fetchedEvents, ...fetchedArchivedEvents]);
       } catch (error) {
         console.error("Error fetching events:", error);
       } finally {
         setLoading(false);
       }
     };
+    
 
     const fetchTasks = async () => {
       if (!organizationName) return;
@@ -62,110 +103,132 @@ const OrganizationReports: React.FC = () => {
     fetchTasks();
   }, [organizationName]);
 
-  useEffect(() => {
-    if (tasks.length > 0) {
-      const taskStatuses = tasks.reduce(
-        (acc: any, task: any) => {
-          acc[task.taskStatus] = (acc[task.taskStatus] || 0) + 1;
-          return acc;
-        },
-        { Started: 0, "In-Progress": 0, Completed: 0, Overdue: 0, Extended: 0 }
+ 
+  const handleMemberClick = async (member: any) => {
+    if (!member || !member.id) {
+      console.error("Invalid member object:", member);
+      return; // Exit the function if member is null or invalid
+    }
+  
+    setSelectedEvent(null); // Clear any selected event to show only member stats
+  
+    let allEvents = [...events]; // Start with active events
+  
+    // Fetch archived events
+    try {
+      const archivedEventCollection = collection(
+        firestore,
+        `events/${organizationName}/archivedEvents`
       );
-
-      const ctx = document.getElementById("taskPieChart") as HTMLCanvasElement;
-      new Chart(ctx, {
-        type: "pie",
+      const archivedEventSnapshot = await getDocs(archivedEventCollection);
+      const archivedEvents = archivedEventSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      allEvents = [...allEvents, ...archivedEvents];
+    } catch (error) {
+      console.error("Error fetching archived events:", error);
+    }
+  
+    let tasksAssigned = 0;
+    let tasksCompleted = 0;
+    let tasksOverdue = 0;
+  
+    // Calculate task statistics
+    tasks.forEach((task) => {
+      if (task.assignedMembers?.includes(member.id)) {
+        tasksAssigned++;
+        if (task.taskStatus === "Completed") tasksCompleted++;
+        if (task.taskStatus === "Overdue") tasksOverdue++;
+      }
+    });
+  
+    let eventsAttended = 0;
+    let eventsAbsent = 0;
+    let eventsLate = 0;
+  
+    // Calculate attendance statistics across all events
+    for (const event of allEvents) {
+      try {
+        const attendanceCollection = collection(
+          firestore,
+          `events/${organizationName}/${
+            event.isArchived ? "archivedEvents" : "event"
+          }/${event.id}/attendance`
+        );
+        const attendanceSnapshot = await getDocs(attendanceCollection);
+  
+        attendanceSnapshot.docs.forEach((doc) => {
+          const attendees = doc.data()?.attendees || [];
+          const attendanceRecord = attendees.find(
+            (attendee: any) => attendee.userId === member.id
+          );
+  
+          if (attendanceRecord) {
+            if (attendanceRecord.status === "Present") eventsAttended++;
+            if (attendanceRecord.status === "Absent") eventsAbsent++;
+            if (attendanceRecord.status === "Late") eventsLate++;
+          }
+        });
+      } catch (error) {
+        console.error("Error fetching attendance for event:", error);
+      }
+    }
+  
+    // Render the charts
+    const taskStatsCtx = document.getElementById(
+      "taskStatsChart"
+    ) as HTMLCanvasElement;
+    const eventStatsCtx = document.getElementById(
+      "eventStatsChart"
+    ) as HTMLCanvasElement;
+  
+    if (taskStatsCtx) {
+      new Chart(taskStatsCtx, {
+        type: "bar",
         data: {
-          labels: Object.keys(taskStatuses),
+          labels: ["Tasks Assigned", "Tasks Completed", "Tasks Overdue"],
           datasets: [
             {
-              label: "Task Status Distribution",
-              data: Object.values(taskStatuses),
-              backgroundColor: [
-                "#FF6384",
-                "#36A2EB",
-                "#FFCE56",
-                "#4BC0C0",
-                "#9966FF",
-              ],
+              label: `${member.name}'s Task Statistics`,
+              data: [tasksAssigned, tasksCompleted, tasksOverdue],
+              backgroundColor: ["#36A2EB", "#4BC0C0", "#FF6384"],
             },
           ],
         },
       });
     }
-  }, [tasks]);
-
-  const handleEventClick = async (event: any) => {
-    setSelectedEvent(event);
-    try {
-      // Fetch attendees
-      const attendeesCollection = collection(
-        firestore,
-        `events/${organizationName}/event/${event.id}/attendees`
-      );
-      const attendeesSnapshot = await getDocs(attendeesCollection);
-      const attendeesData: any = {};
-      attendeesSnapshot.docs.forEach((doc) => {
-        attendeesData[doc.id] = doc.data().attendees || [];
+  
+    if (eventStatsCtx) {
+      new Chart(eventStatsCtx, {
+        type: "bar",
+        data: {
+          labels: ["Events Attended", "Events Absent", "Events Late"],
+          datasets: [
+            {
+              label: `${member.name}'s Event Attendance`,
+              data: [eventsAttended, eventsAbsent, eventsLate],
+              backgroundColor: ["#36A2EB", "#FF6384", "#FFCE56"],
+            },
+          ],
+        },
       });
-      setAttendeesByDay(attendeesData);
-
-      // Fetch attendance
-      const attendanceCollection = collection(
-        firestore,
-        `events/${organizationName}/event/${event.id}/attendance`
-      );
-      const attendanceSnapshot = await getDocs(attendanceCollection);
-      const attendanceData: any = {};
-      attendanceSnapshot.docs.forEach((doc) => {
-        attendanceData[doc.id] = doc.data().attendees || [];
-      });
-      setAttendanceByDay(attendanceData);
-
-      // Fetch event head name from committees in organization
-      const committeesDoc = doc(firestore, `organizations/${organizationName}`);
-      const committeesSnapshot = await getDoc(committeesDoc);
-      const committeesData = committeesSnapshot.data()?.committees || [];
-      const committeeWithHead = committeesData.find(
-        (committee: any) => committee.head.id === event.eventHead
-      );
-      setEventHead(committeeWithHead?.head?.name || "N/A");
-    } catch (error) {
-      console.error("Error fetching event details:", error);
     }
   };
-
-  const handlePrintEventDetails = async () => {
-    const element = document.getElementById("event-details");
-    if (!element) return;
-
-    const canvas = await html2canvas(element);
-    const imgData = canvas.toDataURL("image/png");
-
-    const pdf = new jsPDF();
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`${selectedEvent.title}_Details.pdf`);
+  
+  
+  
+  const handleEventClick = (event: any) => {
+    if (!event || !event.id) {
+      console.error("Invalid event object:", event);
+      return;
+    }
+    // Navigate to the specific event page
+    navigate(`/Organization/${organizationName}/report/${event.id}`);
   };
+  
 
-  const handlePrintAttendees = async () => {
-    const element = document.getElementById("attendee-list");
-    if (!element) return;
 
-    const canvas = await html2canvas(element);
-    const imgData = canvas.toDataURL("image/png");
-
-    const pdf = new jsPDF();
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`${selectedEvent.title}_Attendees.pdf`);
-  };
-
-  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="organization-announcements-page">
@@ -176,19 +239,44 @@ const OrganizationReports: React.FC = () => {
         </div>
 
         <div className="organization-announcements-content">
-          <h1>Organization Reports</h1>
-          <div className="event-list">
-            <h2>Events</h2>
-            {events.map((event) => (
-              <div
-                key={event.id}
-                className="event-item"
-                onClick={() => handleEventClick(event)}
-              >
-                {event.title}
-              </div>
-            ))}
-          </div>
+       <div className="header-container">
+         <h1 className="headtitle">organization Reports</h1>
+       
+      
+           </div>
+           <div className="event-list">
+  <h2>Events</h2>
+
+  {/* Active Events */}
+  <h3>Active Events</h3>
+  {events
+    .filter((event) => !event.isArchived)
+    .map((event) => (
+      <div
+        key={event.id}
+        className="event-item"
+        onClick={() => handleEventClick(event)}
+      >
+        {event.title}
+      </div>
+    ))}
+
+  {/* Archived Events */}
+  <h3>Archived Events</h3>
+  {events
+    .filter((event) => event.isArchived)
+    .map((event) => (
+      <div
+        key={event.id}
+        className="event-item"
+        onClick={() => handleEventClick(event)}
+      >
+        {event.title}
+      </div>
+    ))}
+</div>
+
+
 
           {selectedEvent && (
             <div id="event-details">
@@ -203,7 +291,7 @@ const OrganizationReports: React.FC = () => {
                 <strong>Venue:</strong> {selectedEvent.venue}
               </p>
               <p>
-                <strong>Event Head:</strong> {eventHead}
+              <strong>Event Head:</strong> {eventHead} 
               </p>
               <p>
                 <strong>Dates:</strong>
@@ -216,9 +304,7 @@ const OrganizationReports: React.FC = () => {
                   ))}
                 </ul>
               </p>
-              <button onClick={handlePrintEventDetails}>
-                Print Event Details
-              </button>
+           
 
               <div id="attendee-list">
   <h3>Attendees By Day</h3>
@@ -234,7 +320,7 @@ const OrganizationReports: React.FC = () => {
       </ul>
     </div>
   ))}
-  <button onClick={handlePrintAttendees}>Print Attendees</button>
+  
 </div>
 
 <div id="attendance">
@@ -256,10 +342,102 @@ const OrganizationReports: React.FC = () => {
             </div>
           )}
 
-          <div id="task-chart">
-            <h2>Task Status Distribution</h2>
-            <canvas id="taskPieChart" width="400" height="400"></canvas>
+<div id="member-analytics">
+  <h2>Member Analytics</h2>
+  <ul>
+    {organizationData?.members?.map((member: any) => (
+      member?.id && (
+        <li
+          key={member.id}
+          className="member-item"
+          onClick={() => {
+            handleMemberClick(member);
+            openModal(); // Open modal when a member is clicked
+          }}
+        >
+          <img
+            src={member.profilePicUrl || "https://via.placeholder.com/50"}
+            alt={`${member.name}'s profile`}
+            style={{ width: "50px", height: "50px", borderRadius: "50%" }}
+          />
+          <div>
+            <p>{member.name}</p>
+            <p>{member.email}</p>
+            <p>Role: Member</p>
           </div>
+        </li>
+      )
+    ))}
+    {organizationData?.officers?.map((officer: any) => (
+      officer?.id && (
+        <li
+          key={officer.id}
+          className="member-item"
+          onClick={() => {
+            handleMemberClick(officer);
+            openModal(); // Open modal when an officer is clicked
+          }}
+        >
+          <img
+            src={officer.profilePicUrl || "https://via.placeholder.com/50"}
+            alt={`${officer.name}'s profile`}
+            style={{ width: "50px", height: "50px", borderRadius: "50%" }}
+          />
+          <div>
+            <p>{officer.name}</p>
+            <p>{officer.email}</p>
+            <p>Role: {officer.role}</p>
+          </div>
+        </li>
+      )
+    ))}
+    {organizationData?.president?.id && (
+      <li
+        key={organizationData.president.id}
+        className="member-item"
+        onClick={() => {
+          handleMemberClick(organizationData.president);
+          openModal(); // Open modal when the president is clicked
+        }}
+      >
+        <img
+          src={organizationData.president.profilePicUrl || "https://via.placeholder.com/50"}
+          alt={`${organizationData.president.name}'s profile`}
+          style={{ width: "50px", height: "50px", borderRadius: "50%" }}
+        />
+        <div>
+          <p>{organizationData.president.name}</p>
+          <p>{organizationData.president.email}</p>
+          <p>Role: President</p>
+        </div>
+      </li>
+    )}
+  </ul>
+</div>
+
+
+{isModalOpen && (
+  <div className="modal-overlay">
+    <div className="modal">
+      <button className="modal-close-button" onClick={closeModal}>
+        &times;
+      </button>
+      <div id="member-stats-modal">
+        <h2>Selected Member Statistics</h2>
+        <div>
+          <h3>Task Statistics</h3>
+          <canvas id="taskStatsChart" width="400" height="400"></canvas>
+        </div>
+        <div>
+          <h3>Event Attendance</h3>
+          <canvas id="eventStatsChart" width="400" height="400"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+
         </div>
       </div>
     </div>
