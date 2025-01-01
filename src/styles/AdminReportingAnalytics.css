@@ -1,0 +1,24 @@
+.admin-dashboard {
+    display: flex;
+    height: 100vh;
+  }
+  
+  .admin-dashboard-main {
+    display: flex;
+    width: 100%;
+    transition: all 0.3s ease;
+  }
+  
+  .admin-dashboard-content {
+    flex-grow: 1;
+    padding: 20px;
+  }
+  
+  .sidebar-expanded .admin-dashboard-content {
+    margin-left: 300px; /* Adjust based on expanded sidebar width */
+  }
+  
+  .sidebar-collapsed .admin-dashboard-content {
+    margin-left: 60px; /* Adjust based on collapsed sidebar width */
+  }
+  
