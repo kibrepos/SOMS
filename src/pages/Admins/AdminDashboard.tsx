@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { auth, firestore } from "../../services/firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, collection, getDocs, query, where, Timestamp } from "firebase/firestore";
@@ -89,23 +89,18 @@ const AdminDashboard: React.FC = () => {
 
   const fetchRegisteredUsers = async () => {
     try {
-      
       const studentsCollection = collection(firestore, "students");
       const facultyCollection = collection(firestore, "faculty");
   
-     
       const studentsSnapshot = await getDocs(studentsCollection);
       const facultySnapshot = await getDocs(facultyCollection);
   
-  
       const totalRegisteredUsers = studentsSnapshot.size + facultySnapshot.size;
-      
       setRegisteredUsers(totalRegisteredUsers);
     } catch (error) {
       console.error("Error fetching registered users:", error);
     }
   };
-  
 
   const fetchRecentActivities = async () => {
     const logsCollection = collection(firestore, "logs");
@@ -147,22 +142,22 @@ const AdminDashboard: React.FC = () => {
             
           {/* Event Stats Overview */}
           <div className="stats-overview">
-            <div className="stats-card">
+            <Link to="/events/upcoming" className="stats-card">
               <h3>Upcoming Events</h3>
               <p>{eventStats.upcoming}</p>
-            </div>
-            <div className="stats-card">
+            </Link>
+            <Link to="/events/ongoing" className="stats-card">
               <h3>Ongoing Events</h3>
               <p>{eventStats.ongoing}</p>
-            </div>
-            <div className="stats-card">
+            </Link>
+            <Link to="/events/completed" className="stats-card">
               <h3>Completed Events</h3>
               <p>{eventStats.completed}</p>
-            </div>
-            <div className="stats-card">
+            </Link>
+            <Link to="/users" className="stats-card">
               <h3>Registered Users</h3>
               <p>{registeredUsers}</p>
-            </div>
+            </Link>
           </div>
 
           {/* Date (fixed, does not scroll) */}
@@ -170,28 +165,28 @@ const AdminDashboard: React.FC = () => {
 
           {/* Scrollable Recent Activities (this will scroll) */}
           <div className="recent-activities">
-  <ul className="activity-timeline">
-    {recentActivities.length > 0 ? (
-      recentActivities
-        .slice()
-        .reverse() // Reversing the array to display the newest activities at the top
-        .map((activity, index) => (
-          <li key={index} className="activity-item">
-            <span className="activity-timestamp">{activity.timestamp}</span>
-            <div className="activity-details">
-              <div className="activity-user-name-role">
-                <p className="activity-user-name">{activity.userName}</p>
-                <p className="activity-user-role">{activity.role}</p>
-              </div>
-              <p className="activity-description">{activity.activity}</p>
-            </div>
-          </li>
-        ))
-    ) : (
-      <p>No activities for today.</p>
-    )}
-  </ul>
-</div>
+            <ul className="activity-timeline">
+              {recentActivities.length > 0 ? (
+                recentActivities
+                  .slice()
+                  .reverse()
+                  .map((activity, index) => (
+                    <li key={index} className="activity-item">
+                      <span className="activity-timestamp">{activity.timestamp}</span>
+                      <div className="activity-details">
+                        <div className="activity-user-name-role">
+                          <p className="activity-user-name">{activity.userName}</p>
+                          <p className="activity-user-role">{activity.role}</p>
+                        </div>
+                        <p className="activity-description">{activity.activity}</p>
+                      </div>
+                    </li>
+                  ))
+              ) : (
+                <p>No activities for today.</p>
+              )}
+            </ul>
+          </div>
 
         </div>
       </div>

@@ -1,3 +1,14 @@
+/* Ensure links inside stats-card have no underline */
+.stats-card a {
+  text-decoration: none; /* Remove underline */
+  color: inherit; /* Inherit the color from parent styles */
+}
+
+/* Optional: Add hover effect for better interactivity */
+.stats-card a:hover {
+  text-decoration: none; /* Ensure underline doesn't reappear on hover */
+}
+
 /* Main dashboard container */
 .admin-dashboard {
   display: flex;
@@ -55,12 +66,12 @@
   background-color: #e8f5e9; /* Light green background for alternate cards */
 }
 
-/* Recent Activities */
-.recent-activities {
-  margin-top: 20px;
-  max-height: 325px; /* Set a fixed height */
-  overflow-y: auto; /* Make recent activities scrollable */
-  padding-top: 10px;
+.recent-activities p {
+  all: unset; /* Remove all styles */
+  display: inline; /* Make sure it's inline */
+  font-family: inherit; /* Add your default font-family */
+  font-size: inherit; /* Keep the text size consistent */
+  color: black; /* Reset color */
 }
 
 /* Timeline */
@@ -151,13 +162,11 @@
   width: 40%; /* Adjust width to ensure proper centering */
 }
 
-
 /* Date at the top of recent activities */
 .activities-date {
   font-size: 1.4rem;
   font-weight: bold;
   margin-bottom: 20px;
-  
 }
 
 /* Responsive adjustments */
@@ -174,4 +183,14 @@
   .activity-details {
     padding: 10px;
   }
+}
+
+a {
+  text-decoration: none !important; /* Remove underline for all links */
+}
+
+a:hover,
+a:focus,
+a:active {
+  text-decoration: none !important; /* Prevent underline on hover, focus, or active state */
 }
