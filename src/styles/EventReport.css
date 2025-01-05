@@ -174,26 +174,23 @@
   width: 96%; /* Full width of the container */
   padding: 10px; /* Add some padding for better usability */
   margin-bottom: 15px; /* Add spacing below the input */
-  border: 1px solid #ddd; /* Subtle border for definition */
+  border: 1px solid #a7a4a4; /* Subtle gray border */
   border-radius: 5px; /* Rounded corners */
   font-size: 14px; /* Adjust font size for readability */
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Light shadow for depth */
   outline: none; /* Remove default focus outline */
   transition: border-color 0.2s, box-shadow 0.2s; /* Smooth focus effect */
 }
 
-.eventoreporto-search-input:focus {
-  border-color: #6c757d; /* Change border color on focus */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Add a stronger shadow on focus */
+/* Add a hover effect for interactivity */
+.eventoreporto-search-input:hover {
+  border-color: #999999; /* Slightly darker gray on hover */
 }
 
-/* Optional: Make it look good on smaller screens */
-@media (max-width: 768px) {
-  .eventoreporto-search-input {
-    font-size: 16px; /* Increase font size for mobile users */
-    padding: 12px; /* Add more padding for touch devices */
-  }
+/* Add a focus effect for when the input is active */
+.eventoreporto-search-input:focus {
+  border-color: #6666ff; /* A subtle blue to indicate focus */
 }
+
 
 
 .eventoreporto-event-details {

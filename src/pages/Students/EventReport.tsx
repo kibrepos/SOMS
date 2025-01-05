@@ -1030,13 +1030,13 @@ placeholder="Search tasks, members, or committees..."
             {tasks.length > 0 ? (
               renderTaskTimeline(organizationDetails, searchQuery)
             ) : (
-              <p className="eventoreporto-no-tasks">No tasks available for this event.</p>
+              <p className="eventoreporto-no-data">No tasks available for this event.</p>
             )}
           </div>
         </div>
       </div>
     ) : (
-      <p className="eventoreporto-no-tasks">No tasks available for this event.</p>
+      <p className="eventoreporto-no-data">No tasks available for this event.</p>
     )}
   </div>
 </div>
