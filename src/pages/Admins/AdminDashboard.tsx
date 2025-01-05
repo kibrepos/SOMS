@@ -142,19 +142,19 @@ const AdminDashboard: React.FC = () => {
             
           {/* Event Stats Overview */}
           <div className="stats-overview">
-            <Link to="/events/upcoming" className="stats-card">
+            <Link to="/Admin/EventsManagement" className="stats-card">
               <h3>Upcoming Events</h3>
               <p>{eventStats.upcoming}</p>
             </Link>
-            <Link to="/events/ongoing" className="stats-card">
+            <Link to="/Admin/EventsManagement" className="stats-card">
               <h3>Ongoing Events</h3>
               <p>{eventStats.ongoing}</p>
             </Link>
-            <Link to="/events/completed" className="stats-card">
+            <Link to="/Admin/EventsManagement" className="stats-card">
               <h3>Completed Events</h3>
               <p>{eventStats.completed}</p>
             </Link>
-            <Link to="/users" className="stats-card">
+            <Link to="/Admin/Manage-Students" className="stats-card">
               <h3>Registered Users</h3>
               <p>{registeredUsers}</p>
             </Link>
