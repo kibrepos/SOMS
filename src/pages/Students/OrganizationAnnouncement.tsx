@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import {  doc, getDoc, collection, setDoc, Timestamp,getDocs, deleteDoc } from "firebase/firestore";
+import {  doc, getDoc, collection, setDoc, Timestamp,getDocs, deleteDoc,addDoc } from "firebase/firestore";
 import { auth, firestore, storage } from "../../services/firebaseConfig";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -9,6 +9,7 @@ import Header from '../../components/Header';
 import StudentPresidentSidebar from './StudentPresidentSidebar'; 
 import StudentMemberSidebar from './StudentMemberSidebar'; 
 import '../../styles/OrganizationAnnouncement.css';
+import { getAuth } from 'firebase/auth'; 
 
 type OrganizationData = {
   name: string;
@@ -67,6 +68,43 @@ const [isSending, setIsSending] = useState(false);
 const [selectedAnnouncementDetails, setSelectedAnnouncementDetails] = useState<any>(null);
 const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 const [role, setRole] = useState<string>('');
+const [userDetails, setUserDetails] = useState<any>(null);
+
+useEffect(() => {
+  const fetchUserDetails = async () => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (currentUser) {
+      const userDocRef = doc(firestore, "students", currentUser.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        setUserDetails(userDoc.data());
+      }
+    }
+  };
+
+  fetchUserDetails();
+}, []);
+
+const logActivity = async (description: string) => {
+  if (organizationName && userDetails) {
+    try {
+      const logEntry = {
+        userName: `${userDetails.firstname} ${userDetails.lastname}`,
+        description,
+        organizationName,
+        timestamp: new Date(),
+      };
+
+      await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
+      console.log("Activity logged:", logEntry);
+    } catch (error) {
+      console.error("Error logging activity:", error);
+    }
+  }
+};
 
 const fetchStudentData = async () => {
   const user = auth.currentUser;
@@ -259,25 +297,28 @@ useEffect(() => {
     if (!confirmDelete) return;
   
     try {
+      const deletionCount = selectedAnnouncements.length;
       await Promise.all(
         selectedAnnouncements.map(async (id) => {
           if (organizationName) {
             // Delete from organization-specific subcollection
             const orgNotificationRef = doc(firestore, "notifications", organizationName, "organizationAnnouncements", id);
             await deleteDoc(orgNotificationRef);
-  
+
+ 
         
           };
         })
       );
   
-      // Refresh announcements after deletion
+      await logActivity(`Deleted ${deletionCount} announcement(s)`);
       await fetchAnnouncements();
       setSelectedAnnouncements([]);
     } catch (error) {
       console.error("Error deleting announcements:", error);
     }
   };
+
   const openDetailsModal = (announcement: any) => {
     setSelectedAnnouncementDetails(announcement);
     setIsDetailsModalOpen(true);
@@ -286,6 +327,8 @@ useEffect(() => {
     setIsDetailsModalOpen(false);
     setSelectedAnnouncementDetails(null);
   };
+
+  
   useEffect(() => {
     const fetchRole = async () => {
       try {
@@ -385,7 +428,7 @@ useEffect(() => {
         const orgNotificationsRef = doc(firestore, "notifications", organizationName);
         const subCollectionRef = collection(orgNotificationsRef, "organizationAnnouncements");
         await setDoc(doc(subCollectionRef), newAnnouncement);
-        console.log("Announcement added to organization subcollection");
+        await logActivity(`Created a new announcement`);     
       } catch (error) {
         console.error("Error saving to organization's subcollection:", error);
       }

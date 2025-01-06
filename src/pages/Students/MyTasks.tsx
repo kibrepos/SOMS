@@ -73,6 +73,31 @@ const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
 const [attachments, setAttachments] = useState<File[]>([]);
 
 const navigate = useNavigate();
+const logActivity = async (description: string) => {
+  const user = auth.currentUser;
+  if (user && organizationName) {
+    try {
+      const userDoc = await getDoc(doc(firestore, "students", user.uid));
+      const userDetails = userDoc.exists() ? userDoc.data() : { firstname: "Unknown", lastname: "User" };
+
+      const logEntry = {
+        userName: `${userDetails.firstname} ${userDetails.lastname}`,
+        description,
+        organizationName,
+        timestamp: new Date(),
+      };
+
+      await updateDoc(doc(firestore, `studentlogs/${organizationName}/activitylogs`), {
+        logs: arrayUnion(logEntry),
+      });
+
+      console.log("Activity logged:", logEntry);
+    } catch (error) {
+      console.error("Error logging activity:", error);
+    }
+  }
+};
+
 
   const auth = getAuth();
 
@@ -526,6 +551,8 @@ const fetchMyTasks = async () => {
         ) || []
       ); // Update the comments state
     }
+    
+    await logActivity(`Submitted for task: "${submissionsTask?.title}".`);
 
     showToast("Submission successful!", "success");
     setIsSubmitModalOpen(false); // Close the modal after successful submission

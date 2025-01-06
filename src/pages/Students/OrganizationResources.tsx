@@ -5,11 +5,11 @@ import '../../styles/OrganizationResources.css';
 import { ref, listAll, uploadBytes, deleteObject, getDownloadURL, getMetadata, StorageReference,uploadBytesResumable} from 'firebase/storage';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft ,faFileAlt,faImage,faVideo,faFilePdf,faFileWord,faFilePowerpoint,faFileExcel,faFolder,} from '@fortawesome/free-solid-svg-icons';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs,getDoc,doc,addDoc } from 'firebase/firestore';
 import Header from '../../components/Header';
 import StudentPresidentSidebar from './StudentPresidentSidebar'; 
 import StudentMemberSidebar from './StudentMemberSidebar'; 
-
+import { getAuth } from 'firebase/auth';
 
 interface UploadedFile {
   name: string;
@@ -47,6 +47,43 @@ const OrganizationResources: React.FC = () => {
   const [sortColumn, setSortColumn] = useState<'name' | 'size' | 'type' | 'uploadedBy' | 'dateUploaded'>('name');
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [userDetails, setUserDetails] = useState<any>(null);
+  
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+  
+      if (currentUser) {
+        const userDocRef = doc(firestore, "students", currentUser.uid);
+        const userDoc = await getDoc(userDocRef);
+  
+        if (userDoc.exists()) {
+          setUserDetails(userDoc.data());
+        }
+      }
+    };
+  
+    fetchUserDetails();
+  }, []);
+  
+  const logActivity = async (description: string) => {
+    if (organizationName && userDetails) {
+      try {
+        const logEntry = {
+          userName: `${userDetails.firstname} ${userDetails.lastname}`,
+          description,
+          organizationName,
+          timestamp: new Date(),
+        };
+  
+        await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
+        console.log("Activity logged:", logEntry);
+      } catch (error) {
+        console.error("Error logging activity:", error);
+      }
+    }
+  };
   
 
 
@@ -320,13 +357,13 @@ const handleMultipleFileUpload = async (files: FileList | null) => {
     setLoading(true); // Start loading spinner
     const userName = await fetchUserFullName(); // Get uploader's name
     const uploadedFiles: UploadedFile[] = [];
-  
+    const uploadedFileNames: string[] = [];  // Track names of uploaded files for logging
+    const folderPath = `organizations/${organizationName}/ORG_files/${folderType}${currentPath ? `/${currentPath}` : ''}`; // Path of the current folder
+    const simplifiedFolderPath = `/${folderType}${currentPath ? `/${currentPath}` : ''}`; // Simplified path for the log
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const filePath = `organizations/${organizationName}/ORG_files/${folderType}${
-        currentPath ? `/${currentPath}` : ''
-      }/${file.name}`;
+      const filePath = `${folderPath}/${file.name}`;
 
       const fileExists = await checkFileExists(filePath); // Check if file exists
 
@@ -377,6 +414,7 @@ const handleMultipleFileUpload = async (files: FileList | null) => {
             };
 
             uploadedFiles.push(uploadedFile);
+            uploadedFileNames.push(file.name);  // Add file name to the list
             resolve(null);
           }
         );
@@ -385,14 +423,28 @@ const handleMultipleFileUpload = async (files: FileList | null) => {
 
     setFiles((prevFiles) => [...prevFiles, ...uploadedFiles]);
     alert(`Successfully uploaded ${uploadedFiles.length} file(s).`);
+
+    // Log the activity
+    let logMessage = '';
+    
+    if (uploadedFileNames.length === 1) {
+      // Log for single file with the simplified path
+      logMessage = `Uploaded 1 file: '${uploadedFileNames[0]}' to path '${simplifiedFolderPath}'`;
+    } else if (uploadedFileNames.length > 1) {
+      // Log for multiple files with the simplified path
+      logMessage = `Uploaded ${uploadedFileNames.length} files to path '${simplifiedFolderPath}'`;
+    }
+    
+    logActivity(logMessage); // Log the activity message
+
   } catch (error) {
     console.error('Error uploading files:', error);
     alert('Some files could not be uploaded.');
   } finally {
     setLoading(false); // Stop loading spinner
-
   }
 };
+
 
 // Helper function to check if a file exists
 const checkFileExists = async (filePath: string) => {
@@ -412,15 +464,19 @@ const checkFileExists = async (filePath: string) => {
 const handleDelete = async () => {
   try {
     // Base path for the selected folder or files
-    const basePath = `organizations/${organizationName}/ORG_files/${folderType}${
-      currentPath ? `/${currentPath}` : ''
-    }`;
+    const basePath = `organizations/${organizationName}/ORG_files/${folderType}${currentPath ? `/${currentPath}` : ''}`;
+
+    // Track deleted files and folders for logging
+    const deletedFiles: string[] = [];
+    const deletedFolders: string[] = [];
+    const simplifiedFolderPath = `/${folderType}${currentPath ? `/${currentPath}` : ''}`; // Simplified path for the log
 
     // Delete selected files
     const filesToDelete = Array.from(selectedFiles); // Convert Set to Array
     for (const fileName of filesToDelete) {
       const fileRef = ref(storage, `${basePath}/${fileName}`);
       await deleteObject(fileRef);
+      deletedFiles.push(fileName); // Add the deleted file name to the array
     }
 
     // Delete selected folders recursively
@@ -428,24 +484,45 @@ const handleDelete = async () => {
     for (const folderName of foldersToDelete) {
       const folderPath = `${basePath}/${folderName}`; // Ensure folderPath is typed correctly
       await deleteFolderRecursively(folderPath);
+      deletedFolders.push(folderName); // Add the deleted folder name to the array
     }
 
     // Update UI after deletion
-    setFiles((prevFiles) =>
-      prevFiles.filter((file) => !selectedFiles.has(file.name))
-    );
-    setFolders((prevFolders) =>
-      prevFolders.filter((folder) => !selectedFolders.has(folder.name)) // Compare folder.name with selectedFolders
-    );
+    setFiles((prevFiles) => prevFiles.filter((file) => !selectedFiles.has(file.name)));
+    setFolders((prevFolders) => prevFolders.filter((folder) => !selectedFolders.has(folder.name)));
     setSelectedFiles(new Set());
     setSelectedFolders(new Set());
 
     alert('Selected files and folders deleted successfully.');
+
+    // Log the activity
+    let logMessage = '';
+    
+    if (deletedFolders.length > 0) {
+      logMessage += `Deleted ${deletedFolders.length} folder(s) in ${simplifiedFolderPath}:\n`;
+      deletedFolders.forEach((folder) => {
+        logMessage += `• ${folder}\n`; // Add each folder and its path
+      });
+    }
+
+    if (deletedFiles.length > 0) {
+      logMessage += `Deleted ${deletedFiles.length} file(s) in ${simplifiedFolderPath}:\n`;
+      deletedFiles.forEach((file) => {
+        logMessage += `• ${file} \n`; // Add each file and its path
+      });
+    }
+
+    if (logMessage) {
+      logActivity(logMessage); // Log the final message
+    }
+
   } catch (error) {
     console.error('Error deleting files or folders:', error);
     alert('Error deleting files or folders.');
   }
 };
+
+
 
 const deleteFolderRecursively = async (folderPath: string) => {
   const folderRef = ref(storage, folderPath);

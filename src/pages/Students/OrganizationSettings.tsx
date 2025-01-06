@@ -14,9 +14,26 @@ const OrganizationSettings: React.FC = () => {
   const [newProfileImage, setNewProfileImage] = useState<File | null>(null);
   const [newCoverImage, setNewCoverImage] = useState<File | null>(null);
   const [userDetails, setUserDetails] = useState<any>(null);
-  
+  const [profileImagePreview, setProfileImagePreview] = useState(null);
+const [coverImagePreview, setCoverImagePreview] = useState(null);
+const [imagePreview, setImagePreview] = useState<string | null>(null);
+
   const auth = getAuth();
   const user = auth.currentUser;
+  const [isEditing, setIsEditing] = useState(false);
+  const enterEditMode = () => setIsEditing(true);
+const exitEditMode = () => setIsEditing(false);
+
+const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (file) {
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
+  }
+};
+
+
+
 
   useEffect(() => {
     const fetchUserDetails = async () => {
@@ -36,30 +53,41 @@ const OrganizationSettings: React.FC = () => {
     const fetchOrganizationData = async () => {
       const orgDocRef = doc(firestore, 'organizations', organizationName || '');
       const orgDoc = await getDoc(orgDocRef);
-      if (orgDoc.exists()) setOrganizationData(orgDoc.data());
+      if (orgDoc.exists()) {
+        const data = orgDoc.data();
+        setOrganizationData(data);
+        
+        // Set initial image previews from the existing paths
+        setProfileImagePreview(data.profileImagePath || null);
+        setCoverImagePreview(data.coverImagePath || null);
+      }
     };
     fetchOrganizationData();
   }, [organizationName]);
+  
 
   const logActivity = async (description: string) => {
-    if (userDetails) {
-      const logEntry = {
-        userName: `${userDetails.firstname} ${userDetails.lastname}`,
-        description,
-        organizationName: organizationName,
-        timestamp: Timestamp.now(),
-        profilePicture: userDetails.profilePicUrl || 'defaultProfilePictureUrl',
-      };
+    if (userDetails && organizationName) {
+      try {
+        const logEntry = {
+          userName: `${userDetails.firstname} ${userDetails.lastname}`,
+          description,
+          organizationName,
+          timestamp: Timestamp.now(),
+          profilePicture: userDetails.profilePicUrl || 'defaultProfilePictureUrl',
+        };
   
-      await addDoc(collection(firestore, 'studentlogs'), logEntry);
+        // Add the log to the activitylogs subcollection
+        await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
+        console.log('Log added successfully:', logEntry);
+      } catch (error) {
+        console.error('Error logging activity:', error);
+      }
+    } else {
+      console.warn('User details or organization name not available.');
     }
   };
-
-  const handleImageUpload = async (file: File, path: string) => {
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file);
-    return await getDownloadURL(storageRef);
-  };
+  
 
   const handleSaveChanges = async () => {
     try {
@@ -71,20 +99,20 @@ const OrganizationSettings: React.FC = () => {
       }
   
       if (newProfileImage) {
-        const profileUrl = await handleImageUpload(
-          newProfileImage,
-          `organizations/${organizationName}/profile.jpg`
-        );
-        updates.profileImagePath = profileUrl;
+        const profileImageRef = ref(storage, `organizations/${organizationName}/profile/${newProfileImage.name}`);
+        await uploadBytes(profileImageRef, newProfileImage);
+        const profileImageUrl = await getDownloadURL(profileImageRef);
+        updates.profileImageName = newProfileImage.name;
+        updates.profileImagePath = profileImageUrl;
         await logActivity('Updated profile picture');
       }
   
       if (newCoverImage) {
-        const coverUrl = await handleImageUpload(
-          newCoverImage,
-          `organizations/${organizationName}/cover.jpg`
-        );
-        updates.coverImagePath = coverUrl;
+        const coverImageRef = ref(storage, `organizations/${organizationName}/cover/${newCoverImage.name}`);
+        await uploadBytes(coverImageRef, newCoverImage);
+        const coverImageUrl = await getDownloadURL(coverImageRef);
+        updates.coverImageName = newCoverImage.name;
+        updates.coverImagePath= coverImageUrl;
         await logActivity('Updated cover photo');
       }
   
@@ -99,57 +127,132 @@ const OrganizationSettings: React.FC = () => {
     }
   };
   
+  
   if (!organizationData) return <div>Loading organization data...</div>;
 
   return (
-    <div className="gitners">
-      <Header /> 
-      
-      <div className="dashboard-container">
+    <div className="organization-announcements-page">
+      <Header />
+
+      <div className="organization-announcements-container">
         <div className="sidebar-section">
           <StudentPresidentSidebar />
         </div>
 
-        <div className="ORGSsettings-content">
-          <h2>Organization Settings</h2>
-
-          <div className="ORGSform-group">
-            <label>Organization Name</label>
-            <input
-              type="text"
-              value={organizationData.name}
-              disabled 
-            />
+        <div className="organization-announcements-content">
+          <div className="header-container">
+            <h1 className="headtitle">Settings</h1>
           </div>
-
+     
           <div className="ORGSform-group">
-            <label>Description</label>
-            <textarea
-              value={organizationData.description} // Use 'value' to bind state properly
-              onChange={(e) =>
-                setOrganizationData({ ...organizationData, description: e.target.value })
-              }
-            />
-          </div>
+  <label>Organization Name</label>
+  {/* Display organization name as plain text, no editing */}
+  <span>{organizationData.name}</span>
+</div>
 
-          <div className="ORGSform-group">
-            <label>Profile Picture</label>
-            <input 
-              type="file" 
-              onChange={(e) => setNewProfileImage(e.target.files?.[0] || null)} 
-            />
-          </div>
 
-          <div className="ORGSform-group">
-            <label>Cover Photo</label>
-            <input 
-              type="file" 
-              onChange={(e) => setNewCoverImage(e.target.files?.[0] || null)} 
-            />
-          </div>
+<div className="ORGSform-group">
+  <label>Description</label>
+  {isEditing ? (
+    <textarea
+      value={organizationData.description}
+      onChange={(e) =>
+        setOrganizationData({ ...organizationData, description: e.target.value })
+      }
+    />
+  ) : (
+    <p>{organizationData.description}</p>
+  )}
+</div>
 
-          <button onClick={handleSaveChanges}>Save Changes</button>
+    <div className="ORGSform-group">
+  <label>Profile Picture</label>
+  {isEditing ? (
+    <>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => {
+          setNewProfileImage(e.target.files?.[0] || null);
+          handleImageChange(e);
+        }}
+      />
+      {profileImagePreview && (
+        <div>
+          <img
+            src={profileImagePreview}
+            alt="Profile Preview"
+            style={{ width: '100px', height: '100px', objectFit: 'cover' }}
+          />
         </div>
+      )}
+    </>
+  ) : (
+    <div>
+      {organizationData.profileImageName ? (
+        <img
+          src={organizationData.profileImagePath}
+          alt="Profile"
+          style={{ width: '100px', height: '100px', objectFit: 'cover' }}
+        />
+      ) : (
+        <span>No profile picture</span>
+      )}
+    </div>
+  )}
+</div>
+
+<div className="ORGSform-group">
+  <label>Cover Photo</label>
+  {isEditing ? (
+    <>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => {
+          setNewCoverImage(e.target.files?.[0] || null);
+          handleImageChange(e);
+        }}
+      />
+      {coverImagePreview && (
+        <div>
+          <img
+            src={coverImagePreview}
+            alt="Cover Preview"
+            style={{ width: '100px', height: '100px', objectFit: 'cover' }}
+          />
+        </div>
+      )}
+    </>
+  ) : (
+    <div>
+      {organizationData.coverImageName ? (
+        <img
+          src={organizationData.coverImagePath}
+          alt="Cover"
+          style={{ width: '100px', height: '100px', objectFit: 'cover' }}
+        />
+      ) : (
+        <span>No cover photo</span>
+      )}
+    </div>
+  )}
+</div>
+
+
+
+<div className="form-actions">
+  {isEditing ? (
+    <>
+      <button onClick={handleSaveChanges}>Save Changes</button>
+      <button onClick={exitEditMode}>Cancel</button>
+    </>
+  ) : (
+    <button onClick={enterEditMode}>Edit</button>
+  )}
+</div>
+
+</div>
       </div>
     </div>
   );

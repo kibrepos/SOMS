@@ -12,7 +12,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck,faClock, faTimes  } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
 import { showToast } from '../../components/toast';
-
+import { getAuth } from 'firebase/auth'; 
 
 
 interface Event {
@@ -95,6 +95,43 @@ const [showAttendeesModal, setShowAttendeesModal] = useState(false);
 const [qrLink, setQrLink] = useState<string>(""); // Current QR code link
 const [newQrLink, setNewQrLink] = useState<string>(""); // Input for new link
 const [showArchiveModal, setShowArchiveModal] = useState(false);
+const [userDetails, setUserDetails] = useState<any>(null);
+
+useEffect(() => {
+  const fetchUserDetails = async () => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (currentUser) {
+      const userDocRef = doc(firestore, "students", currentUser.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        setUserDetails(userDoc.data());
+      }
+    }
+  };
+
+  fetchUserDetails();
+}, []);
+
+const logActivity = async (description: string) => {
+  if (organizationName && userDetails) {
+    try {
+      const logEntry = {
+        userName: `${userDetails.firstname} ${userDetails.lastname}`,
+        description,
+        organizationName,
+        timestamp: new Date(),
+      };
+
+      await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
+      console.log("Activity logged:", logEntry);
+    } catch (error) {
+      console.error("Error logging activity:", error);
+    }
+  }
+};
 
 const confirmArchiveEvent = () => {
   if (eventId && organizationName) {
@@ -250,6 +287,7 @@ const saveQrLink = async () => {
     // Update local state
     setQrLink(newQrLink);
     setNewQrLink("");
+    await logActivity(`Updated QR code for event "${eventDetails?.title}".`);
     showToast("QR code link updated successfully!", "success");
   } catch (error) {
     console.error("Error saving QR link:", error);
@@ -442,6 +480,7 @@ const handleArchiveEvent = async (eventId: string, organizationName: string) => 
     console.log("Event archived and associated tasks moved to archivedTasks successfully.");
 
     // Navigate to events page and show success message
+    await logActivity(`Archived event "${eventDetails?.title}".`);
     showToast("Event archived successfully.", "success");
     navigate(`/organization/${organizationName}/events`);
   } catch (error) {
@@ -476,9 +515,14 @@ const handleSaveAttendance = async (
       attendees: updatedAttendance, // Ensure all fields are present
     });
 
-    console.log("Attendance saved successfully for day:", dayIndex);
+    const isSingleDayEvent = eventDetails?.eventDates.length === 1;
+    const logMessage = isSingleDayEvent
+      ? `Updated attendance for event "${eventDetails?.title}".`
+      : `Updated attendance for event "${eventDetails?.title}" on Day ${dayIndex + 1}.`;
 
-    // Update local state with new attendance data
+      await logActivity(logMessage);
+      await logAttendees(dayIndex, updatedAttendance);
+
     setAttendance((prev) =>
       prev.map((a) =>
         a.dayIndex === dayIndex
@@ -494,6 +538,22 @@ const handleSaveAttendance = async (
   }
 };
 
+const logAttendees = async (dayIndex: number, attendees: { userId: string; name: string; role: string; status: string }[]) => {
+  if (!organizationName || !eventDetails) return;
+
+  try {
+    const isSingleDayEvent = eventDetails?.eventDates.length === 1;
+    const logMessage = isSingleDayEvent
+    ? `Attendance for the event "${eventDetails?.title}" has been successfully saved.`
+    : `Attendance for the event "${eventDetails?.title}" on Day ${dayIndex + 1} has been successfully saved.`;
+
+
+    await logActivity(logMessage);
+    console.log("Attendee log saved:", logMessage);
+  } catch (error) {
+    console.error("Error logging attendees:", error);
+  }
+};
 
 const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
   const file = e.target.files?.[0];
@@ -521,6 +581,12 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       );
 
       await setDoc(attendeesRef, { attendees: parsedData });
+      const isSingleDayEvent = eventDetails?.eventDates.length === 1;
+      const logMessage = isSingleDayEvent
+      ? `Uploaded attendee list for the event "${eventDetails?.title}".`
+      : `Uploaded attendee list for the event "${eventDetails?.title}" on Day ${selectedDayIndex + 1}.`;
+
+    await logActivity(logMessage);
       console.log("Attendees uploaded successfully!");
       showToast("Attendees uploaded successfully.", "success");
     }

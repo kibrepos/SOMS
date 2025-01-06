@@ -21,85 +21,108 @@ const OrganizationActivityLogs: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [newLogCount, setNewLogCount] = useState<number>(0);
 
- const fetchLogs = async () => {
-  setLoading(true);
-  try {
-    if (organizationName) {
-      const logsCollection = collection(firestore, 'studentlogs');
-      const q = query(
-        logsCollection,
-        where('organizationName', '==', organizationName),
-        orderBy('timestamp', 'desc'),
-        limit(10)
-      );
-
-      const logSnapshot = await getDocs(q);
-      const fetchedLogs: LogEntry[] = logSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          userName: data.userName,
-          description: data.description,
-          timestamp: data.timestamp instanceof Timestamp 
-            ? data.timestamp.toDate().toLocaleString() 
-            : new Date(data.timestamp).toLocaleString(), // Fallback for unexpected format
-        };
-      }) as LogEntry[];
-      
-
-      setLogs(fetchedLogs);
-      setLastVisible(logSnapshot.docs[logSnapshot.docs.length - 1]);
-
-      // Update new log count if there are new logs
-      if (fetchedLogs.length > 0) {
-        setNewLogCount(prevCount => prevCount + fetchedLogs.length);
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      if (organizationName) {
+        // Reference the activitylogs subcollection
+        const logsCollection = collection(firestore, `studentlogs/${organizationName}/activitylogs`);
+        const q = query(logsCollection, orderBy('timestamp', 'desc'), limit(10));
+  
+        const logSnapshot = await getDocs(q);
+        const fetchedLogs: LogEntry[] = logSnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            userName: data.userName,
+            description: data.description,
+            timestamp: data.timestamp instanceof Timestamp
+              ? data.timestamp.toDate().toLocaleString()
+              : new Date(data.timestamp).toLocaleString(), // Fallback for unexpected format
+          };
+        });
+  
+        setLogs(fetchedLogs);
+        setLastVisible(logSnapshot.docs[logSnapshot.docs.length - 1]); // Track the last document for pagination
       }
+    } catch (error) {
+      console.error("Error fetching logs: ", error);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error("Error fetching logs: ", error);
-  } finally {
-    setLoading(false);
-  }
-};
-
-
+  };
+  
   const fetchMoreLogs = async () => {
     if (!lastVisible || loadingMore) return;
-
+  
     setLoadingMore(true);
     try {
-      const logsCollection = collection(firestore, 'studentlogs');
+      // Reference the activitylogs subcollection
+      const logsCollection = collection(firestore, `studentlogs/${organizationName}/activitylogs`);
       const q = query(
         logsCollection,
-        where('organizationName', '==', organizationName),
         orderBy('timestamp', 'desc'),
-        startAfter(lastVisible), // Start fetching after the last visible document
+        startAfter(lastVisible), // Fetch after the last visible document
         limit(10)
       );
-
+  
       const logSnapshot = await getDocs(q);
-      const fetchedLogs: LogEntry[] = logSnapshot.docs.map(doc => ({
+      const fetchedLogs: LogEntry[] = logSnapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data(),
-        timestamp: new Date(doc.data().timestamp).toLocaleString(),
-      })) as LogEntry[];
-
-      setLogs(prevLogs => [...prevLogs, ...fetchedLogs]);
-      setLastVisible(logSnapshot.docs[logSnapshot.docs.length - 1]); // Update lastVisible
-
-      if (fetchedLogs.length < 10) {
-        setLastVisible(null); // No more logs to load
-      }
+        userName: doc.data().userName,
+        description: doc.data().description,
+        timestamp: doc.data().timestamp instanceof Timestamp
+          ? doc.data().timestamp.toDate().toLocaleString()
+          : new Date(doc.data().timestamp).toLocaleString(),
+      }));
+  
+      setLogs((prevLogs) => [...prevLogs, ...fetchedLogs]);
+      setLastVisible(logSnapshot.docs[logSnapshot.docs.length - 1]); // Update lastVisible for further pagination
     } catch (error) {
       console.error("Error fetching more logs: ", error);
     } finally {
       setLoadingMore(false);
     }
   };
+  
 
   useEffect(() => {
     fetchLogs();
   }, [organizationName]);
+
+
+  const formatDescription = (description: string) => {
+    // Check if description contains a specific pattern for deleted files
+    if (description.startsWith("Deleted")) {
+      // Extract the number of files, path, and file names
+      const match = description.match(/^Deleted (\d+) file\(s\) in ([^:]+):\s*(.*)$/);
+  
+      if (match) {
+        const numberOfFiles = match[1]; // Extract the number of files
+        const path = match[2]; // Extract the path where the files are deleted
+        const filesDeleted = match[3]?.split(" • ").map(file => file.trim()) || []; // Files separated by " • "
+  
+        return (
+          <div className="deleted-files-container">
+            {/* Display the message with the number of files and path */}
+            <p>Deleted {numberOfFiles} file(s) in {path}:</p>
+  
+            {/* Display each file on a new line */}
+            <ul>
+              {filesDeleted.map((file, index) => (
+                <li key={index}>{file}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+    }
+  
+    // If it's not related to deleted files, just return the description text
+    return <span>{description}</span>;
+  };
+  
+
 
   return (
     <div className="OAC-organization-dashboard-wrapper">
@@ -127,21 +150,31 @@ const OrganizationActivityLogs: React.FC = () => {
                   logs.map(log => (
                     <li key={log.id} className="OAC-log-item">
                       <div className="OAC-log-user-name">{log.userName}</div>
-                      <p className="OAC-log-message">{log.description}</p>
+                    <div className="OAC-log-message-container">
+  <p className="OAC-log-message">
+    {log.description.includes('Deleted') ? formatDescription(log.description) : log.description}
+  </p>
+</div>
+
                       <span className="OAC-log-timestamp">{log.timestamp}</span>
                     </li>
                   ))
                 )}
               </ul>
               {lastVisible ? (
-                <button onClick={fetchMoreLogs} disabled={loadingMore}>
-                  {loadingMore ? "Loading..." : "Load More Logs"}
-                </button>
-              ) : (
-                <button disabled>
-                  All logs loaded
-                </button>
-              )}
+               <button
+               onClick={fetchMoreLogs}
+               disabled={loadingMore}
+               className="load-more-button"
+             >
+               {loadingMore ? "Loading..." : "Load More Logs"}
+             </button>
+             ) : (
+               <button disabled className="load-more-button">
+                 All logs loaded
+               </button>
+             )
+             }
             </div>
           )}
         </div>

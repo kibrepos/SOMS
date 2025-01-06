@@ -5,12 +5,14 @@ import {
   doc,
   getDoc,
   updateDoc,
-  
+  addDoc,
+  collection
 } from "firebase/firestore";
 import "../../styles/CreateEvent.css"; // Shared CSS for styling
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Header from "../../components/Header";
 import StudentPresidentSidebar from "./StudentPresidentSidebar";
+import { getAuth } from 'firebase/auth';
 
 interface Event {
   title: string;
@@ -37,7 +39,45 @@ const EditEvent: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+const [userDetails, setUserDetails] = useState<any>(null);
+const [originalEventDetails, setOriginalEventDetails] = useState<Event | null>(null);
+const auth = getAuth();
+const user = auth.currentUser;
 
+useEffect(() => {
+  const fetchUserDetails = async () => {
+    if (user) {
+      const userDocRef = doc(firestore, 'students', user.uid); // Adjust collection name if necessary
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists()) {
+        setUserDetails(userDoc.data());
+      }
+    }
+  };
+
+  fetchUserDetails();
+}, [user]);
+
+
+const logActivity = async (description: string) => {
+  if (organizationName) {
+    try {
+      const logEntry = {
+        userName: `${userDetails.firstname || 'Unknown'} ${userDetails.lastname || 'User'}`,
+        description,
+        organizationName,
+        timestamp: new Date(),
+      };
+
+      await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
+      console.log('Log added:', logEntry);
+    } catch (error) {
+      console.error('Error logging activity:', error);
+    }
+  } else {
+    console.warn('Organization name not provided for logging activity.');
+  }
+};
   // Fetch event details
   useEffect(() => {
     const fetchEventDetails = async () => {
@@ -53,6 +93,7 @@ const EditEvent: React.FC = () => {
         if (eventDoc.exists()) {
           const eventData = eventDoc.data() as Event;
           setEventDetails(eventData);
+          setOriginalEventDetails(eventData);
           setImagePreview(eventData.imageUrl || null); // Load existing image preview
         }
       }
@@ -128,7 +169,7 @@ const EditEvent: React.FC = () => {
   };
   
   const handleSave = async () => {
-    if (!organizationName || !eventId || !eventDetails) return;
+    if (!organizationName || !eventId || !eventDetails || !originalEventDetails) return;
   
     // Validate all fields
     if (
@@ -169,6 +210,44 @@ const EditEvent: React.FC = () => {
         imageUrl, // Updated image URL
       });
   
+      // Log changes
+      const changes: string[] = [];
+
+      // Check for title change
+      if (eventDetails.title !== originalEventDetails.title) {
+        changes.push(`changed the title to "${eventDetails.title}"`);
+      }
+      
+      // Check for description change
+      if (eventDetails.description !== originalEventDetails.description) {
+        changes.push(`updated the description`);
+      }
+      
+      // Check for venue change
+      if (eventDetails.venue !== originalEventDetails.venue) {
+        changes.push(`updated the venue to "${eventDetails.venue}"`);
+      }
+      
+      // Check for event dates change
+      if (JSON.stringify(eventDetails.eventDates) !== JSON.stringify(originalEventDetails.eventDates)) {
+        changes.push(`updated the event dates`);
+      }
+      
+      // Check for event head change
+      if (eventDetails.eventHead !== originalEventDetails.eventHead) {
+        changes.push(`changed the event head`);
+      }
+      
+      // Log changes if any
+      if (changes.length > 0) {
+        const changesDescription = changes.join(", ");
+        await logActivity(`Updated event "${originalEventDetails.title}": ${changesDescription}.`);
+      } else {
+        // Log if no significant changes were made
+        await logActivity(`Updated event "${originalEventDetails.title}" with no significant changes.`);
+      }
+      
+  
       alert("Event updated successfully");
       navigate(`/organization/${organizationName}/events`);
     } catch (error) {
@@ -176,6 +255,7 @@ const EditEvent: React.FC = () => {
       alert("Failed to update event");
     }
   };
+  
   
 
   const handleCancel = () => navigate(-1);

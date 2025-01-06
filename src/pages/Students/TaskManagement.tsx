@@ -1,5 +1,5 @@
 import React, { useEffect, useState, ChangeEvent, FormEvent,useRef } from 'react';
-import { doc, updateDoc, collection,deleteDoc, setDoc,getDoc,onSnapshot,getDocs } from 'firebase/firestore';
+import { doc, updateDoc, collection,deleteDoc, setDoc,getDoc,onSnapshot,getDocs,addDoc } from 'firebase/firestore';
 import { firestore } from '../../services/firebaseConfig';
 import Header from '../../components/Header';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -108,6 +108,44 @@ const now = new Date();
 const formattedNow = now.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
 const [availableEvents, setAvailableEvents] = useState<Event[]>([]);
 const [newTaskEvent, setNewTaskEvent] = useState("General Task");
+const [userDetails, setUserDetails] = useState<any>(null);
+
+useEffect(() => {
+  const fetchUserDetails = async () => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (currentUser) {
+      const userDocRef = doc(firestore, "students", currentUser.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        setUserDetails(userDoc.data());
+      }
+    }
+  };
+
+  fetchUserDetails();
+}, []);
+
+const logActivity = async (description: string) => {
+  if (organizationName && userDetails) {
+    try {
+      const logEntry = {
+        userName: `${userDetails.firstname} ${userDetails.lastname}`,
+        description,
+        organizationName,
+        timestamp: new Date(),
+      };
+
+      await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
+      console.log("Activity logged:", logEntry);
+    } catch (error) {
+      console.error("Error logging activity:", error);
+    }
+  }
+};
+
 
 
 
@@ -239,6 +277,9 @@ const handleAddComment = async (submissionIndex: number) => {
     ); // Update the local submissionsTask
 
     setCommentText("");
+    
+    await logActivity(`Added a comment on task: "${submissionsTask?.title}".`);
+
     showToast("Comment added successfully!", "success");
   } catch (error) {
     console.error("Error saving comment:", error);
@@ -449,6 +490,8 @@ const filteredTasks = tasks
     // Reset modal
     closeEditModal();
 
+    await logActivity(`Edited the task: "${taskToEdit.title}".`);
+
     showToast("Task updated successfully!", "success");
   } catch (error) {
     console.error("Error updating task:", error);
@@ -517,6 +560,10 @@ const handleMemberSelect = (memberId: string) => {
       }
   
       // Close the delete modal
+      await logActivity(
+        `Deleted ${taskToDelete ? `task: "${taskToDelete.title}"` : `${tasksToDelete.length} task(s)`}.`
+      );
+      
       closeDeleteModal();
     } catch (error) {
       console.error("Error deleting task(s):", error);
@@ -784,6 +831,8 @@ useEffect(() => {
       setAttachments([]);
   
       closeNewTaskModal();
+      await logActivity(`Created a new task: "${newTaskTitle}".`);
+
       showToast("Task created successfully!","success");
     } catch (error) {
       console.error("Error creating task:", error);

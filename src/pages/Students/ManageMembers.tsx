@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { doc, getDoc,getDocs,updateDoc,collection,setDoc,arrayUnion  } from 'firebase/firestore';
-import { firestore,auth } from '../../services/firebaseConfig';
+import { doc, getDoc,getDocs,updateDoc,collection,setDoc,arrayUnion,addDoc  } from 'firebase/firestore';
+import { firestore } from '../../services/firebaseConfig';
+import { getAuth } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
@@ -69,6 +70,46 @@ const [availableStudents, setAvailableStudents] = useState<Member[]>([]);
 const openInviteModal = () => setIsInviteModalOpen(true);
 const closeInviteModal = () => setIsInviteModalOpen(false);
 const [role, setRole] = useState<string>('');
+const [userDetails, setUserDetails] = useState<any>(null);
+
+const auth = getAuth();
+const user = auth.currentUser;
+
+useEffect(() => {
+  const fetchUserDetails = async () => {
+    if (user) {
+      const userDocRef = doc(firestore, 'students', user.uid); // Adjust collection name if necessary
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists()) {
+        setUserDetails(userDoc.data());
+      }
+    }
+  };
+
+  fetchUserDetails();
+}, [user]);
+
+
+const logActivity = async (description: string) => {
+  if (organizationName) {
+    try {
+      const logEntry = {
+        userName: `${userDetails.firstname || 'Unknown'} ${userDetails.lastname || 'User'}`,
+        description,
+        organizationName,
+        timestamp: new Date(),
+      };
+
+      await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
+      console.log('Log added:', logEntry);
+    } catch (error) {
+      console.error('Error logging activity:', error);
+    }
+  } else {
+    console.warn('Organization name not provided for logging activity.');
+  }
+};
+
 useEffect(() => {
   const fetchRole = async () => {
     if (!organizationName) return;
@@ -217,6 +258,15 @@ useEffect(() => {
 
 const inviteStudent = async (studentId: string) => {
   try {
+    // Fetch the invited student's details
+    const studentDoc = await getDoc(doc(firestore, 'students', studentId));
+    let studentName = 'Unknown Student';
+
+    if (studentDoc.exists()) {
+      const studentData = studentDoc.data();
+      studentName = `${studentData.firstname} ${studentData.lastname}` || studentName;
+    }
+
     // Fetch organization data from Firestore
     const orgDocRef = doc(firestore, 'organizations', organizationName!);
     const orgDoc = await getDoc(orgDocRef);
@@ -234,8 +284,8 @@ const inviteStudent = async (studentId: string) => {
       subject: `You have been invited to join ${organizationName}.`,
       timestamp: new Date(),
       isRead: false,
-      senderName, 
-      senderProfilePic, 
+      senderName,
+      senderProfilePic,
       organizationName: organizationName,
       status: 'pending',
       type: 'invite',
@@ -256,6 +306,10 @@ const inviteStudent = async (studentId: string) => {
     });
 
     setInvitedStudents((prev) => [...prev, studentId]);
+
+    // Log activity with the student's name
+    await logActivity(`Invited ${studentName} to join the organization.`);
+
   } catch (error) {
     console.error('Error inviting student:', error);
     alert('Failed to send the invite. Please try again.');
@@ -279,6 +333,12 @@ const handleRoleUpdate = async () => {
       officers: updatedOfficers,
     }));
 
+
+    await logActivity(
+      `Updated role of ${officerToEdit.name} to ${newRole}.`,
+
+    );
+    
     closeEditModal();
     alert(`${officerToEdit.name}'s role has been updated to ${newRole}.`);
   } catch (error) {
@@ -326,6 +386,12 @@ const handleDemote = async () => {
       officers: updatedOfficers,
       members: updatedMembers,
     }));
+
+
+    await logActivity(
+      `Demoted ${officerToDemote.name} to a member.`,
+    );
+
 
     closeDemoteModal();
     alert(`${officerToDemote.name} has been demoted to a member.`);
@@ -382,6 +448,8 @@ const handlePromote = async () => {
       officers: updatedOfficers,
       members: updatedMembers,
     }));
+
+    await logActivity(`Promoted ${selectedMember.name} to the role of ${selectedRole}.`);
 
     closePromoteModal();
   } catch (error) {
@@ -463,6 +531,10 @@ const handleKick = async () => {
       senderName: orgDisplayName,
     });
 
+    await logActivity(
+      `Kicked ${selectedUser.name} from the organization.`,
+
+    );
     // Update local state and close the modal
     setOrganizationData(updatedData);
     closeKickModal();

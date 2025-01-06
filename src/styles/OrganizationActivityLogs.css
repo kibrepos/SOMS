@@ -16,8 +16,10 @@
     padding: 0; /* Remove padding */
     margin: 0; /* Remove margin */
     flex-grow: 1; /* Allow the logs list to grow */
-    overflow-y: auto; /* Enable scrolling for the logs list */
+    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-x: hidden; /* Disable horizontal scrolling */
   }
+  
   
   .OAC-log-item {
     border: 1px solid #ccc; /* Border around each log item */
@@ -28,7 +30,7 @@
     display: flex; /* Use flexbox for layout */
     flex-direction: column; /* Arrange items in a column */
     justify-content: space-between; /* Space out child items */
-    height: 100px; /* Set a fixed height */
+    min-height: 100px; /* Set a fixed height */
   }
   
   .OAC-log-user-name {
@@ -43,13 +45,19 @@
   }
   
   .OAC-log-message {
-    text-align:right; /* Center the message */
-    margin: 10px 0; /* Margin to separate it from the user name and timestamp */
-    font-size: 1em; /* Font size for the message */
-    color: #333; /* Darker text color for better readability */
-    flex-grow: 1; /* Allow the message area to grow */
+    text-align: left;
+    margin: 10px 0;
+    font-size: 1em;
+    color: #333;
+    flex-grow: 1;
+    word-wrap: break-word; /* Ensure long words break */
+    overflow-wrap: break-word; /* Ensure words break */
+    max-width: 60%; /* Adjust this to the desired width */
+    white-space: pre-line; /* Preserve spaces but allow line breaks */
+    text-overflow: ellipsis; /* Add ellipsis when text overflows */
   }
-  .OAC-load-more-button {
+  
+  .load-more-button {
     padding: 10px 20px;
     background-color: #4CAF50;
     color: white;
@@ -57,6 +65,10 @@
     border-radius: 4px;
     cursor: pointer;
     margin-top: 20px;
+  }
+  .load-more-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
   }
   .OAC-logs-container {
     display: flex;
@@ -78,4 +90,24 @@
     padding: 10px; /* Add some padding */
     text-align: center; /* Center the button */
     background: #f0f0f0; /* Optional: add a background to the button area */
+  }
+  .deleted-files-container ul li {
+    margin-bottom: 5px; /* Adds some spacing between the list items */
+    white-space: nowrap; /* Prevents filenames from wrapping */
+    overflow: hidden; /* Hide anything that exceeds the set width */
+    text-overflow: ellipsis; /* Adds ellipsis when filenames are too long */
+    max-width: 90%; /* Adjust the width of the filename before it breaks */
+  }
+  
+  .deleted-files-container p {
+    margin: 10px 0;
+   
+    font-size: 1em;
+    color: #333;
+  }
+  .OAC-log-message-container {
+    margin-left: 400px; /* Remove any extra margin to align with the green bar */
+    margin-right: auto; /* Keep it centered (optional) */
+    width: 100%; /* Make sure it takes the full available width */
+    display: block; /* Ensure it behaves like a block element */
   }

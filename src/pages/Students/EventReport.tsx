@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc,addDoc } from "firebase/firestore";
 import { firestore } from "../../services/firebaseConfig";
 import Header from "../../components/Header";
 import StudentPresidentSidebar from "./StudentPresidentSidebar";
 import { Chart } from "chart.js/auto"; 
 import "../../styles/EventReport.css";
 import jsPDF from "jspdf";
+import { getAuth } from 'firebase/auth';
 
 const EventReport: React.FC = () => {
   const { organizationName, eventId } = useParams<{
@@ -24,6 +25,43 @@ const EventReport: React.FC = () => {
   const [organizationDetails, setOrganizationDetails] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState<string>(''); // Store search input
   const [filteredTasks, setFilteredTasks] = useState<any[]>(tasks);  // Store filtered tasks based on the query
+  const [userDetails, setUserDetails] = useState<any>(null);
+  
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+  
+      if (currentUser) {
+        const userDocRef = doc(firestore, "students", currentUser.uid);
+        const userDoc = await getDoc(userDocRef);
+  
+        if (userDoc.exists()) {
+          setUserDetails(userDoc.data());
+        }
+      }
+    };
+  
+    fetchUserDetails();
+  }, []);
+  
+  const logActivity = async (description: string) => {
+    if (organizationName && userDetails) {
+      try {
+        const logEntry = {
+          userName: `${userDetails.firstname} ${userDetails.lastname}`,
+          description,
+          organizationName,
+          timestamp: new Date(),
+        };
+  
+        await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
+        console.log("Activity logged:", logEntry);
+      } catch (error) {
+        console.error("Error logging activity:", error);
+      }
+    }
+  };
   
 
   type EventDate = {
@@ -208,6 +246,9 @@ const EventReport: React.FC = () => {
   
       // Save the PDF
       doc.save(`${eventDetails?.title || "Event_Report"}.pdf`);
+// Log the activity with the event name
+logActivity(`Printed the event report for event: "${eventDetails?.title || "Unknown Event"}" as a PDF`);
+
     };
   
     img.onerror = (error) => {

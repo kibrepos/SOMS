@@ -195,103 +195,114 @@ const [userName, setUserName] = useState<string>('');
       setIsLogoutModalOpen(false);
     }
   };
+
+
   const handleAcceptInvite = async (notif: any) => {
-    try {
-      const userId = auth.currentUser?.uid;
-      if (!userId) return;
-  
-      const orgDocRef = doc(firestore, 'organizations', notif.organizationName);
-      const orgDoc = await getDoc(orgDocRef);
-  
-      if (orgDoc.exists()) {
-        const { members = [], invitedStudents = [], president, officers } = orgDoc.data();
-  
-        const studentDocRef = doc(firestore, 'students', userId);
-        const studentDoc = await getDoc(studentDocRef);
-        
-        let studentName = 'Unknown';
-        let studentProfilePicUrl = '/default-profile.png';
-        
-        if (studentDoc.exists()) {
-          const studentData = studentDoc.data();
-          studentName = `${studentData.firstname} ${studentData.lastname}`;
-          studentProfilePicUrl = studentData.profilePicUrl || '/default-profile.png';
-        }
-        
-        const newMember = {
-          id: userId,
-          name: studentName,
-          email: auth.currentUser?.email || 'unknown@example.com',
-          profilePicUrl: studentProfilePicUrl,
-        };
-        
-  
-        // Update members and remove from invitedStudents
-        const updatedMembers = [...members, newMember];
-        await updateDoc(orgDocRef, {
-          members: updatedMembers,
-          invitedStudents: arrayRemove(userId),
-        });
-  
-       
-        const subject = ` has accepted the invite and joined ${notif.organizationName}.`;
-  
-        // Prepare notification for president
-        const notificationsToSend = [
-          {
-            subject,
-  organizationName: notif.organizationName,
-  timestamp: new Date(),
-  isRead: false,
-  status: 'new_member',
-  type: 'general',
-  senderProfilePic: studentProfilePicUrl,
-  senderName: studentName,
-          },
-        ];
-  
-        // Send notifications to the president
-        if (president) {
-          const notifRef = doc(
-            firestore,
-            `notifications/${president.id}/userNotifications`,
-            uuidv4()
-          );
-          await setDoc(notifRef, { ...notificationsToSend[0], recipient: 'President' });
-        }
-  
-        // Send notifications to each officer
-        for (const officer of officers) {
-          const notifRef = doc(
-            firestore,
-            `notifications/${officer.id}/userNotifications`,
-            uuidv4()
-          );
-          await setDoc(notifRef, { ...notificationsToSend[0], recipient: officer.role });
-        }
-  
-        // Update original notification to 'accepted'
+  try {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return;
+
+    const orgDocRef = doc(firestore, 'organizations', notif.organizationName);
+    const orgDoc = await getDoc(orgDocRef);
+
+    if (orgDoc.exists()) {
+      const { members = [], invitedStudents = [], president, officers } = orgDoc.data();
+
+      const studentDocRef = doc(firestore, 'students', userId);
+      const studentDoc = await getDoc(studentDocRef);
+
+      let studentName = 'Unknown';
+      let studentProfilePicUrl = '/default-profile.png';
+
+      if (studentDoc.exists()) {
+        const studentData = studentDoc.data();
+        studentName = `${studentData.firstname} ${studentData.lastname}`;
+        studentProfilePicUrl = studentData.profilePicUrl || '/default-profile.png';
+      }
+
+      const newMember = {
+        id: userId,
+        name: studentName,
+        email: auth.currentUser?.email || 'unknown@example.com',
+        profilePicUrl: studentProfilePicUrl,
+      };
+
+      // Update members and remove from invitedStudents
+      const updatedMembers = [...members, newMember];
+      await updateDoc(orgDocRef, {
+        members: updatedMembers,
+        invitedStudents: arrayRemove(userId),
+      });
+
+      // Add activity log
+      const activityLogRef = collection(
+        firestore,
+        `studentlogs/${notif.organizationName}/activitylogs`
+      );
+      await setDoc(doc(activityLogRef, uuidv4()), {
+        description: `${studentName} has accepted the invite and joined the organization.`,
+        timestamp: new Date(),
+        profilePicture: studentProfilePicUrl,
+        userName: studentName,
+      });
+
+      const subject = `${studentName} has accepted the invite and joined ${notif.organizationName}.`;
+
+      // Prepare notification for president and officers
+      const notificationsToSend = {
+        subject,
+        organizationName: notif.organizationName,
+        timestamp: new Date(),
+        isRead: false,
+        status: 'new_member',
+        type: 'general',
+        senderProfilePic: studentProfilePicUrl,
+        senderName: studentName,
+      };
+
+      // Send notifications to the president
+      if (president) {
         const notifRef = doc(
           firestore,
-          `notifications/${userId}/userNotifications`,
-          notif.id
+          `notifications/${president.id}/userNotifications`,
+          uuidv4()
         );
-        await updateDoc(notifRef, { status: 'accepted', isRead: true });
-  
-        // Update local state
-        setNotifications((prev) =>
-          prev.map((n) =>
-            n.id === notif.id ? { ...n, status: 'accepted' } : n
-          )
-        );
-  
-        alert('You have successfully joined the organization.');
-        window.location.reload();
+        await setDoc(notifRef, { ...notificationsToSend, recipient: 'President' });
       }
-    } catch (error) {
-      console.error('Error accepting invite:', error);
+
+      // Send notifications to each officer
+      for (const officer of officers) {
+        const notifRef = doc(
+          firestore,
+          `notifications/${officer.id}/userNotifications`,
+          uuidv4()
+        );
+        await setDoc(notifRef, { ...notificationsToSend, recipient: officer.role });
+      }
+
+      // Update original notification to 'accepted'
+      const notifRef = doc(
+        firestore,
+        `notifications/${userId}/userNotifications`,
+        notif.id
+      );
+      await updateDoc(notifRef, { status: 'accepted', isRead: true });
+
+      // Update local state
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === notif.id ? { ...n, status: 'accepted' } : n
+        )
+      );
+
+      alert('You have successfully joined the organization.');
+      window.location.reload();
     }
-  };
+  } catch (error) {
+    console.error('Error accepting invite:', error);
+  }
+};
+
   
   const handleDeclineInvite = async (notif: any) => {
     try {
@@ -303,37 +314,33 @@ const [userName, setUserName] = useState<string>('');
   
       if (orgDoc.exists()) {
         const { president, officers } = orgDoc.data();
-      
-        // Fetch student data to use in the notification
+  
+        // Fetch student data to use in the notification and activity log
         const studentDocRef = doc(firestore, 'students', userId);
         const studentDoc = await getDoc(studentDocRef);
-      
+  
         let studentName = 'Unknown';
         let studentProfilePicUrl = '/default-profile.png';
-      
+  
         if (studentDoc.exists()) {
           const studentData = studentDoc.data();
           studentName = `${studentData.firstname} ${studentData.lastname}`;
           studentProfilePicUrl = studentData.profilePicUrl || '/default-profile.png';
         }
-      
-
-        const subject = `has declined the invite to join ${notif.organizationName}.`;
-      
+  
+        const subject = `${studentName} has declined the invite to join ${notif.organizationName}.`;
+  
         // Prepare notifications for president and officers
-        const notificationsToSend = [
-          {
-            subject,
-            organizationName: notif.organizationName,
-            timestamp: new Date(),
-            isRead: false,
-            status: 'invite_declined',
-            type: 'general',
-            senderProfilePic: studentProfilePicUrl,
-            senderName: studentName,
-          },
-        ];
-      
+        const notificationsToSend = {
+          subject,
+          organizationName: notif.organizationName,
+          timestamp: new Date(),
+          isRead: false,
+          status: 'invite_declined',
+          type: 'general',
+          senderProfilePic: studentProfilePicUrl,
+          senderName: studentName,
+        };
   
         // Notify president
         if (president) {
@@ -342,7 +349,7 @@ const [userName, setUserName] = useState<string>('');
             `notifications/${president.id}/userNotifications`,
             uuidv4()
           );
-          await setDoc(notifRef, { ...notificationsToSend[0], recipient: 'President' });
+          await setDoc(notifRef, { ...notificationsToSend, recipient: 'President' });
         }
   
         // Notify each officer
@@ -352,12 +359,24 @@ const [userName, setUserName] = useState<string>('');
             `notifications/${officer.id}/userNotifications`,
             uuidv4()
           );
-          await setDoc(notifRef, { ...notificationsToSend[0], recipient: officer.role });
+          await setDoc(notifRef, { ...notificationsToSend, recipient: officer.role });
         }
   
         // Remove the user from the invitedStudents list
         await updateDoc(orgDocRef, {
           invitedStudents: arrayRemove(userId),
+        });
+  
+        // Add activity log
+        const activityLogRef = collection(
+          firestore,
+          `studentlogs/${notif.organizationName}/activitylogs`
+        );
+        await setDoc(doc(activityLogRef, uuidv4()), {
+          description: `${studentName} has declined the invite to join the organization.`,
+          timestamp: new Date(),
+          profilePicture: studentProfilePicUrl,
+          userName: studentName,
         });
   
         // Update the original notification to 'declined'
@@ -381,6 +400,7 @@ const [userName, setUserName] = useState<string>('');
       console.error('Error declining invite:', error);
     }
   };
+  
   
   
   const toggleDropdown = () => {
@@ -484,67 +504,82 @@ const [userName, setUserName] = useState<string>('');
 
         {showNotifications && (
           <div className="notifications-dropdown" ref={notificationRef}>
-          <ul className="notification-list">
+
+
+        <ul className="notification-list">
   {notifications.length > 0 ? (
     notifications.map((notif) => (
-      <li 
-        key={notif.id} 
-        className={`notification-item ${notif.isRead ? 'read' : 'unread'}`} 
+      <li
+        key={notif.id}
+        className={`notification-item ${notif.isRead ? 'read' : 'unread'}`}
         onClick={() => openNotificationModal(notif)} // Open modal on click
       >
-            <div className="notification-content">
-            <div className="notification-header">
+        <div className="notification-content">
+          <div className="notification-header">
             <div className="notification-avatar">
-            {notif.senderProfilePic ? (
-              <img
-                src={notif.senderProfilePic}
-                alt="Profile"
-                className="notification-profile-pic"
-              />
-            ) : (
-              <div className="default-avatar">
-                {notif.senderName ? notif.senderName[0] : 'N'}
+              {notif.senderProfilePic ? (
+                <img
+                  src={notif.senderProfilePic}
+                  alt="Profile"
+                  className="notification-profile-pic"
+                />
+              ) : (
+                <div className="default-avatar">
+                  {notif.senderName ? notif.senderName[0] : 'N'}
+                </div>
+              )}
+            </div>
+
+            {/* Notification Text */}
+            <div className="notification-text">
+              <p className="notification-title">
+                <strong>{notif.senderName} :</strong>
+              </p>
+              {notif.subject}
+              <span className="notification-timestamp">
+                {new Date(notif.timestamp?.toDate()).toLocaleString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: 'numeric',
+                  hour12: true,
+                })}
+              </span>
+            </div>
+
+            {/* Optional Actions */}
+            {notif.type === 'invite' && notif.status === 'pending' && (
+              <div className="notification-actions">
+                <button
+                  className="accept-btn"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent opening modal
+                    handleAcceptInvite(notif);
+                  }}
+                >
+                  Accept
+                </button>
+                <button
+                  className="deny-btn"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent opening modal
+                    handleDeclineInvite(notif);
+                  }}
+                >
+                  Decline
+                </button>
               </div>
             )}
           </div>
-
-          {/* Notification Text */}
-          <div className="notification-text">
-            
-            <p className="notification-title">
-              <strong>{notif.senderName} :</strong>
-            </p>
-            {notif.subject}
-            <span className="notification-timestamp">
-              {new Date(notif.timestamp?.toDate()).toLocaleString('en-US', {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-                hour: 'numeric',
-                minute: 'numeric',
-                hour12: true,
-              })}
-            </span>
-          </div>
-
-          {/* Optional Actions */}
-          {notif.type === 'invite' && notif.status === 'pending' && (
-            <div className="notification-actions">
-              <button className="accept-btn" onClick={() => handleAcceptInvite(notif)}>
-                Accept
-              </button>
-              <button className="deny-btn" onClick={() => handleDeclineInvite(notif)}>
-                Deny
-              </button>
-            </div>
-          )}
-        </div></div>
+        </div>
       </li>
     ))
   ) : (
     <li className="no-notifications">No notifications available.</li>
   )}
 </ul>
+
 
 {/* Notification Detail Modal */}
 {isNotificationModalOpen && selectedNotification && (

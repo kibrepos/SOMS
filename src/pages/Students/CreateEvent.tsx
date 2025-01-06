@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { firestore, storage } from "../../services/firebaseConfig"; // Firebase setup
-import { doc, setDoc, serverTimestamp, collection, getDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, collection, getDoc,addDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/Header";
@@ -25,7 +25,44 @@ const CreateEvent: React.FC = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const navigate = useNavigate();
   const auth = getAuth();
+const [userDetails, setUserDetails] = useState<any>(null);
 
+useEffect(() => {
+  const fetchUserDetails = async () => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (currentUser) {
+      const userDocRef = doc(firestore, "students", currentUser.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        setUserDetails(userDoc.data());
+      }
+    }
+  };
+
+  fetchUserDetails();
+}, []);
+
+const logActivity = async (description: string) => {
+  if (organizationName && userDetails) {
+    try {
+      const logEntry = {
+        userName: `${userDetails.firstname} ${userDetails.lastname}`,
+        description,
+        organizationName,
+        timestamp: new Date(),
+      };
+
+      await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
+      console.log("Activity logged:", logEntry);
+    } catch (error) {
+      console.error("Error logging activity:", error);
+    }
+  }
+};
+  
   useEffect(() => {
     // Get current user's authentication and organization data
     auth.onAuthStateChanged((user) => {
@@ -142,6 +179,9 @@ const handleImageUpload = async (eventName: string) => {
       // Save the new event document to Firestore
       await setDoc(newEventRef, newEvent);
   
+
+      await logActivity(`Created a new event titled "${eventTitle}" `);
+
       alert("Event created successfully!");
       navigate(`/organization/${organizationName}/events`);
     } catch (error) {
