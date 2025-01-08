@@ -265,7 +265,7 @@ const [userName, setUserName] = useState<string>('');
         const notifRef = doc(
           firestore,
           `notifications/${president.id}/userNotifications`,
-          uuidv4()
+          notif.id
         );
         await setDoc(notifRef, { ...notificationsToSend, recipient: 'President' });
       }
@@ -275,7 +275,7 @@ const [userName, setUserName] = useState<string>('');
         const notifRef = doc(
           firestore,
           `notifications/${officer.id}/userNotifications`,
-          uuidv4()
+          notif.id
         );
         await setDoc(notifRef, { ...notificationsToSend, recipient: officer.role });
       }

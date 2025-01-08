@@ -321,31 +321,68 @@ const handleRoleUpdate = async () => {
   if (!officerToEdit || !newRole) return;
 
   try {
+    // Fetch organization data from Firestore
+    const orgDocRef = doc(firestore, 'organizations', organizationName!);
+    const orgDoc = await getDoc(orgDocRef);
+
+    let senderName = organizationName || 'Unknown Organization';
+    let senderProfilePic = '/default-profile.png'; // Default profile picture
+
+    if (orgDoc.exists()) {
+      const orgData = orgDoc.data();
+      senderName = orgData.name || senderName; // Use the organization name
+      senderProfilePic = orgData.profileImagePath || senderProfilePic; // Use the organization's profile image
+    }
+
+    // Update the officer's role in the officers list
     const updatedOfficers = organizationData!.officers.map((officer) =>
       officer.id === officerToEdit.id ? { ...officer, role: newRole } : officer
     );
 
-    const orgDocRef = doc(firestore, 'organizations', organizationName!);
+    // Update Firestore with the new officer roles
     await updateDoc(orgDocRef, { officers: updatedOfficers });
 
+    // Refresh the state with the updated officers
     setOrganizationData((prev) => ({
       ...prev!,
       officers: updatedOfficers,
     }));
 
+    // Log the role update activity
+    await logActivity(`Updated role of ${officerToEdit.name} to ${newRole}.`);
 
-    await logActivity(
-      `Updated role of ${officerToEdit.name} to ${newRole}.`,
+    // Send a notification to the officer about their updated role
+    const notification = {
+      subject: `Your role has been updated to ${newRole}`,
+      timestamp: new Date(),
+      isRead: false,
+      senderName,
+      senderProfilePic,
+      organizationName: organizationName,
+      status: 'role-updated',
+      type: 'role-change',
+    };
 
+    const notificationRef = doc(
+      firestore,
+      `notifications/${officerToEdit.id}/userNotifications`,
+      uuidv4()
     );
-    
+
+    await setDoc(notificationRef, notification);
+
+    // Close the edit modal
     closeEditModal();
-    alert(`${officerToEdit.name}'s role has been updated to ${newRole}.`);
+   
   } catch (error) {
     console.error('Error updating officer role:', error);
-    alert('Failed to update the role. Please try again.');
   }
 };
+
+
+
+
+
 const closeEditModal = () => {
   setOfficerToEdit(null);
   setNewRole('');
@@ -357,14 +394,18 @@ const openDemoteModal = (officer: Officer) => {
   setOfficerToDemote(officer);
   setIsDemoteModalOpen(true);
 };
+
+
 const handleDemote = async () => {
   if (!organizationData || !organizationName || !officerToDemote) return;
 
   try {
+    // Filter out the demoted officer from the officers list
     const updatedOfficers = organizationData.officers.filter(
       (officer) => officer.id !== officerToDemote.id
     );
 
+    // Add the demoted officer to the members list
     const updatedMembers = [
       ...organizationData.members,
       {
@@ -375,31 +416,64 @@ const handleDemote = async () => {
       },
     ];
 
+    // Fetch organization data from Firestore
     const orgDocRef = doc(firestore, 'organizations', organizationName);
+    const orgDoc = await getDoc(orgDocRef);
+
+    let senderName = organizationName || 'Unknown Organization';
+    let senderProfilePic = '/default-profile.png'; // Default profile picture
+
+    if (orgDoc.exists()) {
+      const orgData = orgDoc.data();
+      senderName = orgData.name || senderName; // Use the organization name
+      senderProfilePic = orgData.profileImagePath || senderProfilePic; // Use the organization's profile image
+    }
+
+    // Update Firestore with the new officers and members lists
     await updateDoc(orgDocRef, {
       officers: updatedOfficers,
       members: updatedMembers,
     });
-    window.location.reload();
+
+    // Refresh the state with the updated organization data
     setOrganizationData((prev) => ({
       ...prev!,
       officers: updatedOfficers,
       members: updatedMembers,
     }));
 
+    // Log the demotion activity
+    await logActivity(`Demoted ${officerToDemote.name} to a member.`);
 
-    await logActivity(
-      `Demoted ${officerToDemote.name} to a member.`,
+    // Send a notification to the demoted officer
+    const notification = {
+      subject: `You have been demoted to a member.`,
+      timestamp: new Date(),
+      isRead: false,
+      senderName,
+      senderProfilePic,
+      organizationName: organizationName,
+      status: 'demoted',
+      type: 'role-change',
+    };
+
+    const notificationRef = doc(
+      firestore,
+      `notifications/${officerToDemote.id}/userNotifications`,
+      uuidv4()
     );
 
+    await setDoc(notificationRef, notification);
 
+    // Close the demote modal
     closeDemoteModal();
-    alert(`${officerToDemote.name} has been demoted to a member.`);
+  
   } catch (error) {
     console.error('Error demoting officer:', error);
     alert('Failed to demote the officer. Please try again.');
   }
 };
+
 const closeDemoteModal = () => {
   setOfficerToDemote(null);
   setIsDemoteModalOpen(false);
@@ -418,10 +492,13 @@ const openPromoteModal = (member: Member) => {
   setSelectedMember(member);
   setIsPromoteModalOpen(true);
 };
+
+
 const handlePromote = async () => {
   if (!selectedMember || !selectedRole) return;
 
   try {
+    // Update the list of officers
     const updatedOfficers = [
       ...organizationData!.officers,
       {
@@ -433,29 +510,71 @@ const handlePromote = async () => {
       },
     ];
 
+    // Remove the promoted member from the members list
     const updatedMembers = organizationData!.members.filter(
       (member) => member.id !== selectedMember.id
     );
 
+    // Fetch organization data from Firestore
     const orgDocRef = doc(firestore, 'organizations', organizationName!);
+    const orgDoc = await getDoc(orgDocRef);
+
+    let senderName = organizationName || 'Unknown Organization';
+    let senderProfilePic = '/default-profile.png'; // Default profile picture
+
+    if (orgDoc.exists()) {
+      const orgData = orgDoc.data();
+      senderName = orgData.name || senderName; // Use the organization name
+      senderProfilePic = orgData.profileImagePath || senderProfilePic; // Use the organization's profile image
+    }
+
+    // Update Firestore with the new officer and member lists
     await updateDoc(orgDocRef, {
       officers: updatedOfficers,
       members: updatedMembers,
     });
-    window.location.reload();
+
+    // Refresh the state with the updated organization data
     setOrganizationData((prev) => ({
       ...prev!,
       officers: updatedOfficers,
       members: updatedMembers,
     }));
 
+    // Log the promotion activity
     await logActivity(`Promoted ${selectedMember.name} to the role of ${selectedRole}.`);
 
+    // Send a notification to the promoted member
+    const notification = {
+      subject: `Congratulations! You have been promoted to ${selectedRole}.`,
+      timestamp: new Date(),
+      isRead: false,
+      senderName,
+      senderProfilePic,
+      organizationName: organizationName,
+      status: 'promoted',
+      type: 'role-change',
+    };
+
+    const notificationRef = doc(
+      firestore,
+      `notifications/${selectedMember.id}/userNotifications`,
+      uuidv4()
+    );
+
+    await setDoc(notificationRef, notification);
+
+    // Close the promote modal
     closePromoteModal();
+
+    // Reload the page to reflect changes (if needed)
+    window.location.reload();
   } catch (error) {
     console.error('Error promoting member:', error);
+    alert('Failed to promote the member. Please try again.');
   }
 };
+
 
 const closePromoteModal = () => {
   setSelectedMember(null);

@@ -11,6 +11,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash,faSync } from '@fortawesome/free-solid-svg-icons';
 import '../../styles/TaskManagement.css';
 import { showToast } from '../../components/toast';
+import { v4 as uuidv4 } from 'uuid';
 
 interface Task {
   id: string;
@@ -31,6 +32,7 @@ interface Task {
     | 'Extended' // New status for extended tasks
     | 'Extended-Overdue'; // New status for extended tasks that were overdue
   givenBy: string;
+  senderId: string;
   attachments?: string[];
   submissions?: Submission[];
 }
@@ -109,6 +111,8 @@ const formattedNow = now.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
 const [availableEvents, setAvailableEvents] = useState<Event[]>([]);
 const [newTaskEvent, setNewTaskEvent] = useState("General Task");
 const [userDetails, setUserDetails] = useState<any>(null);
+
+
 
 useEffect(() => {
   const fetchUserDetails = async () => {
@@ -205,7 +209,6 @@ useEffect(() => {
 
   fetchData(); // Run the chained fetches
 }, [organizationName])
-
 const handleAddComment = async (submissionIndex: number) => {
   if (!commentText.trim()) {
     showToast("Comment cannot be empty!", "error");
@@ -277,7 +280,30 @@ const handleAddComment = async (submissionIndex: number) => {
     ); // Update the local submissionsTask
 
     setCommentText("");
-    
+
+    // Notify assigned members and committees about the comment
+    const recipients = [...(taskData.assignedMembers || []), ...(taskData.assignedCommittees || [])];
+
+    await Promise.all(
+      recipients.map(async (id) => {
+        const notificationRef = doc(
+          firestore,
+          `notifications/${id}/userNotifications`,
+          uuidv4()
+        );
+        await setDoc(notificationRef, {
+          subject: `Commented on your submission on task "${taskData.title}".`,
+          description: `A new comment has been added by ${userData.firstname} ${userData.lastname}.`,
+          timestamp: new Date(),
+          isRead: false,
+          taskId: submissionsTask?.id,
+          senderName: `${userData.firstname} ${userData.lastname}`,
+          senderProfilePic: userData.profilePicUrl,
+          type: "task-comment",
+        });
+      })
+    );
+
     await logActivity(`Added a comment on task: "${submissionsTask?.title}".`);
 
     showToast("Comment added successfully!", "success");
@@ -286,6 +312,7 @@ const handleAddComment = async (submissionIndex: number) => {
     showToast("Failed to add the comment. Please try again.", "error");
   }
 };
+
 
 
 
@@ -748,7 +775,7 @@ useEffect(() => {
     e.preventDefault();
   
     if (!organizationName || !currentUser) {
-      showToast("Missing organization name or user.","error");
+      showToast("Missing organization name or user.", "error");
       return;
     }
   
@@ -756,10 +783,9 @@ useEffect(() => {
       showToast("Start date cannot be in the past.", "error");
       return;
     }
-    // Validate that the due date is not earlier than the start date
+  
     if (new Date(newTaskDueDate) < new Date(newTaskStartDate)) {
-
-      showToast("Due date cannot be earlier than the start date.","error");
+      showToast("Due date cannot be earlier than the start date.", "error");
       return;
     }
   
@@ -767,16 +793,13 @@ useEffect(() => {
       showToast("You must assign the task to at least one member or committee.", "error");
       return;
     }
-
   
     try {
-      // Get the current user's name
       const userDoc = await getDoc(doc(firestore, "students", currentUser.uid));
       const givenBy = userDoc.exists()
         ? `${userDoc.data()?.firstname} ${userDoc.data()?.lastname}`
         : "Unknown User";
   
-      // Process attachments
       const attachmentURLs = await Promise.all(
         attachments.map(async (file) => {
           const storageRef = ref(storage, `tasks/${Date.now()}-${file.name}`);
@@ -784,17 +807,6 @@ useEffect(() => {
           return await getDownloadURL(storageRef);
         })
       );
-  
-      // Prepare `assignedTo` and `assignedToNames`
-      const allAssigned = [...selectedMembers, ...selectedCommittees];
-      const assignedToWithNames = allAssigned.map((id) => {
-        const member = availableMembers.find((m) => m.id === id);
-        const committee = availableCommittees.find((c) => c.id === id);
-        return {
-          id,
-          name: member?.name || committee?.name || "Unknown",
-        };
-      });
   
       const newTask: Task = {
         id: Date.now().toString(),
@@ -808,20 +820,18 @@ useEffect(() => {
         event: newTaskEvent,
         taskStatus: "Started",
         givenBy,
+        senderId: currentUser.uid, 
         attachments: attachmentURLs,
       };
   
-      // Save the new task to Firestore
       const taskDocRef = doc(
         firestore,
         `tasks/${organizationName}/AllTasks/${newTask.id}`
       );
       await setDoc(taskDocRef, newTask);
   
-      // Update local state
       setTasks((prev) => [...prev, newTask]);
   
-      // Reset form state
       setNewTaskTitle("");
       setNewTaskDescription("");
       setNewTaskStartDate("");
@@ -832,11 +842,42 @@ useEffect(() => {
   
       closeNewTaskModal();
       await logActivity(`Created a new task: "${newTaskTitle}".`);
-
-      showToast("Task created successfully!","success");
+  
+      const orgDocRef = doc(firestore, "organizations", organizationName);
+      const orgDoc = await getDoc(orgDocRef);
+      const orgData = orgDoc.exists() ? orgDoc.data() : null;
+  
+      const senderName = orgData?.name || organizationName; // Organization name
+      const senderProfilePic = orgData?.profileImagePath || "/default-org.png"; // Organization profile picture
+  
+      
+      await Promise.all(
+        [...selectedMembers, ...selectedCommittees].map(async (id) => {
+          const notificationRef = doc(
+            firestore,
+            `notifications/${id}/userNotifications`,
+            uuidv4()
+          );
+      
+          // Fetch organization details (if not already available)
+       
+          await setDoc(notificationRef, {
+            subject: `You have been assigned a new task: "${newTaskTitle}".`,
+            description: newTaskDescription,
+            timestamp: new Date(),
+            isRead: false,
+            taskId: newTask.id,
+            senderName, // Include sender's name
+            senderProfilePic , // Include organization picture
+            type: "task-assignment",
+          });
+        })
+      );
+  
+      showToast("Task created successfully!", "success");
     } catch (error) {
       console.error("Error creating task:", error);
-      showToast("Failed to create the task. Please try again.","error");
+      showToast("Failed to create the task. Please try again.", "error");
     }
   };
   

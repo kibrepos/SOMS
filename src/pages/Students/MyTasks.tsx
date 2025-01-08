@@ -1,6 +1,6 @@
 import React, { useEffect, useState  } from "react";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { doc, getDoc,updateDoc,query, arrayUnion, onSnapshot,collection } from "firebase/firestore";
+import { doc, getDoc,updateDoc,query, arrayUnion, onSnapshot,collection,setDoc } from "firebase/firestore";
 import { firestore } from "../../services/firebaseConfig";
 import { getAuth, onAuthStateChanged, User } from "firebase/auth";
 import { useParams } from "react-router-dom";
@@ -12,6 +12,7 @@ import { faSync } from "@fortawesome/free-solid-svg-icons";
 import '../../styles/TaskManagement.css';
 import { showToast } from '../../components/toast';
 import { useNavigate } from "react-router-dom";
+import { v4 as uuidv4 } from 'uuid';
 
 interface Task {
   id: string;
@@ -28,6 +29,7 @@ interface Task {
   givenBy: string;
   attachments?: string[];
   submissions?: Submission[];
+   notificationsSent: string[];
 }
 
 interface Submission {
@@ -126,83 +128,148 @@ const logActivity = async (description: string) => {
     return fileName.replace(/^\d+-/, ''); // Remove leading numbers followed by a dash
   };
   
-const handleAddComment = async (submissionIndex: number) => {
-  if (!commentText.trim()) {
-    showToast("Comment cannot be empty!", "error");
-    return;
-  }
-
-  const user = auth.currentUser;
-  if (!user) {
-    showToast("You must be logged in to comment.", "error");
-    return;
-  }
-
-  // Fetch user data from Firestore
-  const userDoc = await getDoc(doc(firestore, "students", user.uid));
-  const userData = userDoc.exists() ? userDoc.data() : null;
-
-  if (!userData) {
-    showToast("User data not found.", "error");
-    return;
-  }
-
-  const newComment = {
-    text: commentText,
-    user: {
-      name: `${userData.firstname} ${userData.lastname}`,
-      profilePicUrl: userData.profilePicUrl,
-    },
-    timestamp: Date.now(),
-  };
-
-  try {
-    // Fetch the existing task
-    const taskDocRef = doc(firestore, `tasks/${organizationName}/AllTasks/${submissionsTask?.id}`);
-    const taskDoc = await getDoc(taskDocRef);
-
-    if (!taskDoc.exists()) {
-      throw new Error("Task document does not exist.");
+  const handleAddComment = async (submissionIndex: number) => {
+    if (!commentText.trim()) {
+      showToast("Comment cannot be empty!", "error");
+      return;
     }
-
-    const taskData = taskDoc.data();
-    const submissions = taskData.submissions || []; // Ensure submissions array exists
-
-    // Add the comment to the correct submission
-    if (!submissions[submissionIndex]) {
-      throw new Error(`Submission at index ${submissionIndex} does not exist.`);
+  
+    const user = auth.currentUser;
+    if (!user) {
+      showToast("You must be logged in to comment.", "error");
+      return;
     }
-
-    if (!submissions[submissionIndex].comments) {
-      submissions[submissionIndex].comments = []; // Initialize comments array if not present
+  
+    // Fetch user data from Firestore
+    const userDoc = await getDoc(doc(firestore, "students", user.uid));
+    const userData = userDoc.exists() ? userDoc.data() : null;
+  
+    if (!userData) {
+      showToast("User data not found.", "error");
+      return;
     }
-
-    submissions[submissionIndex].comments.push(newComment); // Add the new comment
-
-    // Update Firestore with the modified submissions array
-    await updateDoc(taskDocRef, { submissions });
-
-    // Update local state
-    setComments((prev) => {
-      const updatedComments = [...prev];
-      if (!updatedComments[submissionIndex]) {
-        updatedComments[submissionIndex] = [];
+  
+    const senderName = `${userData.firstname} ${userData.lastname}`;
+    const senderProfilePic = userData.profilePicUrl;
+  
+    const newComment = {
+      text: commentText,
+      user: {
+        name: senderName,
+        profilePicUrl: senderProfilePic,
+      },
+      timestamp: Date.now(),
+    };
+  
+    try {
+      // Fetch the existing task
+      const taskDocRef = doc(firestore, `tasks/${organizationName}/AllTasks/${submissionsTask?.id}`);
+      const taskDoc = await getDoc(taskDocRef);
+  
+      if (!taskDoc.exists()) {
+        throw new Error("Task document does not exist.");
       }
-      updatedComments[submissionIndex].push(newComment);
-      return updatedComments;
-    });
+  
+      const taskData = taskDoc.data();
+      const submissions = taskData.submissions || [];
+  
+      // Add the comment to the correct submission
+      if (!submissions[submissionIndex]) {
+        throw new Error(`Submission at index ${submissionIndex} does not exist.`);
+      }
+  
+      if (!submissions[submissionIndex].comments) {
+        submissions[submissionIndex].comments = [];
+      }
+  
+      submissions[submissionIndex].comments.push(newComment);
+  
+      // Update Firestore with the modified submissions array
+      await updateDoc(taskDocRef, { submissions });
+  
+      // Update local state
+      setComments((prev) => {
+        const updatedComments = [...prev];
+        if (!updatedComments[submissionIndex]) {
+          updatedComments[submissionIndex] = [];
+        }
+        const isDuplicate = updatedComments[submissionIndex].some(
+          (comment) => comment.timestamp === newComment.timestamp
+        );
+        if (!isDuplicate) {
+          updatedComments[submissionIndex].push(newComment);
+        }
+        return updatedComments;
+      });
+  
+      setSubmissionsTask((prev) =>
+        prev ? { ...prev, submissions } : null
+      );
+  
+      setCommentText("");
+  
+      // Send notifications
+      const recipientIds = new Set<string>();
+  
+      // Task giver
+      if (taskData.senderId) {
+        recipientIds.add(taskData.senderId);
+      }
+  
+      // Assigned members
+      if (taskData.assignedMembers?.length > 0) {
+        taskData.assignedMembers.forEach((id: string) => {
+          if (id !== user.uid) recipientIds.add(id);
+        });
+      }
+  
+      // Committees and their members
+      if (taskData.assignedCommittees?.length > 0 && organizationData?.committees) {
+        taskData.assignedCommittees.forEach((committeeId: string) => {
+          const committee = organizationData.committees.find(
+            (c: any) => c.id === committeeId
+          );
+          if (committee) {
+            if (committee.head?.id && committee.head.id !== user.uid) {
+              recipientIds.add(committee.head.id);
+            }
+            committee.members?.forEach((member: any) => {
+              if (member.id !== user.uid) recipientIds.add(member.id);
+            });
+          }
+        });
+      }
+  
+      // Send notifications to all recipients
+      const notificationPromises = Array.from(recipientIds).map((recipientId) => {
+        const notificationRef = doc(
+          firestore,
+          `notifications/${recipientId}/userNotifications`,
+          uuidv4()
+        );
+        return setDoc(notificationRef, {
+          subject: `commented on the task: "${taskData.title}".`,
+          description: `${senderName} commented: "${commentText}"`,
+          timestamp: new Date(),
+          isRead: false,
+          senderName,
+          senderProfilePic,
+          taskId: taskData.id,
+          type: "task-comment",
+        });
+      });
+  
+      await Promise.all(notificationPromises);
+  
+      showToast("Comment added successfully", "success");
+    } catch (error) {
+      console.error("Error saving comment or sending notifications:", error);
+      showToast("Failed to add the comment. Please try again.", "error");
+    }
+  };
+  
 
-    setSubmissionsTask((prev) =>
-      prev ? { ...prev, submissions } : null
-    ); // Update the local submissionsTask
-
-    setCommentText("");
-    showToast("Comment added successfully!", "success");
-  } catch (error) {
-    console.error("Error saving comment:", error);
-    showToast("Failed to add the comment. Please try again.", "error");
-  }
-};
+  
 const fetchAvailableMembersAndCommittees = async () => {
   if (!organizationName) return;
 
@@ -270,6 +337,8 @@ const fetchMyTasks = async () => {
     const tasksCollectionPath = `tasks/${decodedOrgName}/AllTasks`;
     const taskQuery = query(collection(firestore, tasksCollectionPath));
 
+    const notificationPromises: Promise<void>[] = [];
+
     // Listen for real-time updates using onSnapshot
     const unsubscribe = onSnapshot(taskQuery, async (querySnapshot) => {
       if (querySnapshot.empty) {
@@ -281,43 +350,117 @@ const fetchMyTasks = async () => {
       const userTasks: Task[] = [];
       const currentDate = new Date();
 
-      const updateOverdueTasks = querySnapshot.docs.map(async (docSnapshot) => {
+      const handleDueNotifications = querySnapshot.docs.map(async (docSnapshot) => {
         const taskData = docSnapshot.data() as Task;
-        const taskDueDate = new Date(taskData.dueDate);
+        const taskDueDate = new Date(taskData.dueDate); // Use the due date
 
-        // Adjust due date to 12:01 AM the next day
-        taskDueDate.setDate(taskDueDate.getDate() + 1);
-        taskDueDate.setHours(0, 1, 0, 0); // Set to 12:01 AM the next day
+        // Ensure the task remains visible in "My Tasks" and initialize notificationsSent if not exists
+        if (!taskData.notificationsSent) taskData.notificationsSent = [];
 
-        // Check if the task is overdue
-        if (currentDate > taskDueDate && taskData.taskStatus !== "Overdue") {
-          const overdueTimestamp = currentDate.toISOString(); // Record current date and time
-          await updateDoc(docSnapshot.ref, {
-            taskStatus: "Overdue",
-            overdueTime: overdueTimestamp, // Store the overdue time
-          });
+        const hoursToDue = (taskDueDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60); // Calculate hours to due date
 
-          taskData.taskStatus = "Overdue"; // Update local task data
-        }
+        // Generate unique notification IDs for 24h and 6h
+        const notifId24h = `${taskData.id}-24h`;
+        const notifId6h = `${taskData.id}-6h`;
 
-        // Check if the task is assigned to the current user or their committees
-        if (
-          taskData.assignedMembers?.includes(userId) ||
-          taskData.assignedCommittees?.some((assignedId) => userCommitteeIds.includes(assignedId))
-        ) {
+        // Skip notifications for completed tasks
+        if (taskData.taskStatus === "Completed") {
           userTasks.push({ ...taskData, id: docSnapshot.id });
+          return;
         }
+
+        // Track recipients for the 24h notification
+        const recipientIds24h = new Set<string>();
+
+        // Add assigned members only
+        taskData.assignedMembers?.forEach((id: string) => recipientIds24h.add(id));
+        taskData.assignedCommittees?.forEach((committeeId: string) => {
+          const committee = orgData?.committees?.find((c: any) => c.id === committeeId);
+          if (committee) {
+            if (committee.head?.id) recipientIds24h.add(committee.head.id);
+            committee.members?.forEach((member: any) => recipientIds24h.add(member.id));
+          }
+        });
+
+        // Notify 24 hours before due date if the notification hasn't been sent
+        if (!taskData.notificationsSent.includes(notifId24h) && hoursToDue <= 24 && hoursToDue > 6) {
+          for (const recipientId of recipientIds24h) {
+            const notificationRef = doc(
+              firestore,
+              `notifications/${recipientId}/userNotifications`,
+              notifId24h
+            );
+            notificationPromises.push(
+              setDoc(notificationRef, {
+                subject: `Task "${taskData.title}" is due in 24 hours!`,
+                description: `The task is due on ${taskDueDate.toLocaleString()}.`,
+                timestamp: new Date(),
+                isRead: false,
+                senderName: orgData?.name || "Organization",
+                senderProfilePic: orgData?.profileImagePath || "",
+                taskId: taskData.id,
+                type: "task-reminder",
+              })
+            );
+          }
+
+          // Mark 24-hour notification as sent with unique notifId
+          await updateDoc(docSnapshot.ref, {
+            notificationsSent: arrayUnion(notifId24h),
+          });
+        }
+
+        // Track recipients for the 6h notification
+        const recipientIds6h = new Set<string>();
+
+        // Add assigned members only
+        taskData.assignedMembers?.forEach((id: string) => recipientIds6h.add(id));
+        taskData.assignedCommittees?.forEach((committeeId: string) => {
+          const committee = orgData?.committees?.find((c: any) => c.id === committeeId);
+          if (committee) {
+            if (committee.head?.id) recipientIds6h.add(committee.head.id);
+            committee.members?.forEach((member: any) => recipientIds6h.add(member.id));
+          }
+        });
+
+        // Notify 6 hours before due date if the notification hasn't been sent
+        if (!taskData.notificationsSent.includes(notifId6h) && hoursToDue <= 6 && hoursToDue > 0) {
+          for (const recipientId of recipientIds6h) {
+            const notificationRef = doc(
+              firestore,
+              `notifications/${recipientId}/userNotifications`,
+              notifId6h
+            );
+            notificationPromises.push(
+              setDoc(notificationRef, {
+                subject: `Task "${taskData.title}" is almost due!`,
+                description: `The task is due on ${taskDueDate.toLocaleString()}.`,
+                timestamp: new Date(),
+                isRead: false,
+                senderName: orgData?.name || "Organization",
+                senderProfilePic: orgData?.profileImagePath || "",
+                taskId: taskData.id,
+                type: "task-reminder",
+              })
+            );
+          }
+
+          // Mark 6-hour notification as sent with unique notifId
+          await updateDoc(docSnapshot.ref, {
+            notificationsSent: arrayUnion(notifId6h),
+          });
+        }
+
+        // Ensure all tasks are added to "My Tasks"
+        userTasks.push({ ...taskData, id: docSnapshot.id });
       });
 
-      await Promise.all(updateOverdueTasks);
-
-      console.log("Mapped User Tasks:", userTasks);
+      await Promise.all([...handleDueNotifications, ...notificationPromises]);
 
       setTasks(userTasks);
       setError(null);
     });
 
-    // Clean up the listener when the component is unmounted or no longer needed
     return () => unsubscribe();
   } catch (error) {
     console.error("Error fetching tasks:", error);
@@ -326,6 +469,8 @@ const fetchMyTasks = async () => {
     setLoading(false);
   }
 };
+
+
 
   useEffect(() => {
   if (isSubmissionsModalOpen) {
@@ -456,112 +601,163 @@ const fetchMyTasks = async () => {
     }
   };
   
- const handleSubmission = async (
-  taskId: string,
-  textContent: string,
-  attachments: File[] | null
-) => {
-  const user = auth.currentUser;
-
-  if (!user) {
-    showToast("You must be signed in to submit.", "error");
-    return;
-  }
-
-  const userDoc = await getDoc(doc(firestore, "students", user.uid));
-  const userData = userDoc.exists() ? userDoc.data() : null;
-
-  const memberName = userData
-    ? `${userData.firstname} ${userData.lastname}`
-    : user.displayName || "Unknown";
-
-  if (!taskId) {
-    showToast("Task ID is missing. Please try again.", "error");
-    return;
-  }
-
-  try {
-    // Get the task document
-    const taskDocRef = doc(
-      firestore,
-      `tasks/${organizationName}/AllTasks/${taskId}`
-    );
-
-    const taskDoc = await getDoc(taskDocRef);
-
-    if (taskDoc.exists()) {
-      const taskData = taskDoc.data();
-
-      if (taskData.taskStatus === "Overdue") {
-        showToast("This task is overdue. Submissions are no longer accepted.", "error");
+  
+  const handleSubmission = async (
+    taskId: string,
+    textContent: string,
+    attachments: File[] | null
+  ) => {
+    const user = auth.currentUser;
+  
+    if (!user) {
+      showToast("You must be signed in to submit.", "error");
+      return;
+    }
+  
+    const userDoc = await getDoc(doc(firestore, "students", user.uid));
+    const userData = userDoc.exists() ? userDoc.data() : null;
+  
+    if (!userData) {
+      showToast("Unable to fetch user details.", "error");
+      return;
+    }
+  
+    const memberName = `${userData.firstname} ${userData.lastname}`;
+    const senderName = memberName;
+    const senderProfilePic = userData.profilePicUrl;
+  
+    if (!taskId) {
+      showToast("Task ID is missing. Please try again.", "error");
+      return;
+    }
+  
+    try {
+      // Get the task document
+      const taskDocRef = doc(
+        firestore,
+        `tasks/${organizationName}/AllTasks/${taskId}`
+      );
+      const taskDoc = await getDoc(taskDocRef);
+  
+      if (!taskDoc.exists()) {
+        showToast("Task not found. Please try again.", "error");
         return;
       }
+  
+      const taskData = taskDoc.data();
+  
+      if (taskData.taskStatus === "Overdue") {
+        showToast(
+          "This task is overdue. Submissions are no longer accepted.",
+          "error"
+        );
+        return;
+      }
+  
+      // Check user submission limit
       const userSubmissions = taskData.submissions?.filter(
         (submission: any) => submission.memberId === user.uid
       );
-
-      if (userSubmissions && userSubmissions.length >= 3) {
+      if (userSubmissions?.length >= 3) {
         showToast("You can only submit up to 3 times for this task.", "error");
         return;
       }
-    } else {
-      showToast("Task not found. Please try again.", "error");
-      return;
-    }
-
-    const storage = getStorage();
-    const fileURLs: string[] = [];
-
-    // If there are files, upload each to Firebase Storage
-    if (attachments && attachments.length > 0) {
-      for (const file of attachments) {
-        const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-        const storageRef = ref(
-          storage,
-          `submissions/${Date.now()}-${sanitizedFileName}`
-        );
-        const snapshot = await uploadBytes(storageRef, file);
-        const fileURL = await getDownloadURL(snapshot.ref);
-        fileURLs.push(fileURL);
+  
+      // Handle file uploads
+      const fileURLs: string[] = [];
+      if (attachments && attachments.length > 0) {
+        const storage = getStorage();
+        for (const file of attachments) {
+          const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+          const storageRef = ref(
+            storage,
+            `submissions/${Date.now()}-${sanitizedFileName}`
+          );
+          const snapshot = await uploadBytes(storageRef, file);
+          const fileURL = await getDownloadURL(snapshot.ref);
+          fileURLs.push(fileURL);
+        }
       }
+  
+      // Prepare submission object
+      const submission = {
+        memberId: user.uid,
+        memberName,
+        textContent: textContent || null,
+        fileAttachments: fileURLs,
+        date: new Date().toISOString(),
+      };
+  
+      // Update Firestore task
+      await updateDoc(taskDocRef, {
+        submissions: arrayUnion(submission),
+        taskStatus: "Completed",
+      });
+  
+      // Collect unique recipient IDs
+      const recipientIds = new Set<string>();
+  
+      // Task giver
+      if (taskData.senderId) {
+        recipientIds.add(taskData.senderId);
+      }
+  
+      // Assigned members
+      if (taskData.assignedMembers) {
+        taskData.assignedMembers.forEach((id: string) => {
+          if (id !== user.uid) recipientIds.add(id);
+        });
+      }
+  
+      // Committees and their members
+      if (taskData.assignedCommittees?.length > 0 && organizationData?.committees) {
+        taskData.assignedCommittees.forEach((committeeId: string) => {
+          const committee = organizationData.committees.find(
+            (c: any) => c.id === committeeId
+          );
+          if (committee) {
+            if (committee.head?.id && committee.head.id !== user.uid) {
+              recipientIds.add(committee.head.id);
+            }
+            committee.members?.forEach((member: any) => {
+              if (member.id !== user.uid) recipientIds.add(member.id);
+            });
+          }
+        });
+      }
+  
+      // Send notifications
+      const notificationPromises = Array.from(recipientIds).map((recipientId) => {
+        const notificationRef = doc(
+          firestore,
+          `notifications/${recipientId}/userNotifications`,
+          uuidv4()
+        );
+        return setDoc(notificationRef, {
+          subject: `submitted work for the task: "${taskData.title}".`,
+          description: `${memberName} has submitted their work.`,
+          timestamp: new Date(),
+          isRead: false,
+          senderName,
+          senderProfilePic,
+          taskId,
+          type: "task-submission",
+        });
+      });
+  
+      await Promise.all(notificationPromises);
+  
+      showToast("Submission successful", "success");
+  
+      // Reset UI state
+      setIsSubmitModalOpen(false);
+      resetSubmissionForm();
+    } catch (error) {
+      console.error("Error submitting task:", error);
+      showToast("Failed to submit. Please try again.", "error");
     }
-
-    // Prepare the submission object
-    const submission = {
-      memberId: user.uid,
-      memberName,
-      textContent: textContent || null, // Include textContent if provided
-      fileAttachments: fileURLs,
-      date: new Date().toISOString(),
-    };
-
-    // Update the task in Firestore
-    await updateDoc(taskDocRef, {
-      submissions: arrayUnion(submission),
-      taskStatus: "Completed",
-    });
-
-    const updatedTaskDoc = await getDoc(taskDocRef);
-    if (updatedTaskDoc.exists()) {
-      const updatedTask = updatedTaskDoc.data() as Task;
-      setSubmissionsTask(updatedTask); // Update the submissions modal data
-      setComments(
-        updatedTask.submissions?.map(
-          (submission) => submission.comments || []
-        ) || []
-      ); // Update the comments state
-    }
-    
-    await logActivity(`Submitted for task: "${submissionsTask?.title}".`);
-
-    showToast("Submission successful!", "success");
-    setIsSubmitModalOpen(false); // Close the modal after successful submission
-  } catch (error) {
-    console.error("Error submitting:", error);
-    showToast("Failed to submit. Please try again.", "error");
-  }
-};
-
+  };
+  
   
   const resetSubmissionForm = () => {
     setTextContent(""); // Clear the text submission
