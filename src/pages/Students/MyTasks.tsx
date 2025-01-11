@@ -75,30 +75,7 @@ const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
 const [attachments, setAttachments] = useState<File[]>([]);
 
 const navigate = useNavigate();
-const logActivity = async (description: string) => {
-  const user = auth.currentUser;
-  if (user && organizationName) {
-    try {
-      const userDoc = await getDoc(doc(firestore, "students", user.uid));
-      const userDetails = userDoc.exists() ? userDoc.data() : { firstname: "Unknown", lastname: "User" };
 
-      const logEntry = {
-        userName: `${userDetails.firstname} ${userDetails.lastname}`,
-        description,
-        organizationName,
-        timestamp: new Date(),
-      };
-
-      await updateDoc(doc(firestore, `studentlogs/${organizationName}/activitylogs`), {
-        logs: arrayUnion(logEntry),
-      });
-
-      console.log("Activity logged:", logEntry);
-    } catch (error) {
-      console.error("Error logging activity:", error);
-    }
-  }
-};
 
 
   const auth = getAuth();
@@ -287,7 +264,7 @@ const fetchAvailableMembersAndCommittees = async () => {
   }
 };
 
-const fetchMyTasks = async () => {
+    const fetchMyTasks = async () => {
   if (!currentUser || !organizationName) return;
 
   try {
@@ -359,14 +336,14 @@ const fetchMyTasks = async () => {
 
         const hoursToDue = (taskDueDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60); // Calculate hours to due date
 
-        // Generate unique notification IDs for 24h and 6h
-        const notifId24h = `${taskData.id}-24h`;
-        const notifId6h = `${taskData.id}-6h`;
-
         // Skip notifications for completed tasks
-        if (taskData.taskStatus === "Completed") {
-          userTasks.push({ ...taskData, id: docSnapshot.id });
-          return;
+        if (taskData.taskStatus === "Completed") return;
+
+        // Filter tasks that are assigned to the current user (via assignedMembers or assignedCommittees)
+        const isAssignedToUser = taskData.assignedMembers?.includes(userId) || taskData.assignedCommittees?.some((committeeId: string) => userCommitteeIds.includes(committeeId));
+
+        if (!isAssignedToUser) {
+          return; // Skip the task if it's not assigned to the user
         }
 
         // Track recipients for the 24h notification
@@ -383,6 +360,7 @@ const fetchMyTasks = async () => {
         });
 
         // Notify 24 hours before due date if the notification hasn't been sent
+        const notifId24h = `${taskData.id}-24h`;
         if (!taskData.notificationsSent.includes(notifId24h) && hoursToDue <= 24 && hoursToDue > 6) {
           for (const recipientId of recipientIds24h) {
             const notificationRef = doc(
@@ -424,6 +402,7 @@ const fetchMyTasks = async () => {
         });
 
         // Notify 6 hours before due date if the notification hasn't been sent
+        const notifId6h = `${taskData.id}-6h`;
         if (!taskData.notificationsSent.includes(notifId6h) && hoursToDue <= 6 && hoursToDue > 0) {
           for (const recipientId of recipientIds6h) {
             const notificationRef = doc(
@@ -451,7 +430,7 @@ const fetchMyTasks = async () => {
           });
         }
 
-        // Ensure all tasks are added to "My Tasks"
+        // Ensure this task is added to the "My Tasks" list if it's assigned to the user
         userTasks.push({ ...taskData, id: docSnapshot.id });
       });
 
@@ -469,6 +448,7 @@ const fetchMyTasks = async () => {
     setLoading(false);
   }
 };
+
 
 
 

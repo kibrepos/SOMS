@@ -181,7 +181,36 @@ const handleImageUpload = async (eventName: string) => {
   
 
       await logActivity(`Created a new event titled "${eventTitle}" `);
-
+      if (organizationData) {
+        const members = [
+          ...(organizationData.members || []),
+          ...(organizationData.officers || []),
+          ...(organizationData.president ? [organizationData.president] : []),
+        ];
+  
+        const notificationPromises = members
+        .filter((member: any) => member.id !== currentUser?.uid) // Exclude the creator
+        .map((member: any) => {
+          const notificationRef = doc(
+            firestore,
+            `notifications/${member.id}/userNotifications`,
+            newEventRef.id
+          );
+  
+          return setDoc(notificationRef, {
+            subject: `A new event has been created titled: "${eventTitle}"`,
+            description: `${eventDescription}`,
+            imageUrl: uploadedImageUrl, // Optional: Include event image
+            timestamp: new Date(),
+            isRead: false,
+            senderName: organizationData.name || "Organization", // Use the organization's name
+            senderProfilePic: organizationData.profileImagePath || "", // Use the organization's profile picture
+            type: "event-announcement",
+          });
+        });
+  
+        await Promise.all(notificationPromises);
+      }
       alert("Event created successfully!");
       navigate(`/organization/${organizationName}/events`);
     } catch (error) {

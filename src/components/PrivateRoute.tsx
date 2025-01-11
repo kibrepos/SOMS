@@ -21,12 +21,12 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
         // Fetch user role based on UID
         fetchUserRole(currentUser.uid);
       } else {
-        setError({ code: 401, message: 'You must be logged in to access this page.' });
-        setLoading(false);
+        window.location.href = '/login'; // Redirect to the login page
       }
     });
     return () => unsubscribe();
   }, []);
+  
 
   const fetchUserRole = async (uid: string) => {
     try {
