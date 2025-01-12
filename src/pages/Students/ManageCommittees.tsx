@@ -86,11 +86,19 @@ useEffect(() => {
     const currentUser = auth.currentUser;
 
     if (currentUser) {
-      const userDocRef = doc(firestore, "students", currentUser.uid);
-      const userDoc = await getDoc(userDocRef);
+      let userDocRef = doc(firestore, "students", currentUser.uid);
+      let userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // If the user is not found in the "students" collection, check "faculty"
+        userDocRef = doc(firestore, "faculty", currentUser.uid);
+        userDoc = await getDoc(userDocRef);
+      }
 
       if (userDoc.exists()) {
         setUserDetails(userDoc.data());
+      } else {
+        console.error("User not found in students or faculty collections.");
       }
     }
   };
@@ -108,13 +116,17 @@ const logActivity = async (description: string) => {
         timestamp: new Date(),
       };
 
-      await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
+      await addDoc(
+        collection(firestore, `studentlogs/${organizationName}/activitylogs`),
+        logEntry
+      );
       console.log("Activity logged:", logEntry);
     } catch (error) {
       console.error("Error logging activity:", error);
     }
   }
 };
+
   
   const sendNotification = async (userId: string, subject: string, description: string) => {
     try {
@@ -140,7 +152,6 @@ const logActivity = async (description: string) => {
     }
   };
 
-  
   useEffect(() => {
     const fetchRole = async () => {
       if (!organizationName) return;
@@ -157,6 +168,8 @@ const logActivity = async (description: string) => {
             setRole('president');
           } else if (orgData.officers.some((officer: any) => officer.id === userId)) {
             setRole('officer');
+          } else if (orgData.facultyAdviser?.id === userId) {
+            setRole('faculty'); // Add faculty role
           } else if (orgData.members.some((member: any) => member.id === userId)) {
             setRole('member');
           } else {
@@ -170,18 +183,22 @@ const logActivity = async (description: string) => {
   
     fetchRole();
   }, [organizationName]);
+  
   const renderSidebar = () => {
     switch (role) {
       case 'president':
         return <StudentPresidentSidebar />;
       case 'officer':
-        return <StudentPresidentSidebar  />;
+        return <StudentPresidentSidebar />;
+      case 'faculty': // Add sidebar for faculty
+        return <StudentPresidentSidebar />;
       case 'member':
         return <StudentMemberSidebar />;
       default:
         return null; // No sidebar for guests
     }
   };
+  
   const toggleDropdown = (id: string) => {
     setOpenDropdownId((prev) => (prev === id ? null : id));
   };
@@ -464,16 +481,16 @@ const logActivity = async (description: string) => {
   };
 
   return (
-    <div className="MC-dashboard">
-      <Header />
-      <div className="MC-container">
-        <div className="MC-sidebar-section">
+    <div className="organization-announcements-page">
+    <Header />
+    <div className="organization-announcements-container">
+    <div className="sidebar-section">
         {renderSidebar()}
         </div>
-        <div className="MC-main-content">
+        <div className="main-content">
         <div className="header-container">
         <h1 className="headtitle">Manage Committees</h1>
-        {(role === 'president' || role === 'officer') && (
+        {(role === 'president' || role === 'officer' || role === 'faculty') && (
         <button className="create-new-btn" onClick={openCreateCommitteeModal}>
           Create New Committee
         </button>
@@ -481,7 +498,6 @@ const logActivity = async (description: string) => {
           </div>
 
           <div className="MC-table-wrapper">
-            <h3>Committees</h3>
             <table className="MC-table">
               <thead>
                 <tr>
@@ -498,6 +514,7 @@ const logActivity = async (description: string) => {
                     <td>{committee.head.name}</td>
                     <td>{committee.members.map((m) => m.name).join(', ')}</td>
                     <td>
+                    {(role === 'president' || role === 'officer' || role === 'faculty') && (
                       <div className="MC-dropdown">
                         <button
                           className="MC-action-btn"
@@ -512,6 +529,7 @@ const logActivity = async (description: string) => {
                           </div>
                         )}
                       </div>
+                       )}
                     </td>
                   </tr>
                 ))}

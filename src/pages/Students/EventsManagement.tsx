@@ -152,11 +152,14 @@ const [searchTerm, setSearchTerm] = useState<string>(""); // Search term state
               setUserRole("president");
             } else if (orgData.officers?.some((officer: any) => officer.id === user.uid)) {
               setUserRole("officer");
+            } else if (orgData.facultyAdviser?.id === user.uid) {
+              setUserRole("faculty");
             } else if (orgData.members?.some((member: any) => member.id === user.uid)) {
               setUserRole("member");
             } else {
               setUserRole(null);
             }
+            
           }
         }
       } catch (error) {
@@ -176,6 +179,8 @@ const [searchTerm, setSearchTerm] = useState<string>(""); // Search term state
         return <StudentPresidentSidebar />;
       case "officer":
         return <StudentPresidentSidebar  />;
+        case "faculty":
+          return <StudentPresidentSidebar  />;
       case "member":
         return <StudentMemberSidebar />;
       default:
@@ -280,10 +285,13 @@ const [searchTerm, setSearchTerm] = useState<string>(""); // Search term state
 
     
   return (
-    <div className="organization-dashboard-wrapper">
+    <div className="organization-announcements-page">
       <Header />
-      <div className="dashboard-container">
-        <div className="sidebar-section">{getSidebarComponent()}</div>
+      <div className="organization-announcements-container">
+      <div className="sidebar-section">
+        
+        
+        {getSidebarComponent()}</div>
         <div className="main-content">
           <div className="header-container">
             <h1 className="headtitle">Events</h1>
@@ -301,7 +309,7 @@ const [searchTerm, setSearchTerm] = useState<string>(""); // Search term state
           </div>
   
           {/* Top Buttons for Active and Archived */}
-          {(userRole === "president" || userRole === "officer") && (
+          {(userRole === "president" || userRole === "officer" || userRole === "faculty") && (
             <div className="top-buttons">
               <button
                 className={`top-btn ${viewType === "active" ? "active" : ""}`}

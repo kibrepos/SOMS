@@ -73,32 +73,54 @@ const [userName, setUserName] = useState<string>('');
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        const profilePicRef = ref(storage, `profilePics/${user.uid}/profile-picture.jpg`);
         try {
-          const url = await getDownloadURL(profilePicRef);
-          setProfilePicUrl(url);
+          // Attempt to fetch student data
+          const studentDocRef = doc(firestore, 'students', user.uid);
+          const studentDoc = await getDoc(studentDocRef);
+  
+          if (studentDoc.exists()) {
+            const studentData = studentDoc.data();
+            const fullName = `${studentData.firstname} ${studentData.lastname}`;
+            const profilePicRef = ref(storage, `profilePics/${user.uid}/profile-picture.jpg`);
+            const profilePicUrl = await getDownloadURL(profilePicRef).catch(() => '/default-profile.png');
+            
+            setUserName(fullName);
+            setProfilePicUrl(profilePicUrl);
+            return;
+          }
+  
+          // If not a student, attempt to fetch faculty data
+          const facultyDocRef = doc(firestore, 'faculty', user.uid);
+          const facultyDoc = await getDoc(facultyDocRef);
+  
+          if (facultyDoc.exists()) {
+            const facultyData = facultyDoc.data();
+            const fullName = `${facultyData.firstname} ${facultyData.lastname}`;
+            const profilePicRef = ref(storage, `profilePics/${user.uid}/profile-picture.jpg`);
+            const profilePicUrl = await getDownloadURL(profilePicRef).catch(() => '/default-profile.png');
+  
+            setUserName(fullName);
+            setProfilePicUrl(profilePicUrl);
+            return;
+          }
+  
+          // Default fallback if neither student nor faculty data is found
+          setUserName('Unknown User');
+          setProfilePicUrl('/default-profile.png');
         } catch (err) {
-          console.error('Error fetching profile picture URL:', err);
+          console.error('Error fetching user data:', err);
+          setUserName('Error fetching name');
           setProfilePicUrl('/default-profile.png');
         }
-
-        // Fetch the user's name from Firestore
-        const studentDocRef = doc(firestore, 'students', user.uid);
-        const studentDoc = await getDoc(studentDocRef);
-        if (studentDoc.exists()) {
-          const studentData = studentDoc.data();
-          const fullName = `${studentData.firstname} ${studentData.lastname}`;
-          setUserName(fullName);
-        }
       } else {
-        setProfilePicUrl('/default-profile.png');
         setUserName('');
+        setProfilePicUrl('/default-profile.png');
       }
     });
-
+  
     return () => unsubscribe();
   }, []);
-
+  
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -413,7 +435,7 @@ const [userName, setUserName] = useState<string>('');
 
 
   const handleProfileVisit = () => {
-    navigate('/Student/myprofile');
+    navigate('/myprofile');
   };
 
   const handleNavigateToMessages = () => {
@@ -484,7 +506,7 @@ const [userName, setUserName] = useState<string>('');
   return (
     <div className="header">
       <div className="header-left">
-        <div className="logo" onClick={() => navigate('/Student/Dashboard')}>
+        <div className="logo" onClick={() => navigate('/dashboard')}>
           GreenPulse
         </div>
       </div>

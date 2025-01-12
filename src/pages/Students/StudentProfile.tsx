@@ -115,32 +115,45 @@ const StudentProfile: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          const studentDocRef = doc(firestore, 'students', user.uid);
-          const studentDoc = await getDoc(studentDocRef);
-
-          if (studentDoc.exists()) {
-            const data = studentDoc.data();
+          let userDoc;
+  
+          // Check if the user is a student
+          userDoc = await getDoc(doc(firestore, 'students', user.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
             setStudentData(data);
             setModalData(data);
             setFirstName(data.firstname || '');
             setLastName(data.lastname || '');
-
+  
             const profilePicRef = ref(storage, `profilePics/${user.uid}/profile-picture.jpg`);
-            try {
-              const url = await getDownloadURL(profilePicRef);
-              setProfilePicUrl(url);
-              setPreviewProfilePicUrl(url);
-            } catch (err) {
-              console.error('Error fetching profile picture:', err); // Log the error
-              setProfilePicUrl('/default-profile.png');
-              setPreviewProfilePicUrl('/default-profile.png');
-            }
-          } else {
-            setError('No student data found.');
+            const url = await getDownloadURL(profilePicRef).catch(() => '/default-profile.png');
+            setProfilePicUrl(url);
+            setPreviewProfilePicUrl(url);
+            return;
           }
+  
+          // Check if the user is a faculty member
+          userDoc = await getDoc(doc(firestore, 'faculty', user.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setStudentData(data); // Use the same state for faculty data
+            setModalData(data);
+            setFirstName(data.firstname || '');
+            setLastName(data.lastname || '');
+  
+            const profilePicRef = ref(storage, `profilePics/${user.uid}/profile-picture.jpg`);
+            const url = await getDownloadURL(profilePicRef).catch(() => '/default-profile.png');
+            setProfilePicUrl(url);
+            setPreviewProfilePicUrl(url);
+            return;
+          }
+  
+          // If no data found, show an error
+          setError('No user data found.');
         } catch (err) {
-          console.error('Error fetching student data:', err);
-          setError('Error fetching student data.');
+          console.error('Error fetching user data:', err);
+          setError('Error fetching user data.');
         } finally {
           setLoading(false);
         }
@@ -148,9 +161,10 @@ const StudentProfile: React.FC = () => {
         navigate('/login');
       }
     });
-
+  
     return () => unsubscribe();
   }, [navigate]);
+  
 
   const handleProfilePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -168,8 +182,9 @@ const StudentProfile: React.FC = () => {
 
   const handleProfilePicUpload = async () => {
     if (newProfilePic && auth.currentUser) {
-      const studentId = auth.currentUser.uid;
-      const profilePicRef = ref(storage, `profilePics/${studentId}/profile-picture.jpg`);
+      const userId = auth.currentUser.uid;
+      const profilePicRef = ref(storage, `profilePics/${userId}/profile-picture.jpg`);
+      const collectionName = studentData?.studentNumber ? 'students' : 'faculty'; // Determine user type
   
       try {
         // Upload the new profile picture to Firebase Storage
@@ -178,21 +193,20 @@ const StudentProfile: React.FC = () => {
         // Get the new download URL
         const newProfilePicUrl = await getDownloadURL(profilePicRef);
   
-        // Update the student's profile picture URL in the 'students' collection
-        await updateDoc(doc(firestore, 'students', studentId), {
+        // Update the user's profile picture URL in their Firestore document
+        await updateDoc(doc(firestore, collectionName, userId), {
           profilePicUrl: newProfilePicUrl,
         });
   
-        // Update the profile picture in the 'organizations' collection
-        await updateProfilePicInOrganizations(studentId, newProfilePicUrl);
-        const userName = auth.currentUser.displayName;
-      if (userName) {
-        // Update the profile picture in notifications (for inviter and sender)
-        await updateProfilePicInNotifications(userName, newProfilePicUrl);
-      } else {
-        console.error('User displayName is null');
-      }
-
+        // Update the profile picture in the `organizations` collection
+        await updateProfilePicInOrganizations(userId, newProfilePicUrl);
+  
+        const userName = `${studentData?.firstname || ''} ${studentData?.lastname || ''}`.trim();
+        if (userName) {
+          // Update the profile picture in notifications (for inviter and sender)
+          await updateProfilePicInNotifications(userName, newProfilePicUrl);
+        }
+  
         // Update local state
         setProfilePicUrl(newProfilePicUrl);
         setPreviewProfilePicUrl(newProfilePicUrl);
@@ -203,17 +217,17 @@ const StudentProfile: React.FC = () => {
       }
     }
   };
-  const updateProfilePicInOrganizations = async (studentId: string, newProfilePicUrl: string) => {
+  
+  const updateProfilePicInOrganizations = async (userId: string, newProfilePicUrl: string) => {
     try {
-      // Fetch all organizations
       const orgsSnapshot = await getDocs(collection(firestore, 'organizations'));
-      const batch = writeBatch(firestore);;
+      const batch = writeBatch(firestore);
   
       orgsSnapshot.forEach((orgDoc) => {
         const orgData = orgDoc.data();
   
         // Check and update profile picture for the president
-        if (orgData.president?.id === studentId) {
+        if (orgData.president?.id === userId) {
           batch.update(doc(firestore, 'organizations', orgDoc.id), {
             'president.profilePicUrl': newProfilePicUrl,
           });
@@ -221,7 +235,7 @@ const StudentProfile: React.FC = () => {
   
         // Check and update profile picture for officers
         const updatedOfficers = orgData.officers?.map((officer: any) => {
-          if (officer.id === studentId) {
+          if (officer.id === userId) {
             return { ...officer, profilePicUrl: newProfilePicUrl };
           }
           return officer;
@@ -229,26 +243,33 @@ const StudentProfile: React.FC = () => {
   
         // Check and update profile picture for members
         const updatedMembers = orgData.members?.map((member: any) => {
-          if (member.id === studentId) {
+          if (member.id === userId) {
             return { ...member, profilePicUrl: newProfilePicUrl };
           }
           return member;
         });
   
-        // Apply the updates to the Firestore document
+        // Check and update profile picture for the faculty adviser
+        const updatedFacultyAdviser =
+          orgData.facultyAdviser?.id === userId
+            ? { ...orgData.facultyAdviser, profilePicUrl: newProfilePicUrl }
+            : orgData.facultyAdviser;
+  
+        // Apply updates to the Firestore document
         batch.update(doc(firestore, 'organizations', orgDoc.id), {
           officers: updatedOfficers,
           members: updatedMembers,
+          facultyAdviser: updatedFacultyAdviser,
         });
       });
   
-      // Commit all updates in a single batch
       await batch.commit();
       console.log('Organizations updated with new profile picture');
     } catch (error) {
       console.error('Error updating profile picture in organizations:', error);
     }
   };
+  
   
 const updateProfilePicInNotifications = async (userName: string, newProfilePicUrl: string) => {
   try {
@@ -282,42 +303,51 @@ const updateProfilePicInNotifications = async (userName: string, newProfilePicUr
   }
 };
 
-  
+const handleSaveChanges = async () => {
+  const user = auth.currentUser; // Store the current user in a variable for clarity
+  if (modalData && user) {
+    const collectionName = studentData?.studentNumber ? 'students' : 'faculty'; // Determine user type
+    const userDocRef = doc(firestore, collectionName, user.uid);
 
-  const handleSaveChanges = async () => {
-    const user = auth.currentUser; // Store the current user in a variable for clarity
-    if (modalData && user) {
-      const studentDocRef = doc(firestore, 'students', user.uid);
-      try {
-        await updateDoc(studentDocRef, {
-          firstname: firstName,
-          lastname: lastName,
+    try {
+      await updateDoc(userDocRef, {
+        firstname: firstName,
+        lastname: lastName,
+        ...(studentData?.studentNumber && {
           department: modalData.department,
           year: modalData.year,
           studentNumber: modalData.studentNumber,
-        });
-  
-        if (newProfilePic) {
-          await handleProfilePicUpload();
-        }
-  
-        setStudentData({
-          ...modalData,
-          firstname: firstName,
-          lastname: lastName,
-        });
-  
-        setIsModalOpen(false);
-        window.location.reload();
-      } catch (err) {
-        console.error('Error saving changes:', err);
-        setError('Error saving changes.');
+        }),
+        ...(studentData?.facultyNumber && {
+          department: modalData.department,
+          facultyNumber: modalData.facultyNumber,
+        }),
+      });
+
+      if (newProfilePic) {
+        await handleProfilePicUpload();
       }
-    } else {
-      console.error('User is not authenticated.');
-      setError('You must be logged in to save changes.');
+
+      setStudentData({
+        ...modalData,
+        firstname: firstName,
+        lastname: lastName,
+      });
+
+      setIsModalOpen(false);
+      window.location.reload();
+    } catch (err) {
+      console.error('Error saving changes:', err);
+      setError('Error saving changes.');
     }
-  };
+  } else {
+    console.error('User is not authenticated.');
+    setError('You must be logged in to save changes.');
+  }
+};
+
+
+
   
 
   const handlePasswordChange = async () => {
@@ -387,7 +417,15 @@ const updateProfilePicInNotifications = async (userName: string, newProfilePicUr
               <h2>{studentData?.firstname} {studentData?.lastname}</h2>
               <hr></hr>
               <p>{studentData?.department}</p>
-              <p>{studentData?.year} - {studentData?.studentNumber}</p>
+              {studentData?.studentNumber ? (
+          <>
+            <p>{studentData?.year} - {studentData?.studentNumber}</p>
+          </>
+        ) : (
+          <>
+            <p>Employee ID: {studentData?.facultyNumber}</p>
+          </>
+        )}
               <p>{studentData?.email}</p>
               <button onClick={() => setIsModalOpen(true)}>Edit Profile</button>
               <button onClick={() => setIsPasswordModalOpen(true)}>Change Password</button>
@@ -425,91 +463,129 @@ const updateProfilePicInNotifications = async (userName: string, newProfilePicUr
 
       {/* Modal Component for Editing Profile */}
       {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2>Edit Profile</h2>
-            <div className="modal-profile-pic">
-              <img src={previewProfilePicUrl || '/default-profile.png'} alt="Profile" className="modal-profile-pic-img" />
-              <label htmlFor="file-upload" className="file-input-label">
-                Choose File
-              </label>
-              <input
-                type="file"
-                id="file-upload"
-                accept=".jpg,.jpeg,.png"
-                onChange={handleProfilePicChange}
-                className="file-input"
-              />
-            </div>
-            <label>
-              First Name:
-              <input
-                type="text"
-                name="firstname"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-              />
-            </label>
-            <label>
-              Last Name:
-              <input
-                type="text"
-                name="lastname"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-              />
-            </label>
-            <label>
-              Department:
-              <select
-                name="department"
-                value={modalData?.department || ''}
-                onChange={(e) => setModalData({
-                  ...modalData,
-                  department: e.target.value
-                })}
-              >
-                <option value="CEAT">CEAT</option>
-                <option value="CICS">CICS</option>
-                <option value="CBAA">CBAA</option>
-                <option value="COCS">COCS</option>
-                <option value="COED">COED</option>
-                <option value="CCJE">CCJE</option>
-                <option value="CLAC">CLAC</option>
+  <div className="modal-overlay">
+    <div className="modal-content">
+      <h2>Edit Profile</h2>
+      <div className="modal-profile-pic">
+        <img
+          src={previewProfilePicUrl || '/default-profile.png'}
+          alt="Profile"
+          className="modal-profile-pic-img"
+        />
+        <label htmlFor="file-upload" className="file-input-label">
+          Choose File
+        </label>
+        <input
+          type="file"
+          id="file-upload"
+          accept=".jpg,.jpeg,.png"
+          onChange={handleProfilePicChange}
+          className="file-input"
+        />
+      </div>
 
+      <label>
+        First Name:
+        <input
+          type="text"
+          name="firstname"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+        />
+      </label>
 
-                {/* Add more options as needed */}
-              </select>
-            </label>
-            <label>
-              Year and Section:
-              <input
-                type="text"
-                name="year"
-                value={modalData?.year || ''}
-                onChange={(e) => setModalData({
+      <label>
+        Last Name:
+        <input
+          type="text"
+          name="lastname"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+        />
+      </label>
+
+      <label>
+        Department:
+        <select
+          name="department"
+          value={modalData?.department || ''}
+          onChange={(e) =>
+            setModalData({
+              ...modalData,
+              department: e.target.value,
+            })
+          }
+        >
+          <option value="CEAT">CEAT</option>
+          <option value="CICS">CICS</option>
+          <option value="CBAA">CBAA</option>
+          <option value="COCS">COCS</option>
+          <option value="COED">COED</option>
+          <option value="CCJE">CCJE</option>
+          <option value="CLAC">CLAC</option>
+          {/* Add more options as needed */}
+        </select>
+      </label>
+
+      {/* Conditional rendering for student and faculty fields */}
+      {modalData?.studentNumber ? (
+        <>
+          <label>
+            Year and Section:
+            <input
+              type="text"
+              name="year"
+              value={modalData?.year || ''}
+              onChange={(e) =>
+                setModalData({
                   ...modalData,
-                  year: e.target.value
-                })}
-              />
-            </label>
-            <label>
-              Student ID:
-              <input
-                type="text"
-                name="studentNumber"
-                value={modalData?.studentNumber || ''}
-                onChange={(e) => setModalData({
+                  year: e.target.value,
+                })
+              }
+            />
+          </label>
+          <label>
+            Student ID:
+            <input
+              type="text"
+              name="studentNumber"
+              value={modalData?.studentNumber || ''}
+              onChange={(e) =>
+                setModalData({
                   ...modalData,
-                  studentNumber: e.target.value
-                })}
-              />
-            </label>
-            <button onClick={handleSaveChanges}>Save</button>
-            <button className="cancelB" onClick={() => setIsModalOpen(false)}>Cancel</button>
-          </div>
-        </div>
+                  studentNumber: e.target.value,
+                })
+              }
+            />
+          </label>
+        </>
+      ) : (
+        <>
+          <label>
+            Employee ID:
+            <input
+              type="text"
+              name="facultyNumber"
+              value={modalData?.facultyNumber || ''}
+              onChange={(e) =>
+                setModalData({
+                  ...modalData,
+                  facultyNumber: e.target.value,
+                })
+              }
+            />
+          </label>
+        </>
       )}
+
+      <button onClick={handleSaveChanges}>Save</button>
+      <button className="cancelB" onClick={() => setIsModalOpen(false)}>
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
 
       {/* Modal Component for Enlarged Profile Picture */}
       {isPicModalOpen && (

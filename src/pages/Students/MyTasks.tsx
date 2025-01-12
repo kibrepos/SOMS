@@ -289,12 +289,14 @@ const fetchAvailableMembersAndCommittees = async () => {
       setUserRole("president");
     } else if (orgData.officers?.some((officer: any) => officer.id === currentUser.uid)) {
       setUserRole("officer");
+    } else if (orgData.facultyAdviser?.id === currentUser.uid) { // Check for faculty adviser
+      setUserRole("faculty");
     } else if (orgData.members?.some((member: any) => member.id === currentUser.uid)) {
       setUserRole("member");
     } else {
       setUserRole(null);
     }
-
+    
     // Extract committees
     const committees = orgData?.committees || [];
     const userId = currentUser.uid;
@@ -465,13 +467,16 @@ const fetchAvailableMembersAndCommittees = async () => {
       case "president":
         return <StudentPresidentSidebar />;
       case "officer":
-        return <StudentPresidentSidebar  />;
+        return <StudentPresidentSidebar />;
       case "member":
         return <StudentMemberSidebar />;
+      case "faculty":
+        return <StudentPresidentSidebar />; // Add a sidebar specifically for faculty
       default:
         return null; // Optionally return a fallback component
     }
   };
+  
   
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -791,16 +796,16 @@ const closeSubmissionsModal = () => {
   
 
   return (
-    <div className="task-management-dashboard">
+    <div className="organization-announcements-page">
       <Header />
-      <div className="task-container">
-      <div className="task-sidebar">
+      <div className="organization-announcements-container">
+      <div className="sidebar-section">
   {getSidebarComponent()}
 </div>
-        <div className="task-content">
+<div className="main-content">
         <div className="header-container">
         <h1 className="headtitle">My Tasks</h1>
-  {userRole === "president" || userRole === "officer" ? (
+        {userRole === "president" || userRole === "officer" || userRole === "faculty" ? (
     <button
       className="create-new-btn"
       onClick={() => navigate(`/Organization/${organizationName}/Alltasks`)}

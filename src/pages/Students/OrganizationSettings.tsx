@@ -35,19 +35,53 @@ const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
 
 
-  useEffect(() => {
-    const fetchUserDetails = async () => {
-      if (user) {
-        const userDocRef = doc(firestore, 'students', user.uid); // Adjust collection name if necessary
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          setUserDetails(userDoc.data());
-        }
-      }
-    };
+useEffect(() => {
+  const fetchUserDetails = async () => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
 
-    fetchUserDetails();
-  }, [user]);
+    if (currentUser) {
+      let userDocRef = doc(firestore, "students", currentUser.uid);
+      let userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // If the user is not found in the "students" collection, check "faculty"
+        userDocRef = doc(firestore, "faculty", currentUser.uid);
+        userDoc = await getDoc(userDocRef);
+      }
+
+      if (userDoc.exists()) {
+        setUserDetails(userDoc.data());
+      } else {
+        console.error("User not found in students or faculty collections.");
+      }
+    }
+  };
+
+  fetchUserDetails();
+}, []);
+
+const logActivity = async (description: string) => {
+  if (organizationName && userDetails) {
+    try {
+      const logEntry = {
+        userName: `${userDetails.firstname} ${userDetails.lastname}`,
+        description,
+        organizationName,
+        timestamp: new Date(),
+      };
+
+      await addDoc(
+        collection(firestore, `studentlogs/${organizationName}/activitylogs`),
+        logEntry
+      );
+      console.log("Activity logged:", logEntry);
+    } catch (error) {
+      console.error("Error logging activity:", error);
+    }
+  }
+};
+
 
   useEffect(() => {
     const fetchOrganizationData = async () => {
@@ -66,28 +100,7 @@ const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   }, [organizationName]);
   
 
-  const logActivity = async (description: string) => {
-    if (userDetails && organizationName) {
-      try {
-        const logEntry = {
-          userName: `${userDetails.firstname} ${userDetails.lastname}`,
-          description,
-          organizationName,
-          timestamp: Timestamp.now(),
-          profilePicture: userDetails.profilePicUrl || 'defaultProfilePictureUrl',
-        };
-  
-        // Add the log to the activitylogs subcollection
-        await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
-        console.log('Log added successfully:', logEntry);
-      } catch (error) {
-        console.error('Error logging activity:', error);
-      }
-    } else {
-      console.warn('User details or organization name not available.');
-    }
-  };
-  
+
 
   const handleSaveChanges = async () => {
     try {

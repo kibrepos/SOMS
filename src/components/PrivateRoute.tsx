@@ -5,10 +5,10 @@ import { doc, getDoc } from 'firebase/firestore';
 import { authStateListener } from '../services/auth';
 
 interface PrivateRouteProps {
-  requiredRole: 'student' | 'faculty' | 'admin';
+  requiredRoles: Array<'student' | 'faculty' | 'admin'>; // Allow multiple roles
 }
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRoles }) => {
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,7 +26,6 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
     });
     return () => unsubscribe();
   }, []);
-  
 
   const fetchUserRole = async (uid: string) => {
     try {
@@ -54,10 +53,10 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
   if (loading) return <p>Loading...</p>;
 
   // Display error if the user is not logged in or has the wrong role
-  if (error || userRole !== requiredRole) {
+  if (error || (userRole && !requiredRoles.includes(userRole as 'student' | 'faculty' | 'admin'))) {
     const errorCode = error?.code || 403;
     const errorMessage =
-      error?.message || `You are not authorized to access this ${requiredRole} page.`;
+      error?.message || `You are not authorized to access this page.`;
 
     return (
       <div

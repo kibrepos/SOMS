@@ -103,11 +103,19 @@ useEffect(() => {
     const currentUser = auth.currentUser;
 
     if (currentUser) {
-      const userDocRef = doc(firestore, "students", currentUser.uid);
-      const userDoc = await getDoc(userDocRef);
+      let userDocRef = doc(firestore, "students", currentUser.uid);
+      let userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // If the user is not found in the "students" collection, check "faculty"
+        userDocRef = doc(firestore, "faculty", currentUser.uid);
+        userDoc = await getDoc(userDocRef);
+      }
 
       if (userDoc.exists()) {
         setUserDetails(userDoc.data());
+      } else {
+        console.error("User not found in students or faculty collections.");
       }
     }
   };
@@ -125,7 +133,10 @@ const logActivity = async (description: string) => {
         timestamp: new Date(),
       };
 
-      await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
+      await addDoc(
+        collection(firestore, `studentlogs/${organizationName}/activitylogs`),
+        logEntry
+      );
       console.log("Activity logged:", logEntry);
     } catch (error) {
       console.error("Error logging activity:", error);
@@ -777,6 +788,8 @@ const canUpload = (dayIndex: number): boolean => {
               orgData.officers?.some((officer: any) => officer.id === user.uid)
             ) {
               setUserRole("officer");
+            } else if (orgData.facultyAdviser?.id === user.uid) { // Check for faculty adviser
+              setUserRole("faculty");
             } else if (
               orgData.members?.some((member: any) => member.id === user.uid)
             ) {
@@ -784,6 +797,7 @@ const canUpload = (dayIndex: number): boolean => {
             } else {
               setUserRole(null);
             }
+            
           }
         }
       } catch (error) {
@@ -954,7 +968,7 @@ const canUpload = (dayIndex: number): boolean => {
                           attendee.status === "Present" ? "active" : ""
                         }`}
                         onClick={() => handleStatusChange(attendee.id, "Present")}
-                        disabled={isMember || (isOfficer && attendanceSaved)} // Disable for members or officers if attendance is saved
+                        disabled={isMember || userRole === "faculty" || (isOfficer && attendanceSaved)}
                       >
                         <FontAwesomeIcon icon={faCheck} className="custom-icon" />
                       </button>
@@ -963,7 +977,7 @@ const canUpload = (dayIndex: number): boolean => {
                           attendee.status === "Late" ? "active" : ""
                         }`}
                         onClick={() => handleStatusChange(attendee.id, "Late")}
-                        disabled={isMember || (isOfficer && attendanceSaved)} // Disable for members or officers if attendance is saved
+                        disabled={isMember || userRole === "faculty" || (isOfficer && attendanceSaved)}
                       >
                         <FontAwesomeIcon icon={faClock} className="custom-icon" />
                       </button>
@@ -972,7 +986,7 @@ const canUpload = (dayIndex: number): boolean => {
                           attendee.status === "Absent" ? "active" : ""
                         }`}
                         onClick={() => handleStatusChange(attendee.id, "Absent")}
-                        disabled={isMember || (isOfficer && attendanceSaved)} // Disable for members or officers if attendance is saved
+                        disabled={isMember || userRole === "faculty" || (isOfficer && attendanceSaved)}
                       >
                         <FontAwesomeIcon icon={faTimes} className="custom-icon" />
                       </button>
@@ -1050,6 +1064,8 @@ const canUpload = (dayIndex: number): boolean => {
         return <StudentPresidentSidebar />;
       case "officer":
         return <StudentPresidentSidebar  />;
+        case "faculty":
+          return <StudentPresidentSidebar  />;
       case "member":
         return <StudentMemberSidebar />;
       default:
@@ -1473,7 +1489,8 @@ const canUpload = (dayIndex: number): boolean => {
   {qrLink}
 </a>
 
-   {userRole !== "member" && (
+{userRole !== "member" && userRole !== "faculty" && (
+
     <div className="qr-code-input">
       <input
         type="text"
@@ -1505,7 +1522,8 @@ const canUpload = (dayIndex: number): boolean => {
             className="view-button"
             onClick={() => handleOpenAttendanceModal(dayIndex)}
           >
-            {userRole === "member" ? "View" : "Edit"}
+           {userRole === "member" || userRole === "faculty" ? "View" : "Edit"}
+
           </button>
         </>
       ) : (
@@ -1526,7 +1544,8 @@ const canUpload = (dayIndex: number): boolean => {
       {canUpload(index) ? (
         <>
           <span>Day {index + 1}</span>
-          {userRole !== "member" && (
+          {userRole !== "member" && userRole !== "faculty" && (
+
             <button
               className="action-button upload-button"
               onClick={() => {
@@ -1617,7 +1636,8 @@ const canUpload = (dayIndex: number): boolean => {
 
 )}
 
-{userRole !== "member" && ( 
+{userRole !== "member" && userRole !== "faculty" && ( 
+
   <div className="card-left">
     <button
       onClick={() => setShowRSVPResponsesModal(true)}

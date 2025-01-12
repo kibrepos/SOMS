@@ -11,7 +11,7 @@
   margin-left: 250px; /* Adjust based on sidebar width */
   width: calc(100% - 250px);
   padding: 20px;
-  background-color: #f4f4f9;
+  background-color: #ffffff;
 
   
 }.OrgResour-table {
@@ -303,9 +303,9 @@ button:hover {
 
 /* Scrollable Container */
 .OrgResour-scrollable-container {
-    max-height: 475px;
+    height: 450px;
     overflow-y: auto;
-    min-height: 475px;
+
 }
 
 .OrgResour-scrollable-container::-webkit-scrollbar {

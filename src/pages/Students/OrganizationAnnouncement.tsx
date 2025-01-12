@@ -76,11 +76,19 @@ useEffect(() => {
     const currentUser = auth.currentUser;
 
     if (currentUser) {
-      const userDocRef = doc(firestore, "students", currentUser.uid);
-      const userDoc = await getDoc(userDocRef);
+      let userDocRef = doc(firestore, "students", currentUser.uid);
+      let userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // If the user is not found in the "students" collection, check "faculty"
+        userDocRef = doc(firestore, "faculty", currentUser.uid);
+        userDoc = await getDoc(userDocRef);
+      }
 
       if (userDoc.exists()) {
         setUserDetails(userDoc.data());
+      } else {
+        console.error("User not found in students or faculty collections.");
       }
     }
   };
@@ -98,13 +106,17 @@ const logActivity = async (description: string) => {
         timestamp: new Date(),
       };
 
-      await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
+      await addDoc(
+        collection(firestore, `studentlogs/${organizationName}/activitylogs`),
+        logEntry
+      );
       console.log("Activity logged:", logEntry);
     } catch (error) {
       console.error("Error logging activity:", error);
     }
   }
 };
+
 
 const fetchStudentData = async () => {
   const user = auth.currentUser;
@@ -344,6 +356,8 @@ useEffect(() => {
               setRole('president');
             } else if (orgData.officers?.some((officer: any) => officer.id === userId)) {
               setRole('officer');
+            } else if (orgData.facultyAdviser?.id === userId) { // Check for faculty adviser
+              setRole('faculty');
             } else if (orgData.members?.some((member: any) => member.id === userId)) {
               setRole('member');
             } else {
@@ -366,6 +380,8 @@ useEffect(() => {
         return <StudentPresidentSidebar />;
       case 'officer':
         return <StudentPresidentSidebar  />;
+        case 'faculty':
+          return <StudentPresidentSidebar  />;
       case 'member':
         return <StudentMemberSidebar />;
       default:
@@ -489,8 +505,7 @@ useEffect(() => {
   <h1 className="headtitle">Announcements</h1>
 
     {/* Announcement Creation Button */}
-    {(organizationData?.officers.some(officer => officer.id === auth.currentUser?.uid) ||
-      organizationData?.president?.id === auth.currentUser?.uid) && (
+    {["president", "officer", "faculty"].includes(role) && (
       <button onClick={() => setIsModalOpen(true)} className="create-new-btn">
         + Add New Announcement
       </button>
@@ -714,11 +729,14 @@ useEffect(() => {
     filteredAnnouncements.map((announcement) => (
       <div key={announcement.id} className="organization-announcements-row">
          <div key={announcement.id} className="organization-announcements-row">
-          <input
-            type="checkbox"
-            checked={selectedAnnouncements.includes(announcement.id)}
-            onChange={() => handleSelectAnnouncement(announcement.id)}
-          />
+       {role !== "member" && (
+  <input
+    type="checkbox"
+    checked={selectedAnnouncements.includes(announcement.id)}
+    onChange={() => handleSelectAnnouncement(announcement.id)}
+  />
+)}
+
        <div className="organization-announcements-date">
   {new Date(announcement.timestamp.seconds * 1000).toLocaleDateString('en-US', {
     year: 'numeric',

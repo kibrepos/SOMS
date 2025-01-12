@@ -67,10 +67,11 @@ const App: React.FC = () => {
           </Route>
 
         {/* Private Routes */}
-        <Route element={<PrivateRoute requiredRole="student" />}>
-          <Route path="/Student/dashboard" element={<StudentDashboard />} />
-          <Route path="/Student/myprofile" element={<StudentProfile />} />
+        <Route element={<PrivateRoute requiredRoles={['student', 'faculty']} />}>
+          <Route path="/dashboard" element={<StudentDashboard />} />
+          <Route path="/myprofile" element={<StudentProfile />} />
           <Route path="/messages" element={<Messenger />} />
+      
      
 
             {/* Shared Organization Routes */}
@@ -102,12 +103,10 @@ const App: React.FC = () => {
 
 
           </Route>
-          <Route element={<PrivateRoute requiredRole="faculty" />}>
-          <Route path="/Faculty/dashboard" element={<FacultyDashboard />} />
-          </Route>
+     
 
 
-          <Route element={<PrivateRoute requiredRole="admin" />}>
+          <Route element={<PrivateRoute requiredRoles={['admin']} />}>
           <Route path="/Admin/dashboard" element={<AdminDashboard />} />
           <Route path="/Admin/Activity-Logs" element={<ActivityLogs />} />
           <Route path="/Admin/Manage-Students" element={<AdminManageStudent />} />

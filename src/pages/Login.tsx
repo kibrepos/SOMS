@@ -36,9 +36,9 @@ const Login: React.FC = () => {
       if (adminDoc.exists()) {
         navigate("/Admin/dashboard");
       } else if (facultyDoc.exists()) {
-        navigate("/Faculty/dashboard");
+        navigate("/dashboard");
       } else if (studentDoc.exists()) {
-        navigate("/Student/dashboard");
+        navigate("/dashboard");
       } else {
         setError("Your role could not be determined. Please contact support.");
       }
@@ -118,16 +118,7 @@ const Login: React.FC = () => {
                 onClick={togglePasswordVisibility} 
               ></i>
             </div>
-            <div className="remember-me">
-              <input 
-                type="checkbox" 
-                id="stay-logged-in" 
-                name="stay-logged-in" 
-                checked={stayLoggedIn} 
-                onChange={(e) => setStayLoggedIn(e.target.checked)} 
-              />
-              <label htmlFor="stay-logged-in">Stay logged in</label>
-            </div>
+          
             <button type="submit" className="login-btn">LOGIN</button>
             <div className="extra-links">
               <a href="#" onClick={() => openPopup("create-account-popup")}>Create Account</a>

@@ -49,43 +49,53 @@ const OrganizationResources: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [userDetails, setUserDetails] = useState<any>(null);
   
-  useEffect(() => {
-    const fetchUserDetails = async () => {
-      const auth = getAuth();
-      const currentUser = auth.currentUser;
-  
-      if (currentUser) {
-        const userDocRef = doc(firestore, "students", currentUser.uid);
-        const userDoc = await getDoc(userDocRef);
-  
-        if (userDoc.exists()) {
-          setUserDetails(userDoc.data());
-        }
-      }
-    };
-  
-    fetchUserDetails();
-  }, []);
-  
-  const logActivity = async (description: string) => {
-    if (organizationName && userDetails) {
-      try {
-        const logEntry = {
-          userName: `${userDetails.firstname} ${userDetails.lastname}`,
-          description,
-          organizationName,
-          timestamp: new Date(),
-        };
-  
-        await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
-        console.log("Activity logged:", logEntry);
-      } catch (error) {
-        console.error("Error logging activity:", error);
-      }
-    }
-  };
-  
-
+ useEffect(() => {
+   const fetchUserDetails = async () => {
+     const auth = getAuth();
+     const currentUser = auth.currentUser;
+ 
+     if (currentUser) {
+       let userDocRef = doc(firestore, "students", currentUser.uid);
+       let userDoc = await getDoc(userDocRef);
+ 
+       if (!userDoc.exists()) {
+         // If the user is not found in the "students" collection, check "faculty"
+         userDocRef = doc(firestore, "faculty", currentUser.uid);
+         userDoc = await getDoc(userDocRef);
+       }
+ 
+       if (userDoc.exists()) {
+         setUserDetails(userDoc.data());
+       } else {
+         console.error("User not found in students or faculty collections.");
+       }
+     }
+   };
+ 
+   fetchUserDetails();
+ }, []);
+ 
+ const logActivity = async (description: string) => {
+   if (organizationName && userDetails) {
+     try {
+       const logEntry = {
+         userName: `${userDetails.firstname} ${userDetails.lastname}`,
+         description,
+         organizationName,
+         timestamp: new Date(),
+       };
+ 
+       await addDoc(
+         collection(firestore, `studentlogs/${organizationName}/activitylogs`),
+         logEntry
+       );
+       console.log("Activity logged:", logEntry);
+     } catch (error) {
+       console.error("Error logging activity:", error);
+     }
+   }
+ };
+ 
 
 
   const getFileIcon = (fileName: string) => {
@@ -154,11 +164,14 @@ const OrganizationResources: React.FC = () => {
           setRole('president');
         } else if (orgData?.officers?.some((officer: { id: string }) => officer.id === user.uid)) {
           setRole('officer');
+        } else if (orgData?.facultyAdviser?.id === user.uid) { // Check for faculty adviser
+          setRole('faculty');
         } else if (orgData?.members?.some((member: { id: string }) => member.id === user.uid)) {
           setRole('member');
         } else {
           setRole('guest');
         }
+        
       } else {
         console.error(`Organization with name '${organizationName}' does not exist.`);
         setRole('guest');
@@ -188,6 +201,7 @@ const OrganizationResources: React.FC = () => {
           uploadedBy: userName,
           dateUploaded: new Date().toISOString(),
         },
+        cacheControl: 'no-cache'
       };
   
       // Upload a placeholder file with metadata
@@ -283,24 +297,19 @@ const OrganizationResources: React.FC = () => {
     if (!user) return 'Unknown';
   
     try {
-      // Check in the `students` collection
-      const studentsRef = collection(firestore, 'students');
-      let querySnapshot = await getDocs(query(studentsRef, where('id', '==', user.uid)));
-      if (!querySnapshot.empty) {
-        const studentData = querySnapshot.docs[0].data();
-        return `${studentData.firstname} ${studentData.lastname}`;
+      const studentDoc = await getDoc(doc(firestore, 'students', user.uid));
+      if (studentDoc.exists()) {
+        const data = studentDoc.data();
+        return `${data.firstname} ${data.lastname}`;
       }
   
-      // Check in the `faculty` collection
-      const facultyRef = collection(firestore, 'faculty');
-      querySnapshot = await getDocs(query(facultyRef, where('id', '==', user.uid)));
-      if (!querySnapshot.empty) {
-        const facultyData = querySnapshot.docs[0].data();
-        return `${facultyData.firstname} ${facultyData.lastname}`;
+      const facultyDoc = await getDoc(doc(firestore, 'faculty', user.uid));
+      if (facultyDoc.exists()) {
+        const data = facultyDoc.data();
+        return `${data.firstname} ${data.lastname}`;
       }
-  
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('Error fetching user full name:', error);
     }
   
     return 'Unknown';
@@ -421,7 +430,8 @@ const handleMultipleFileUpload = async (files: FileList | null) => {
       });
     }
 
-    setFiles((prevFiles) => [...prevFiles, ...uploadedFiles]);
+    await fetchFilesAndFolders(); // Fetch the latest list from Firebase
+
     alert(`Successfully uploaded ${uploadedFiles.length} file(s).`);
 
     // Log the activity
@@ -636,6 +646,8 @@ const deleteFolderRecursively = async (folderPath: string) => {
         return <StudentPresidentSidebar />;
       case 'officer':
         return <StudentPresidentSidebar  />;
+        case 'faculty':
+          return <StudentPresidentSidebar  />;
       case 'member':
         return <StudentMemberSidebar />;
       default:
@@ -676,11 +688,10 @@ const filteredFiles = [...files]
   
   return (
     
-    <div className="OrgResour-organization-resources">
-  <Header />
-  <div className="OrgResour-layout">
-    
-  <div className="sidebar-section">
+     <div className="organization-announcements-page">
+      <Header />
+      <div className="organization-announcements-container">
+      <div className="sidebar-section">
   {renderSidebar()}
   </div>
 

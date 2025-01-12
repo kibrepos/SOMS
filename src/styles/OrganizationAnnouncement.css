@@ -235,6 +235,7 @@
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     overflow: hidden;
+   
   }
   
   .organization-announcements-row {
@@ -470,7 +471,7 @@
     color:white
   }
   .organization-announcements-table {
-    max-height: 450px; /* Set a fixed height for the table */
+    max-height: 79%;
     overflow-y: auto; /* Enable vertical scrolling */
     overflow-x: hidden; /* Prevent horizontal scrolling */
     padding: 10px;

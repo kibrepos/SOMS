@@ -33,11 +33,19 @@ useEffect(() => {
     const currentUser = auth.currentUser;
 
     if (currentUser) {
-      const userDocRef = doc(firestore, "students", currentUser.uid);
-      const userDoc = await getDoc(userDocRef);
+      let userDocRef = doc(firestore, "students", currentUser.uid);
+      let userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // If the user is not found in the "students" collection, check "faculty"
+        userDocRef = doc(firestore, "faculty", currentUser.uid);
+        userDoc = await getDoc(userDocRef);
+      }
 
       if (userDoc.exists()) {
         setUserDetails(userDoc.data());
+      } else {
+        console.error("User not found in students or faculty collections.");
       }
     }
   };
@@ -55,13 +63,17 @@ const logActivity = async (description: string) => {
         timestamp: new Date(),
       };
 
-      await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
+      await addDoc(
+        collection(firestore, `studentlogs/${organizationName}/activitylogs`),
+        logEntry
+      );
       console.log("Activity logged:", logEntry);
     } catch (error) {
       console.error("Error logging activity:", error);
     }
   }
 };
+
   
   useEffect(() => {
     // Get current user's authentication and organization data
@@ -289,10 +301,12 @@ const handleImageUpload = async (eventName: string) => {
     setIsModalOpen(false); // Close the modal after selection
   };
   return (
-    <div className="organization-dashboard-wrapper">
-    <Header />
-    <div className="dashboard-container">
-    <div className="sidebar-section">{getSidebarComponent()}</div>
+    <div className="organization-announcements-page">
+      <Header />
+      <div className="organization-announcements-container">
+      <div className="sidebar-section">
+      
+      {getSidebarComponent()}</div>
         <div className="main-content">
         <div className="header-container">
             <h1 className="headtitle">Create new Event</h1>

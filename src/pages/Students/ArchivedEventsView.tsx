@@ -388,6 +388,8 @@ const handleViewAttendees = async (dayIndex: number) => {
               orgData.officers?.some((officer: any) => officer.id === user.uid)
             ) {
               setUserRole("officer");
+            } else if (orgData.facultyAdviser?.id === user.uid) { // Check if the user is the faculty adviser
+              setUserRole("faculty");
             } else if (
               orgData.members?.some((member: any) => member.id === user.uid)
             ) {
@@ -395,6 +397,7 @@ const handleViewAttendees = async (dayIndex: number) => {
             } else {
               setUserRole(null);
             }
+            
           }
         }
       } catch (error) {
@@ -581,6 +584,8 @@ const handleViewAttendees = async (dayIndex: number) => {
         return <StudentPresidentSidebar />;
       case "officer":
         return <StudentPresidentSidebar  />;
+        case "faculty":
+          return <StudentPresidentSidebar  />;
       case "member":
         return <StudentMemberSidebar />;
       default:

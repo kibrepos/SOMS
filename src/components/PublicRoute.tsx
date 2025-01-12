@@ -14,10 +14,10 @@ const PublicRoute: React.FC = () => {
   if (isAuthenticated) {
     // Redirect based on the user type
     if (userType === 'student') {
-      return <Navigate to="/Student/dashboard" replace />;
+      return <Navigate to="/dashboard" replace />;
     }
     if (userType === 'faculty') {
-      return <Navigate to="/Faculty/dashboard" replace />;
+      return <Navigate to="/dashboard" replace />;
     }
     if (userType === 'admin') {
       return <Navigate to="/Admin/dashboard" replace />; // Adjust based on your admin dashboard path

@@ -27,41 +27,53 @@ const EventReport: React.FC = () => {
   const [filteredTasks, setFilteredTasks] = useState<any[]>(tasks);  // Store filtered tasks based on the query
   const [userDetails, setUserDetails] = useState<any>(null);
   
-  useEffect(() => {
-    const fetchUserDetails = async () => {
-      const auth = getAuth();
-      const currentUser = auth.currentUser;
-  
-      if (currentUser) {
-        const userDocRef = doc(firestore, "students", currentUser.uid);
-        const userDoc = await getDoc(userDocRef);
-  
-        if (userDoc.exists()) {
-          setUserDetails(userDoc.data());
-        }
-      }
-    };
-  
-    fetchUserDetails();
-  }, []);
-  
-  const logActivity = async (description: string) => {
-    if (organizationName && userDetails) {
-      try {
-        const logEntry = {
-          userName: `${userDetails.firstname} ${userDetails.lastname}`,
-          description,
-          organizationName,
-          timestamp: new Date(),
-        };
-  
-        await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
-        console.log("Activity logged:", logEntry);
-      } catch (error) {
-        console.error("Error logging activity:", error);
-      }
-    }
-  };
+ useEffect(() => {
+   const fetchUserDetails = async () => {
+     const auth = getAuth();
+     const currentUser = auth.currentUser;
+ 
+     if (currentUser) {
+       let userDocRef = doc(firestore, "students", currentUser.uid);
+       let userDoc = await getDoc(userDocRef);
+ 
+       if (!userDoc.exists()) {
+         // If the user is not found in the "students" collection, check "faculty"
+         userDocRef = doc(firestore, "faculty", currentUser.uid);
+         userDoc = await getDoc(userDocRef);
+       }
+ 
+       if (userDoc.exists()) {
+         setUserDetails(userDoc.data());
+       } else {
+         console.error("User not found in students or faculty collections.");
+       }
+     }
+   };
+ 
+   fetchUserDetails();
+ }, []);
+ 
+ const logActivity = async (description: string) => {
+   if (organizationName && userDetails) {
+     try {
+       const logEntry = {
+         userName: `${userDetails.firstname} ${userDetails.lastname}`,
+         description,
+         organizationName,
+         timestamp: new Date(),
+       };
+ 
+       await addDoc(
+         collection(firestore, `studentlogs/${organizationName}/activitylogs`),
+         logEntry
+       );
+       console.log("Activity logged:", logEntry);
+     } catch (error) {
+       console.error("Error logging activity:", error);
+     }
+   }
+ };
+ 
   
 
   type EventDate = {

@@ -77,38 +77,51 @@ const user = auth.currentUser;
 
 useEffect(() => {
   const fetchUserDetails = async () => {
-    if (user) {
-      const userDocRef = doc(firestore, 'students', user.uid); // Adjust collection name if necessary
-      const userDoc = await getDoc(userDocRef);
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (currentUser) {
+      let userDocRef = doc(firestore, "students", currentUser.uid);
+      let userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // If the user is not found in the "students" collection, check "faculty"
+        userDocRef = doc(firestore, "faculty", currentUser.uid);
+        userDoc = await getDoc(userDocRef);
+      }
+
       if (userDoc.exists()) {
         setUserDetails(userDoc.data());
+      } else {
+        console.error("User not found in students or faculty collections.");
       }
     }
   };
 
   fetchUserDetails();
-}, [user]);
-
+}, []);
 
 const logActivity = async (description: string) => {
-  if (organizationName) {
+  if (organizationName && userDetails) {
     try {
       const logEntry = {
-        userName: `${userDetails.firstname || 'Unknown'} ${userDetails.lastname || 'User'}`,
+        userName: `${userDetails.firstname} ${userDetails.lastname}`,
         description,
         organizationName,
         timestamp: new Date(),
       };
 
-      await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
-      console.log('Log added:', logEntry);
+      await addDoc(
+        collection(firestore, `studentlogs/${organizationName}/activitylogs`),
+        logEntry
+      );
+      console.log("Activity logged:", logEntry);
     } catch (error) {
-      console.error('Error logging activity:', error);
+      console.error("Error logging activity:", error);
     }
-  } else {
-    console.warn('Organization name not provided for logging activity.');
   }
 };
+
 
 useEffect(() => {
   const fetchRole = async () => {
@@ -126,6 +139,8 @@ useEffect(() => {
           setRole('president');
         } else if (orgData.officers.some((officer: any) => officer.id === userId)) {
           setRole('officer');
+        } else if (orgData.facultyAdviser?.id === userId) {
+          setRole('faculty'); // Assign role as 'faculty'
         } else if (orgData.members.some((member: any) => member.id === userId)) {
           setRole('member');
         } else {
@@ -139,18 +154,23 @@ useEffect(() => {
 
   fetchRole();
 }, [organizationName]);
+
+
 const renderSidebar = () => {
   switch (role) {
     case 'president':
       return <StudentPresidentSidebar />;
     case 'officer':
-      return <StudentPresidentSidebar  />;
+      return <StudentPresidentSidebar />;
+    case 'faculty': // Add case for faculty
+      return <StudentPresidentSidebar />;
     case 'member':
       return <StudentMemberSidebar />;
     default:
       return null; // No sidebar for guests
   }
 };
+
 
 useEffect(() => {
   const fetchAvailableStudents = async () => {
@@ -769,13 +789,13 @@ const handleKick = async () => {
   }
   
   return (
-    <div className="MM-dashboard">
-      <Header />
-      <div className="MM-container">
-        <div className="MM-sidebar-section">
+    <div className="organization-announcements-page">
+    <Header />
+    <div className="organization-announcements-container">
+    <div className="sidebar-section">
         {renderSidebar()}
         </div>
-        <div className="MM-main-content">
+        <div className="main-content">
         <div className="header-container">
         <h1 className="headtitle">Organization Members</h1>
         <button

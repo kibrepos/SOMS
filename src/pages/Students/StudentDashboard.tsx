@@ -28,6 +28,7 @@ interface Organization {
   members: Member[];
   officers: Officer[];
   president: President;
+  facultyAdviser?: { id: string };
   department: string;
   status: string;
   coverImagePath?: string;
@@ -45,49 +46,60 @@ const StudentDashboard: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          const studentDocRef = doc(firestore, 'students', user.uid);
-          const studentDoc = await getDoc(studentDocRef);
-
-          if (studentDoc.exists()) {
-            const student = studentDoc.data();
-            setStudentData(student);
-            console.log("Student Data:", student);
-
-            const organizationsRef = collection(firestore, 'organizations');
-            const organizationsDocs = await getDocs(organizationsRef);
-
-            const orgList: Organization[] = [];
-
-            organizationsDocs.forEach((orgDoc) => {
-              const orgData = orgDoc.data() as Organization;
-              console.log("Organization Data:", orgData);
-
-              const isMember = orgData.members?.some(member => member.id === user.uid);
-              const isPresident = orgData.president.id === user.uid;
-              const isOfficer = orgData.officers?.some(officer => officer.id === user.uid);
-           
-              console.log(`Checking org: ${orgData.name} - Member: ${isMember}, President: ${isPresident}, Officer: ${isOfficer}`);
-
-              if (isMember || isPresident || isOfficer) {
-                orgList.push(orgData);
-              }
-            });
-
-            console.log("Filtered Organization List:", orgList);
-
-            const sortedOrganizations = orgList.sort((a, b) => {
-              if (a.status === 'archived' && b.status !== 'archived') return 1;
-              if (a.status !== 'archived' && b.status === 'archived') return -1;
-              return 0;
-            });
-
-            setOrganizations(sortedOrganizations);
+          let userDoc = await getDoc(doc(firestore, 'students', user.uid));
+          let userData;
+  
+          if (userDoc.exists()) {
+            userData = userDoc.data();
+            console.log("Student Data:", userData);
           } else {
-            setError('No student data found.');
+            userDoc = await getDoc(doc(firestore, 'faculty', user.uid));
+            if (userDoc.exists()) {
+              userData = userDoc.data();
+              console.log("Faculty Data:", userData);
+            } else {
+              setError('No data found for this user.');
+              return;
+            }
           }
+  
+          setStudentData(userData);
+  
+          const organizationsRef = collection(firestore, 'organizations');
+          const organizationsDocs = await getDocs(organizationsRef);
+  
+          const orgList: Organization[] = [];
+  
+          organizationsDocs.forEach((orgDoc) => {
+            const orgData = orgDoc.data() as Organization;
+            console.log("Organization Data:", orgData);
+  
+            const isMember = orgData.members?.some((member) => member.id === user.uid);
+            const isPresident = orgData.president.id === user.uid;
+            const isOfficer = orgData.officers?.some((officer) => officer.id === user.uid);
+            const isFacultyAdviser = orgData.facultyAdviser?.id === user.uid;
+  
+            console.log(
+              `Checking org: ${orgData.name} - Member: ${isMember}, President: ${isPresident}, Officer: ${isOfficer}, Faculty Adviser: ${isFacultyAdviser}`
+            );
+  
+            if (isMember || isPresident || isOfficer || isFacultyAdviser) {
+              orgList.push(orgData);
+            }
+          });
+  
+          console.log("Filtered Organization List:", orgList);
+  
+          const sortedOrganizations = orgList.sort((a, b) => {
+            if (a.status === 'archived' && b.status !== 'archived') return 1;
+            if (a.status !== 'archived' && b.status === 'archived') return -1;
+            return 0;
+          });
+  
+          setOrganizations(sortedOrganizations);
         } catch (err) {
-          console.error('Error fetching student data:', err);
-          setError('Error fetching student data.');
+          console.error('Error fetching user data:', err);
+          setError('Error fetching user data.');
         } finally {
           setLoading(false);
         }
@@ -95,9 +107,10 @@ const StudentDashboard: React.FC = () => {
         navigate('/login');
       }
     });
-
+  
     return () => unsubscribe();
   }, [navigate]);
+  
 
   const handleOrganizationClick = (organization: Organization) => {
     if (organization.status === 'archived') {
@@ -180,7 +193,7 @@ const StudentDashboard: React.FC = () => {
               ))}
             </div>
           ) : (
-            <p>You are not a member, officer, or head of any organizations.</p>
+            <p>You are not a part of any student organizations.</p>
           )}
         </div>
       </div>

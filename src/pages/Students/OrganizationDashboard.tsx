@@ -73,34 +73,45 @@ const OrganizationDashboard: React.FC = () => {
     const fetchOrganizationData = async () => {
       try {
         const user = auth.currentUser;
-
+  
         if (user) {
           setUserId(user.uid); // Set the logged-in user ID
-          const userDocRef = doc(firestore, 'students', user.uid);
-          const userDoc = await getDoc(userDocRef);
-
+  
+          // Check both students and faculty collections
+          let userDoc = await getDoc(doc(firestore, 'students', user.uid));
+          if (!userDoc.exists()) {
+            userDoc = await getDoc(doc(firestore, 'faculty', user.uid));
+          }
+  
           if (userDoc.exists()) {
             const orgDocRef = doc(firestore, 'organizations', organizationName || '');
             const orgDoc = await getDoc(orgDocRef);
-
+  
             if (orgDoc.exists()) {
               const orgData = orgDoc.data();
               setOrganizationData(orgData);
-
+  
+              // Determine the role of the logged-in user
               if (orgData.president?.id === user.uid) {
                 setUserRole('president');
               } else if (orgData.officers?.some((officer: any) => officer.id === user.uid)) {
                 setUserRole('officer');
               } else if (orgData.members?.some((member: any) => member.id === user.uid)) {
                 setUserRole('member');
+              } else if (orgData.facultyAdviser?.id === user.uid) {
+                setUserRole('faculty');
               } else {
                 setUserRole(null);
               }
-
+  
               if (organizationName) {
                 navigate(`/Organization/${organizationName}/dashboard`);
               }
+            } else {
+              console.error('Organization data not found.');
             }
+          } else {
+            console.error('User data not found in students or faculty collections.');
           }
         }
       } catch (error) {
@@ -109,9 +120,10 @@ const OrganizationDashboard: React.FC = () => {
         setLoading(false);
       }
     };
-
+  
     fetchOrganizationData();
   }, [organizationName, navigate]);
+  
 
   // Fetch Tasks for the Organization and filter by assignedTo, assignedCommittees, and assignedMembers
   useEffect(() => {
@@ -213,10 +225,13 @@ const OrganizationDashboard: React.FC = () => {
   if (userRole === 'president') {
     SidebarComponent = <StudentPresidentSidebar />;
   } else if (userRole === 'officer') {
-    SidebarComponent = <StudentPresidentSidebar  />;
+    SidebarComponent = <StudentPresidentSidebar />;
+  } else if (userRole === 'faculty') { // Faculty uses the same sidebar as president
+    SidebarComponent = <StudentPresidentSidebar />;
   } else if (userRole === 'member') {
     SidebarComponent = <StudentMemberSidebar />;
   }
+  
 
   return (
     <div className="organization-announcements-page">

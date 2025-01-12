@@ -120,11 +120,19 @@ useEffect(() => {
     const currentUser = auth.currentUser;
 
     if (currentUser) {
-      const userDocRef = doc(firestore, "students", currentUser.uid);
-      const userDoc = await getDoc(userDocRef);
+      let userDocRef = doc(firestore, "students", currentUser.uid);
+      let userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // If the user is not found in the "students" collection, check "faculty"
+        userDocRef = doc(firestore, "faculty", currentUser.uid);
+        userDoc = await getDoc(userDocRef);
+      }
 
       if (userDoc.exists()) {
         setUserDetails(userDoc.data());
+      } else {
+        console.error("User not found in students or faculty collections.");
       }
     }
   };
@@ -142,7 +150,10 @@ const logActivity = async (description: string) => {
         timestamp: new Date(),
       };
 
-      await addDoc(collection(firestore, `studentlogs/${organizationName}/activitylogs`), logEntry);
+      await addDoc(
+        collection(firestore, `studentlogs/${organizationName}/activitylogs`),
+        logEntry
+      );
       console.log("Activity logged:", logEntry);
     } catch (error) {
       console.error("Error logging activity:", error);
@@ -795,9 +806,18 @@ useEffect(() => {
     }
   
     try {
-      const userDoc = await getDoc(doc(firestore, "students", currentUser.uid));
-      const givenBy = userDoc.exists()
-        ? `${userDoc.data()?.firstname} ${userDoc.data()?.lastname}`
+      // Check the `students` collection first
+      let userDoc = await getDoc(doc(firestore, "students", currentUser.uid));
+      let userData = userDoc.exists() ? userDoc.data() : null;
+  
+      // If not found in `students`, check `faculty`
+      if (!userData) {
+        userDoc = await getDoc(doc(firestore, "faculty", currentUser.uid));
+        userData = userDoc.exists() ? userDoc.data() : null;
+      }
+  
+      const givenBy = userData
+        ? `${userData.firstname} ${userData.lastname}`
         : "Unknown User";
   
       const attachmentURLs = await Promise.all(
@@ -820,7 +840,7 @@ useEffect(() => {
         event: newTaskEvent,
         taskStatus: "Started",
         givenBy,
-        senderId: currentUser.uid, 
+        senderId: currentUser.uid,
         attachments: attachmentURLs,
       };
   
@@ -887,13 +907,13 @@ useEffect(() => {
   if (loading) return <div>Loading tasks...</div>;
 
   return (
-    <div className="task-management-dashboard">
+    <div className="organization-announcements-page">
       <Header />
-      <div className="task-container">
-        <div className="task-sidebar">
+      <div className="organization-announcements-container">
+      <div className="sidebar-section">
           <StudentPresidentSidebar />
         </div>
-        <div className="task-content">
+        <div className="main-content">
         <div className="header-container">
         <h1 className="headtitle">All Tasks List</h1>
           <button
@@ -1108,7 +1128,7 @@ useEffect(() => {
 
 <label className="altask-label">Start Date & Time</label>
 <div className="altask-date-time-input">
-  <input
+<input
     type="datetime-local"
     value={newTaskStartDate}
     onChange={(e) => setNewTaskStartDate(e.target.value)}
@@ -1463,14 +1483,18 @@ useEffect(() => {
 
             <label className="altask-label">Start Date & Time</label>
 <div className="altask-date-time-input">
-  <input
+<input
     type="datetime-local"
-    value={newTaskStartDate}
+    value={newTaskStartDate || taskToEdit?.startDate || ""}
     onChange={(e) => setNewTaskStartDate(e.target.value)}
     required
     className="altask-date-input"
     placeholder={formattedNow}
-    min={new Date().toISOString().slice(0, 16)} // Disable past dates
+    min={
+      taskToEdit
+        ? "" // No restriction on past dates when editing
+        : new Date().toISOString().slice(0, 16) // Disable past dates when creating a new task
+    }
   />
 </div>
 
