@@ -55,12 +55,20 @@
 }
 
 .profile-icon {
-  width: 35px;
-  height: 35px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid white;
+  width: 35px; /* Set the fixed width */
+  height: 35px; /* Set the fixed height */
+  border-radius: 50%; /* Make it a perfect circle */
+  object-fit: cover; /* Ensure the image fits within the circle */
+  border: 2px solid white; /* Optional: Add a border for better aesthetics */
+  background-color: #cccccc; /* Fallback background color when no image is available */
+  display: flex; /* Aligns placeholder text when no image */
+  align-items: center; /* Vertically centers placeholder text */
+  justify-content: center; /* Horizontally centers placeholder text */
+  font-size: 1rem; /* Size for placeholder initials */
+  color: white; /* Placeholder text color */
+  font-weight: bold; /* Make placeholder text bold */
 }
+
 
 /* Dropdown menu styling */
 .header-dropdown {
