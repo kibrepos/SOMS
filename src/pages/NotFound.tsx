@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import "../styles/NotFound.css";
 
 interface ErrorDetail {
   code: number;
@@ -30,40 +31,21 @@ const NotFound: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        flexDirection: 'column',
-        fontFamily: 'Arial, sans-serif',
-        textAlign: 'center',
-      }}
-    >
-      <h1 style={{ fontSize: '3rem', color: '#D9534F' }}>
-        {statusCode} - {errorDetail?.title || 'Error'}
-      </h1>
-      <p style={{ fontSize: '1.2rem', color: '#6C757D' }}>
-        {state?.errorMessage || errorDetail?.description || 'An unexpected error occurred.'}
-      </p>
-      <button
-        onClick={() => navigate(-1)}
-        style={{
-          textDecoration: 'none',
-          backgroundColor: '#007BFF',
-          color: 'white',
-          padding: '10px 20px',
-          borderRadius: '5px',
-          border: 'none',
-          cursor: 'pointer',
-          marginTop: '20px',
-        }}
-      >
-        Go Back
-      </button>
+    <div className="not-found-container">
+      <div className="not-found-box">
+        <h1 className="not-found-title">
+          {statusCode} - {errorDetail?.title || 'Error'}
+        </h1>
+        <p className="not-found-description">
+          {state?.errorMessage || errorDetail?.description || 'An unexpected error occurred.'}
+        </p>
+        <button className="not-found-back-button" onClick={() => navigate(-1)}>
+          Go Back
+        </button>
+      </div>
     </div>
   );
 };
+
 
 export default NotFound;
