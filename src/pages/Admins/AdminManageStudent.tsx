@@ -150,8 +150,19 @@ const AdminManageStudent: React.FC = () => {
     logActivity("Exported students as CSV");
   };
 
-  if (loading) return <p>Loading students...</p>;
-
+  if (loading) {
+    // Only prevent rendering the student table while loading
+    return (
+      <div className="admin-dashboard">
+        <AdminSidebar />
+        <div className="admin-dashboard-content">
+          <div className="header-actions">
+            <p>Loading students...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
   <div className="admin-dashboard">
     <AdminSidebar />
